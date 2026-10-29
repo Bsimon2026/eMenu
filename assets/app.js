@@ -15,6 +15,15 @@
   const STEPS = ["Your restaurant", "Documents", "Menu link"];
   const TAKEN = ["karak-house", "al-noor", "tandoori-nights", "biryani-point", "the-grill", "shishawi", "table9", "salt-pepper", "khan-mandi"];
 
+  /* Where this build is actually served. On ogle.live the printed link is the
+     real one; anywhere else (a preview deployment) the QR encodes the URL that
+     resolves right now, so the code still scans to a live menu. */
+  const PUBLIC_BASE = /^(www\.)?ogle\.live$/i.test(location.hostname)
+    ? "https://ogle.live/digimenu/"
+    : location.origin + "/digimenu/";
+
+  const publicLink = (h) => PUBLIC_BASE.replace(/^https?:\/\//i, "") + (h || "—");
+
   /* ---------------- state ---------------- */
 
   function seed() {
@@ -91,11 +100,11 @@
     if (!host) return;
     host.innerHTML = "";
     if (!handle) return;
-    const src = qrDataUrl("https://ogle.live/digimenu/" + handle, 8);
+    const src = qrDataUrl(PUBLIC_BASE + handle, 8);
     if (!src) { host.textContent = "QR unavailable"; return; }
     const img = document.createElement("img");
     img.src = src;
-    img.alt = "QR code for ogle.live/digimenu/" + handle;
+    img.alt = "QR code for " + publicLink(handle);
     img.dataset.qr = src;
     host.appendChild(img);
   }
@@ -323,7 +332,7 @@
       if (TAKEN.indexOf(v) !== -1) {
         handleFree = false;
         $("#handleStatus").className = "handle-status taken";
-        $("#handleStatus").textContent = "ogle.live/digimenu/" + v + " is already taken.";
+        $("#handleStatus").textContent = publicLink(v) + " is already taken.";
         $("#suggestions").innerHTML = [v + "-abudhabi", v + "-uae", v + "-menu", v + "1"]
           .map((s) => `<button type="button" data-sug="${s}">${s}</button>`).join("");
         $$("#suggestions button").forEach((b) => b.addEventListener("click", () => checkHandle(b.dataset.sug)));
@@ -333,7 +342,7 @@
         $("#handleStatus").textContent = "Available. It becomes yours when you finish.";
         state.handle = v;
         save();
-        $("#linkOb").textContent = "ogle.live/digimenu/" + v;
+        $("#linkOb").textContent = publicLink(v);
         paintQR($("#qrOb"), v);
       }
       $("#finishOb").disabled = !handleFree;
@@ -387,7 +396,7 @@
     $("#sideDot").className = "dot" + (ready ? " live" : "");
     $("#sideRest").textContent = state.restaurant.name || "Your restaurant";
 
-    $("#linkOverview").textContent = "ogle.live/digimenu/" + (state.handle || "—");
+    $("#linkOverview").textContent = publicLink(state.handle);
     paintQR($("#qrOverview"), state.handle);
 
     const cats = menuSource().categories;
@@ -589,7 +598,7 @@
   /* ---------------- qr pane ---------------- */
 
   function renderQrPane() {
-    $("#linkBig").textContent = "ogle.live/digimenu/" + (state.handle || "—");
+    $("#linkBig").textContent = publicLink(state.handle);
     paintQR($("#qrBig"), state.handle);
   }
 

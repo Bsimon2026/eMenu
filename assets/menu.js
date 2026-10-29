@@ -14,18 +14,30 @@
   }
 
   const stored = loadState();
-  const restaurant = (stored && stored.restaurant) || {};
-  const docs = (stored && stored.docs) || {};
+
+  /* the handle can arrive as ?r=<handle> or as /digimenu/<handle> (vercel.json rewrite) */
+  const pathHandle = (location.pathname.match(/\/digimenu\/([a-z0-9][a-z0-9-]*)\/?$/i) || [])[1] || null;
+  const urlHandle = String(params.get("r") || pathHandle || "").toLowerCase() || null;
+
+  /* a link for restaurant A must not borrow the saved data of restaurant B */
+  const mine = stored && (!urlHandle || stored.handle === urlHandle);
+  const restaurant = (mine && stored.restaurant) || {};
+  const docs = (mine && stored.docs) || {};
+
+  const PUBLIC_BASE = /^(www\.)?ogle\.live$/i.test(location.hostname)
+    ? "https://ogle.live/digimenu/"
+    : location.origin + "/digimenu/";
 
   const name = restaurant.name || DEMO_MENU.restaurant;
-  const accent = (stored && stored.accent) || "#f7941d";
-  const handle = (stored && stored.handle) || DEMO_MENU.handle;
+  const accent = (mine && stored.accent) || "#f7941d";
+  const handle = urlHandle || (stored && stored.handle) || DEMO_MENU.handle;
+  const publicLink = PUBLIC_BASE.replace(/^https?:\/\//i, "") + handle;
   const whatsapp = (restaurant.whatsapp || DEMO_MENU.whatsapp).replace(/\D/g, "");
   const purposes = (restaurant.purposes && restaurant.purposes.length)
     ? restaurant.purposes
     : ["Dine In", "Take Away"];
 
-  const cats = (stored && stored.menu && stored.menu.categories) || DEMO_MENU.categories;
+  const cats = (mine && stored.menu && stored.menu.categories) || DEMO_MENU.categories;
   const cart = new Map();
   let mode = purposes[0] || "Dine In";
   let table = "";
@@ -39,7 +51,7 @@
   $("#restMeta").textContent =
     (restaurant.city || DEMO_MENU.city) + " · " +
     purposes.map((p) => (p === "Dine In" ? "Dine in" : p === "Take Away" ? "Takeaway" : "Delivery")).join(" · ");
-  $("#footHandle").textContent = "ogle.live/digimenu/" + handle;
+  $("#footHandle").textContent = publicLink;
 
   const logo = $("#restLogo");
   if (docs.logo) {
@@ -261,7 +273,7 @@
     if (mode === "Delivery") lines.push("Address: " + address.replace(/\s+/g, " ").trim());
     lines.push("Guest: " + guest, "");
     cart.forEach((r) => lines.push(r.qty + " × " + r.item.name + " — AED " + r.qty * r.item.price));
-    lines.push("", "Total: AED " + sum, "", "Sent from ogle.live/digimenu/" + handle);
+    lines.push("", "Total: AED " + sum, "", "Sent from " + publicLink);
     return lines.join("\n");
   }
 

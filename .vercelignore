@@ -1,0 +1,7 @@
+# kept out of the deployment
+_preview/
+PLAN.md
+README.md
+.git/
+.gitignore
+*.md
