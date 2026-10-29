@@ -473,8 +473,9 @@ body.embed .mhead h1 { font-size: 15px; }
 body.embed .mhead .mmeta { font-size: 11px; }
 body.embed .mhead .mwa { display: none; }
 body.embed .mwrap { padding: 0 12px; }
-body.embed .rail { position: sticky; top: 0; padding: 8px 12px; margin: 0 -12px; }
-body.embed .rail a { height: 28px; font-size: 12px; padding: 0 10px; }
+body.embed .rail { position: sticky; top: 0; padding: 8px 12px; margin: 0 -12px; flex-wrap: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 82%, transparent 100%); mask-image: linear-gradient(to right, #000 82%, transparent 100%); }
+body.embed .rail a { height: 26px; font-size: 11px; padding: 0 9px; }
+body.embed .rail { gap: 6px; }
 body.embed .sec { padding-top: 16px; }
 body.embed .sec-head h2 { font-size: 15px; }
 body.embed .sec-head span { font-size: 11px; }
