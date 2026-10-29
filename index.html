@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DigiMenu by Ogle Live — restaurant sign in</title>
+<meta name="description" content="Turn a photo of your menu into an ordering page, a QR code and a WhatsApp order line. Set up in four steps.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ LEFT: live menu card ============ -->
+  <section class="stage" aria-label="Live preview of your menu card">
+    <div class="stage-top">
+      <span class="mark" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M2 8h12M2 12h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <div>
+        <div class="brand-name">DigiMenu</div>
+        <div class="brand-sub">Ogle Live Technologies</div>
+      </div>
+    </div>
+
+    <div class="stage-mid">
+      <article class="menu-card" id="menuCard">
+        <div class="mc-head">
+          <div class="mc-logo" id="cardLogo">SR</div>
+          <h2 class="mc-name" id="cardName">Your restaurant</h2>
+          <div class="mc-meta" id="cardMeta">Abu Dhabi · Dine in</div>
+        </div>
+        <div class="mc-body" id="cardBody"><!-- injected --></div>
+        <div class="mc-foot">
+          <span id="cardFoot">Scan to order on WhatsApp</span>
+          <span class="qr-mini" aria-hidden="true"></span>
+        </div>
+      </article>
+    </div>
+
+    <p class="stage-note">
+      <b>The card fills itself in.</b> Name, channels and logo colour are read as you type —
+      the same card your guests will see when they scan the QR on the table.
+    </p>
+  </section>
+
+  <!-- ============ RIGHT: working pane ============ -->
+  <main class="pane">
+
+    <!-- ---------- SIGN IN / CREATE ---------- -->
+    <div class="pane-inner is-active" id="viewAuth">
+      <div class="seg" role="tablist" aria-label="Account access">
+        <button role="tab" aria-selected="true" data-auth="in">Sign in</button>
+        <button role="tab" aria-selected="false" data-auth="up">Create account</button>
+      </div>
+
+      <!-- sign in -->
+      <div id="authIn">
+        <h1 class="title-xl">Welcome back</h1>
+        <p class="lede">Sign in to manage your menu, download your QR and see today's orders.</p>
+
+        <form id="formSignIn" style="margin-top:26px" novalidate>
+          <div class="field">
+            <label for="siEmail">Email or mobile</label>
+            <input class="input" id="siEmail" type="text" autocomplete="username" placeholder="owner@restaurant.com">
+            <div class="error-msg" id="siEmailErr">Enter the email or mobile you signed up with.</div>
+          </div>
+          <div class="field">
+            <label for="siPass">Password</label>
+            <input class="input" id="siPass" type="password" autocomplete="current-password" placeholder="••••••••">
+            <div class="error-msg" id="siPassErr">Password is required.</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-brand" type="submit">Sign in</button>
+            <span class="spacer"></span>
+            <button class="btn-quiet" type="button" id="forgot">Forgot password?</button>
+          </div>
+          <div class="form-foot">
+            <span>No account yet?</span>
+            <button class="btn-quiet" type="button" data-auth-jump="up">Create one. Free until you publish.</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- create account, step 1 -->
+      <div id="authUp" hidden>
+        <div class="stepper" id="stepper"></div>
+
+        <h1 class="title-xl">Start with who you are</h1>
+        <p class="lede">Four short steps. Nothing is published until you have added your licence and logo.</p>
+
+        <form id="formAccount" style="margin-top:24px" novalidate>
+          <div class="field">
+            <label for="accName">Your name</label>
+            <input class="input" id="accName" autocomplete="name" placeholder="Biju Simon">
+            <div class="error-msg" id="accNameErr">Please tell us your name.</div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="accMobile">Mobile</label>
+              <input class="input" id="accMobile" inputmode="tel" autocomplete="tel" placeholder="50 123 4567">
+              <div class="error-msg" id="accMobileErr">Enter a mobile number we can reach you on.</div>
+            </div>
+            <div class="field">
+              <label for="accEmail">Email</label>
+              <input class="input" id="accEmail" type="email" autocomplete="email" placeholder="owner@restaurant.com">
+              <div class="error-msg" id="accEmailErr">That email doesn't look complete.</div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="accPass">Password</label>
+            <input class="input" id="accPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+            <div class="hint">Used only for signing in to this dashboard.</div>
+            <div class="error-msg" id="accPassErr">Use at least 8 characters.</div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-brand" type="submit">Continue</button>
+            <span class="spacer"></span>
+            <span class="hint" style="margin:0">Step 1 of 4</span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ---------- ONBOARDING ---------- -->
+    <div class="pane-inner" id="viewOnboard">
+      <div class="stepper" id="stepper2"></div>
+
+      <!-- step 2: restaurant + channels -->
+      <section id="step2" hidden>
+        <h1 class="title-xl">Your restaurant, and how you take orders</h1>
+        <p class="lede">Pick the channels you actually serve. You can change these later; each one changes what the guest is asked at checkout.</p>
+
+        <form id="formRestaurant" style="margin-top:24px" novalidate>
+          <div class="grid-2">
+            <div class="field">
+              <label for="restName">Restaurant name</label>
+              <input class="input" id="restName" placeholder="Spice Route">
+              <div class="error-msg" id="restNameErr">Your restaurant needs a name.</div>
+            </div>
+            <div class="field">
+              <label for="ownerName">Owner's name</label>
+              <input class="input" id="ownerName" placeholder="As on the trade licence">
+            </div>
+          </div>
+
+          <div class="section-label" style="margin-top:6px">
+            <span>Purpose of the menu</span>
+            <em>select all that apply</em>
+          </div>
+          <div class="choices" id="purposeChoices">
+            <label class="choice" data-checked="false">
+              <input type="checkbox" value="Dine In" checked>
+              <span class="tick">✓</span>
+              <span class="ct">Dine In</span>
+              <span class="cd">Guest is asked for a table number</span>
+            </label>
+            <label class="choice" data-checked="false">
+              <input type="checkbox" value="Take Away" checked>
+              <span class="tick">✓</span>
+              <span class="ct">Take Away</span>
+              <span class="cd">Guest confirms a pickup time</span>
+            </label>
+            <label class="choice" data-checked="false">
+              <input type="checkbox" value="Delivery">
+              <span class="tick">✓</span>
+              <span class="ct">Delivery</span>
+              <span class="cd">Guest gives an address</span>
+            </label>
+          </div>
+          <div class="error-msg" id="purposeErr">Choose at least one way to take orders.</div>
+
+          <div class="section-label" style="margin-top:22px">
+            <span>WhatsApp number for orders</span>
+            <em>required</em>
+          </div>
+          <div class="field" style="margin-bottom:6px">
+            <div class="phone-group">
+              <select class="input" id="waCC" aria-label="Country code">
+                <option value="971">+971</option>
+                <option value="91">+91</option>
+                <option value="966">+966</option>
+                <option value="974">+974</option>
+                <option value="968">+968</option>
+                <option value="973">+973</option>
+                <option value="965">+965</option>
+                <option value="44">+44</option>
+              </select>
+              <input class="input" id="waNum" inputmode="tel" placeholder="52 575 7079">
+            </div>
+            <div class="hint">Every order opens a pre-filled WhatsApp chat on this number. Use the restaurant's WhatsApp Business line, not a personal one.</div>
+            <div class="error-msg" id="waErr">A WhatsApp number is required — orders have nowhere to go without it.</div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-ghost" type="button" data-back="1">Back</button>
+            <span class="spacer"></span>
+            <button class="btn btn-brand" type="submit">Continue</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- step 3: documents -->
+      <section id="step3" hidden>
+        <h1 class="title-xl">Documents</h1>
+        <p class="lede">You can finish this later — a trial menu stays unpublished until the licence and logo are in. Nothing is charged while it's in trial.</p>
+
+        <div style="margin-top:22px">
+          <div class="section-label">
+            <span>Uploads</span>
+            <em>JPG, PNG or PDF · up to 10 MB</em>
+          </div>
+
+          <label class="upload" id="upLogo">
+            <span class="thumb" id="thumbLogo">Logo</span>
+            <span>
+              <span class="ut">Restaurant logo</span>
+              <span class="ud" id="udLogo">Needed before publishing · also sets your menu colours</span>
+            </span>
+            <span class="pill warn" id="pillLogo">Required to publish</span>
+            <input type="file" accept="image/*" id="fileLogo">
+          </label>
+
+          <label class="upload" id="upLic">
+            <span class="thumb" id="thumbLic">PDF</span>
+            <span>
+              <span class="ut">Trade licence copy</span>
+              <span class="ud" id="udLic">Needed before publishing</span>
+            </span>
+            <span class="pill warn" id="pillLic">Required to publish</span>
+            <input type="file" accept="image/*,application/pdf" id="fileLic">
+          </label>
+
+          <label class="upload" id="upMap">
+            <span class="thumb" id="thumbMap">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 14s5-4.2 5-7.5A5 5 0 0 0 3 6.5C3 9.8 8 14 8 14Z" stroke="currentColor" stroke-width="1.2"/>
+                <circle cx="8" cy="6.4" r="1.6" stroke="currentColor" stroke-width="1.2"/>
+              </svg>
+            </span>
+            <span>
+              <span class="ut">Google Maps listing</span>
+              <span class="ud" id="udMap">Paste the link — we pull your address, hours and photos</span>
+            </span>
+            <span class="pill">Optional</span>
+            <input type="file" id="fileMap" hidden>
+          </label>
+
+          <div class="field" style="margin-top:12px">
+            <label for="mapsUrl">Google Maps link</label>
+            <input class="input" id="mapsUrl" placeholder="https://maps.app.goo.gl/…" inputmode="url">
+            <div class="hint">Open Google Maps → your restaurant → Share → Copy link.</div>
+          </div>
+
+          <div class="note" id="publishGate">
+            Publishing needs: logo <span id="gateLogo">— missing</span>, licence copy <span id="gateLic">— missing</span>.
+            The Google Maps listing only improves the page; it never blocks publishing.
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-ghost" type="button" data-back="2">Back</button>
+          <span class="spacer"></span>
+          <button class="btn btn-brand" type="button" id="toStep4">Continue</button>
+        </div>
+      </section>
+
+      <!-- step 4: handle + QR -->
+      <section id="step4" hidden>
+        <h1 class="title-xl">Claim your link</h1>
+        <p class="lede">This becomes the address on your QR code. It is permanent, so choose the name guests will recognise.</p>
+
+        <div style="margin-top:22px">
+          <div class="field">
+            <label for="handle">Menu address</label>
+            <div class="handle-field">
+              <span class="prefix">ogle.live/digimenu/</span>
+              <input id="handle" placeholder="spice-route" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="handle-status" id="handleStatus" role="status" aria-live="polite"></div>
+            <div class="suggestions" id="suggestions"></div>
+          </div>
+
+          <div class="qr-block">
+            <div class="qr-canvas-wrap" id="qrWrap"></div>
+            <div class="qr-copy">
+              <span class="qr-link" id="qrLink">ogle.live/digimenu/spice-route</span>
+              Your QR is generated with the link. Download it as a PNG for table tents,
+              window stickers and takeaway bags — it is also always in your dashboard.
+              <div style="margin-top:10px">
+                <button class="btn btn-ghost" type="button" id="dlQr" style="padding:7px 13px;font-size:13px" disabled>Download PNG</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-ghost" type="button" data-back="3">Back</button>
+          <span class="spacer"></span>
+          <button class="btn btn-brand" type="button" id="finish" disabled>Open my dashboard</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ---------- DASHBOARD ---------- -->
+    <div class="pane-inner" id="viewDash">
+      <div class="dash-head">
+        <div>
+          <div class="who" id="dashWho">Signed in</div>
+          <h1 class="title-xl" style="margin:4px 0 0" id="dashRest">Your restaurant</h1>
+        </div>
+        <button class="btn btn-ghost" type="button" id="signOut" style="padding:7px 12px;font-size:13px">Sign out</button>
+      </div>
+
+      <div class="section-label">
+        <span>Publishing status</span>
+        <em id="dashStatus">Trial · not published</em>
+      </div>
+      <div class="status-list" id="statusList"></div>
+
+      <div class="section-label" style="margin-top:24px">
+        <span>Your menu link</span>
+        <em>live now</em>
+      </div>
+      <div class="qr-block" style="margin-top:0">
+        <div class="qr-canvas-wrap" id="qrWrapDash"></div>
+        <div class="qr-copy">
+          <span class="qr-link" id="dashLink">ogle.live/digimenu/—</span>
+          <button class="btn btn-ghost" type="button" id="dlQrDash" style="padding:7px 13px;font-size:13px">Download QR</button>
+          <a class="btn btn-quiet" id="openMenu" href="menu.html" target="_blank" rel="noopener"
+             style="display:inline-block;margin-left:12px;font-size:13px">Open guest view</a>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:24px">
+        <span>Menu</span>
+        <em id="menuMeta">not uploaded</em>
+      </div>
+
+      <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload a menu photo or PDF">
+        <div class="uz-t">Drop a photo of your menu</div>
+        <div class="uz-d">Or click to choose — JPG, PNG or PDF. Our agent reads categories, items and prices.</div>
+        <input type="file" id="fileMenu" accept="image/*,application/pdf" hidden>
+      </div>
+
+      <div class="scan" id="scan">
+        <div class="scan-bar"><i id="scanBar"></i></div>
+        <div class="scan-steps" id="scanSteps">
+          <div data-s="0"><span class="tick2">·</span> Reading the page — layout, columns, sections</div>
+          <div data-s="1"><span class="tick2">·</span> Grouping items into categories</div>
+          <div data-s="2"><span class="tick2">·</span> Matching prices and diet markers</div>
+          <div data-s="3"><span class="tick2">·</span> Applying your logo palette</div>
+        </div>
+      </div>
+
+      <div class="extract" id="extract">
+        <div class="extract-head">
+          <span>Extracted to your menu</span>
+          <span id="extractCount">—</span>
+        </div>
+        <div id="extractRows"></div>
+      </div>
+
+      <div class="note" id="protoNote" hidden>
+        Prototype: extraction above is sample data. The production build sends the photo to a
+        vision model and returns the same structure for review before anything goes live.
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/vendor/qrcode-generator.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spice Route — menu</title>
+<meta name="theme-color" content="#7c2231">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/menu.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-logo" id="restLogo">SR</div>
+    <div>
+      <h1 id="restName">Spice Route</h1>
+      <div class="meta" id="restMeta">Abu Dhabi · Dine in · Take away</div>
+    </div>
+    <a class="wa" id="waLink" href="#" target="_blank" rel="noopener">Chat on WhatsApp</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div>
+    <nav class="rail" id="rail" aria-label="Menu categories"></nav>
+    <div id="sections"></div>
+  </div>
+
+  <aside class="cart" id="cart" aria-label="Your order">
+    <h3>Your order <em id="cartCount">0 items</em></h3>
+    <div id="cartBody"></div>
+    <div id="cartFoot"></div>
+  </aside>
+</div>
+
+<div class="bar" id="mobileBar">
+  <div>
+    <div class="bc" id="barCount">0 items</div>
+    <div class="bt" id="barTotal">AED 0</div>
+  </div>
+  <button type="button" id="barCheckout">Review order</button>
+</div>
+
+<footer class="foot">
+  <span id="footHandle">ogle.live/digimenu/spice-route</span>
+  <span>Digital menu by Ogle Live Technologies</span>
+</footer>
+
+<!-- checkout sheet -->
+<div class="sheet-back" id="sheetBack"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div id="sheetForm">
+    <h2 id="sheetTitle">How would you like it?</h2>
+    <p class="sub">Your order is sent straight to the restaurant's WhatsApp — no app, no account.</p>
+
+    <div class="mode" id="modeBtns" role="group" aria-label="Order type">
+      <button type="button" data-mode="Dine In" aria-pressed="true">Dine In</button>
+      <button type="button" data-mode="Take Away" aria-pressed="false">Take Away</button>
+      <button type="button" data-mode="Delivery" aria-pressed="false">Delivery</button>
+    </div>
+
+    <div id="modeFields"></div>
+
+    <div class="field">
+      <label for="guestName">Your name <span style="color:var(--brand)">*</span></label>
+      <input class="input" id="guestName" placeholder="So the kitchen can call your order">
+      <div class="err" id="nameErr">We need a name for the order.</div>
+    </div>
+
+    <div class="receipt" id="sheetTotals"></div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" type="button" id="closeSheet">Back to menu</button>
+      <button class="btn btn-brand" type="button" id="confirmOrder" style="flex:1">Send order on WhatsApp</button>
+    </div>
+  </div>
+
+  <div id="sheetDone" hidden>
+    <h2>Order sent</h2>
+    <p class="sub" id="doneSub">WhatsApp is opening with your order — press send there and the restaurant has it.</p>
+    <div class="receipt" id="doneReceipt"></div>
+    <p class="whats-next" id="doneNext"></p>
+    <div class="sheet-actions">
+      <a class="btn btn-ghost btn-block" id="doneWa" href="#" target="_blank" rel="noopener">Open WhatsApp again</a>
+      <button class="btn" type="button" id="doneClose" style="flex:1">Done</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/menu.js"></script>
+</body>
+</html>

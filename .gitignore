@@ -1,0 +1,9 @@
+# scratch and build artefacts
+_build/
+node_modules/
+*.log
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
