@@ -22,7 +22,7 @@
   --day-dim: #5c6166;
 
   --brand: #f7941d;
-  --brand-deep: #c9741a;
+  --brand-deep: #a3580e;
   --brand-ink: #171512;
 
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -182,17 +182,14 @@
   pointer-events: none;
 }
 
-/* fine grid, fixed to the section rather than scrolling with content */
+/* a single soft lift at the floor of the hero, nothing tiled */
 .hero::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: auto 0 0 0;
+  height: 40%;
   pointer-events: none;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-  background-size: 88px 88px;
-  mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 78%);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.028), transparent);
 }
 
 .hero-grid {
@@ -449,7 +446,7 @@
 }
 
 .step p { font-size: 15.5px; line-height: 1.6; color: var(--day-dim); max-width: 56ch; }
-.step .meta { font-size: 14px; line-height: 1.55; color: #7d7a70; }
+.step .meta { font-size: 14px; line-height: 1.55; color: #6a665c; }
 
 /* ---------- the two-up demo band ---------- */
 
@@ -532,7 +529,7 @@
 .sw[aria-checked="true"] { background: #2f7d4f; border-color: #2f7d4f; }
 .sw[aria-checked="true"]::after { transform: translateX(15px); }
 
-.sold-hint { margin-top: auto; padding-top: 16px; font-size: 12.5px; color: #8d8878; }
+.sold-hint { margin-top: auto; padding-top: 16px; font-size: 12.5px; color: #726d60; }
 
 /* whatsapp demo */
 
@@ -565,20 +562,20 @@
 
 .bubble .bt { font-weight: 600; }
 .bubble .btotal { border-top: 1px solid rgba(20, 40, 20, 0.16); margin-top: 7px; padding-top: 6px; font-weight: 600; }
-.bubble time { display: block; text-align: right; font-size: 10px; color: #6b8b6f; margin-top: 4px; }
+.bubble time { display: block; text-align: right; font-size: 11px; color: #4a6b4f; margin-top: 4px; }
 
 .chat-day {
   align-self: center;
   background: #f0ece3;
   color: #6f6a5e;
-  font-size: 10.5px;
+  font-size: 11px;
   letter-spacing: 0.04em;
   padding: 3px 10px;
   border-radius: 4px;
   margin-bottom: 12px;
 }
 
-.chat-cap { font-size: 12px; color: #7d7a70; margin-top: auto; padding-top: 18px; }
+.chat-cap { font-size: 12px; color: #6a665c; margin-top: auto; padding-top: 18px; }
 
 /* ---------- pricing table ---------- */
 
@@ -640,9 +637,9 @@
 .ptable tfoot .mbtn { width: 100%; }
 
 .yes { color: #2f7d4f; font-weight: 600; }
-.no { color: #b3ada0; }
+.no { color: #7a756a; }
 
-.price-note { font-size: 13px; color: #8d8878; margin-top: 16px; }
+.price-note { font-size: 13px; color: #726d60; margin-top: 16px; }
 
 /* mobile price cards */
 .pcards { display: none; }
@@ -762,7 +759,7 @@ html { scrollbar-color: #3a3d42 var(--night); }
   gap: 12px; flex-wrap: wrap;
 }
 
-.auth-aside { margin-top: 18px; font-size: 12.5px; color: #8d8878; text-align: center; line-height: 1.5; }
+.auth-aside { margin-top: 18px; font-size: 12.5px; color: #726d60; text-align: center; line-height: 1.5; }
 
 /* ---------- responsive ---------- */
 
@@ -796,7 +793,7 @@ html { scrollbar-color: #3a3d42 var(--night); }
   .pcard ul { list-style: none; margin: 16px 0 20px; padding: 0; display: grid; gap: 9px; }
   .pcard li { font-size: 14px; color: var(--day-dim); display: flex; gap: 9px; }
   .pcard li svg { flex: none; margin-top: 3px; color: var(--brand-deep); }
-  .pcard li.off { color: #b3ada0; text-decoration: line-through; }
+  .pcard li.off { color: #7a756a; text-decoration: line-through; }
 }
 
 @media (max-width: 560px) {

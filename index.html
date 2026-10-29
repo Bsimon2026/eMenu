@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DigiMenu by Ogle.live — the menu that takes the order</title>
+<title>DigiMenu by Ogle.live | The menu that takes the order</title>
 <meta name="description" content="Photograph your menu and DigiMenu rebuilds it as a page your guests order from. Orders arrive in your WhatsApp with a copy by email. Built by Ogle.live for UAE restaurants.">
 <meta name="theme-color" content="#0B0C0E">
 <link rel="icon" href="assets/ogle-live-logo.png">
@@ -43,7 +43,7 @@
         <h1 class="mh mh-xl">A menu that takes the order.</h1>
         <p class="lede">
           Photograph your menu, or paste your Talabat link. Guests order from the page we build,
-          and <b>every order lands in your WhatsApp</b> — with a copy in your inbox.
+          and <b>every order lands in your WhatsApp</b>, with a copy in your inbox.
         </p>
         <div class="hero-actions">
           <a class="mbtn mbtn-brand" href="login.html?mode=up">Start free</a>
@@ -63,7 +63,7 @@
           </div>
         </div>
         <div class="qchip">
-          <img id="heroQr" alt="QR code for the demo menu" width="66" height="66">
+          <img id="heroQr" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="QR code for the demo menu" width="66" height="66">
           <div>
             <div class="qt">Scan it. That is the whole install.</div>
             <div class="qs" id="heroLink">ogle.live/digimenu/spice-route</div>
@@ -75,7 +75,7 @@
 
   <div class="proof">
     <div class="mwrap proof-in">
-      <span>Built by <b>Ogle.live</b> — web and software for 500+ businesses across the UAE and India since 2019.</span>
+      <span>Built by <b>Ogle.live</b>. Web and software for 500+ businesses across the UAE and India since 2019.</span>
       <span>Abu Dhabi · <b>contact@ogle.live</b></span>
     </div>
   </div>
@@ -87,7 +87,7 @@
         <h2 class="mh mh-lg">The whole restaurant side is one screen.</h2>
         <p class="mbody">
           The menu your guests see is the menu you edit. Change a price, add a dish, or take something
-          off at 9pm because the kitchen has run out — and the guest page is already correct.
+          off at 9pm because the kitchen has run out, and the guest page is already correct.
         </p>
         <ul class="points">
           <li>
@@ -154,7 +154,7 @@
           <div class="step-n">04</div>
           <div>
             <h3>Take the order</h3>
-            <p>The guest picks dishes and chooses dine-in, takeaway or delivery. WhatsApp opens on their phone with the order already written — table number, pickup time or address included.</p>
+            <p>The guest picks dishes and chooses dine-in, takeaway or delivery. WhatsApp opens on their phone with the order already written: table number, pickup time or address included.</p>
           </div>
           <div class="meta">The same order is emailed to the restaurant and kept in your dashboard.</div>
         </div>
@@ -427,17 +427,19 @@ Guest: Biju
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* the one authored moment: copy lines, then the artifact settles from blur */
-  window.addEventListener("load", function () {
-    var copy = document.getElementById("heroCopy");
-    var art = document.getElementById("heroArtifact");
-    if (reduce) {
-      copy.classList.add("in");
-      art.classList.add("in");
-      return;
-    }
-    copy.classList.add("in");
-    setTimeout(function () { art.classList.add("in"); }, 120);
-  });
+  // run it as soon as the markup is parsed: never let a slow font or the
+  // embedded menu hold the hero invisible
+  var copyEl = document.getElementById("heroCopy");
+  var artEl = document.getElementById("heroArtifact");
+  if (reduce) {
+    copyEl.classList.add("in");
+    artEl.classList.add("in");
+  } else {
+    setTimeout(function () {
+      copyEl.classList.add("in");
+      setTimeout(function () { artEl.classList.add("in"); }, 120);
+    }, 0);
+  }
 
   /* nav: solid after the first scroll, and it takes its tone from whatever is
      actually behind the bar — read from the stack under that point, not guessed */
