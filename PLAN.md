@@ -1,162 +1,152 @@
-# DigiMenu — Phase 1 plan, inputs and unit economics
+# DigiMenu — phase 1: decisions, inputs, and what it costs
 
-Prepared for Ogle Live Technologies. Companion to the working front-end in this repo.
-
----
-
-## 1. What phase 1 actually is
-
-One web app, two faces:
-
-| Face | Who | What it does |
-|---|---|---|
-| `/index.html` | Restaurant owner | Sign in / sign up → 4-step onboarding (account, restaurant + order channels + WhatsApp number, documents, link + QR) → dashboard (publish status, QR download, menu photo upload, AI extraction review) |
-| `/menu.html?r=<handle>` | Guest | Menu by category, veg/non-veg markers, cart, dine-in / take-away / delivery, order sent to the restaurant's WhatsApp |
-
-Everything else in the original brief — logo palette reading, category detection, the QR, the order handoff — is in the prototype and below in the build scope.
+Prepared for Ogle Live Technologies. Companion to the working front end in this repo.
 
 ---
 
-## 2. What I need from you before build starts
+## 1. Why the build is cheaper than the first estimate
 
-Ordered by how much they block work. Items 1–4 block the build; 5–8 block launch.
+Your three decisions remove almost all of the recurring third-party cost:
 
-**1. The WhatsApp decision — the only real architectural fork.**
-Two ways to get an order from the guest to the kitchen:
+| Decision | Effect |
+|---|---|
+| **No Meta / WhatsApp Cloud API.** The guest sends from their own WhatsApp to the restaurant's number; we email the restaurant a copy. | Zero per-message fees, zero WABA approvals, zero per-restaurant onboarding friction. The order cost line disappears. |
+| **Google Maps: paste the link only.** No Places API, no key, no caching rules. | No Google Cloud billing, no dependency on their terms. |
+| **Orders are kept as records.** | A database of orders becomes a feature you can sell (and a reason a restaurant does not churn). |
 
-|  | A. Deep link (`wa.me`) — what the prototype does | B. WhatsApp Cloud API |
-|---|---|---|
-| Cost | AED 0 forever | Meta charges per delivered message (UAE: ~$0.0157 utility/service, 1,000 free service messages per number per month) |
-| Setup per restaurant | none — they keep their existing WhatsApp number | each restaurant's number must be registered into a WABA, Meta business verification, template approval |
-| Order arrives as | a normal WhatsApp chat message | a structured payload you can store, print, push to a POS, re-send if missed |
-| Automated confirmation, order history, analytics | no | yes |
-| Risk | none | number bans, policy changes, per-restaurant onboarding friction |
-
-Recommendation: **A for launch, B as the paid tier later.** Deep links let you onboard 50 restaurants in a week with zero per-restaurant approval, and it is what the prototype implements. Decide now which one phase 1 ships, because it changes the dashboard, the pricing and the support load.
-
-**2. Confirm the URL scheme.** `ogle.live/digimenu/<handle>` as a path (one wildcard route, one TLS cert, unlimited restaurants) vs `<handle>.ogle.live` (needs a wildcard certificate + DNS automation). The prototype assumes the path form — it is cheaper and faster, and a slug under a path is just as memorable on a table tent. Confirm the domain `ogle.live` is yours and is not already used for something else.
-
-**3. Legal and business identity.** Trade licence for Ogle Live Technologies, TRN for VAT invoices, terms of service, privacy policy, and a data-retention statement for uploaded licences. You cannot store restaurant trade-licence copies (personal data of the owner) without a stated purpose and retention period — UAE PDPL (Federal Decree-Law 45/2021). This is also required to pass Meta business verification later.
-
-**4. Pricing, trial length and what the trial limits are.** My recommendation in §6. Needed before the signup screen copy is final: how many trial days, what happens at expiry, whether a card is required at signup (recommend: no card for trial).
-
-**5. Google Maps API key** with billing enabled on a Google Cloud project, Places API (New) enabled. Non-negotiable constraint: **only `place_id` may be stored indefinitely** — address, hours, photos and coordinates may be cached for at most 30 days, then must be refreshed from Google. So do not copy Maps photos into your storage and serve them forever; re-fetch. Budget ~$0.05–0.15 per restaurant onboarding at current Places pricing.
-
-**6. AI provider account and a spend cap.** A vision model API key (OpenAI / Anthropic / Gemini). Measured cost for one menu: **cents, not dollars** — a 2-page menu photo is roughly 8–10k input tokens on a small vision model; at ~$0.15/1M input this is well under $0.01 per image. Cap it anyway, and log every extraction.
-
-**7. Brand assets for Ogle Live** — logo, product wordmark, one brand colour, and who writes the copy (I've written all of it in the prototype as a starting point; it needs your voice).
-
-**8. Who does support and menu corrections during the trial.** A restaurant whose AI extraction came out wrong will call someone. That someone is a real monthly cost — see §6.
-
-Optional but decide early: Arabic/Hindi/Urdu on the guest menu (UAE reality — most kitchens and a large share of guests). Recommend phase 1.5, but the data model should have a `name_ar` column from day one so you don't migrate later.
+What is left to pay for is hosting, email, AI reads and support — see §2.
 
 ---
 
-## 3. Build scope, phase 1
+## 2. What I need from you
+
+Items 1–3 block the build. 4–6 block launch.
+
+**1. The transactional email account.** An email provider (Resend, Postmark, Amazon SES) plus DNS records on a domain you control — SPF, DKIM, DMARC. Email is now the only guaranteed copy of an order, so it has to land in an inbox and not in spam. Give me the sending domain and I will tell you which records to add. Cost: AED 60–110/month at this volume.
+
+**2. List the exact emails that receive order copies.** Restaurant owner, manager, and optionally the branch. Each restaurant needs at least one verified address before publishing; the flow should not let them publish with an unverified one.
+
+**3. Talabat / Deliveroo import — decide how far to go.** Read the risk box below before you answer.
+
+**4. Trade licence for Ogle Live, TRN, terms of service, privacy policy, data-retention statement.** You are storing owners' trade-licence copies and a log of their customers' orders. Under UAE PDPL (Federal Decree-Law 45/2021) that needs a stated purpose and a retention period. For order records I would suggest: orders 24 months, licence copies for the life of the account plus 90 days, then deleted.
+
+**5. Domain and DNS control for `ogle.live`** so `ogle.live/digimenu/<handle>` can be routed with one wildcard rule and one certificate. Confirm nobody else is using that path.
+
+**6. Who answers the phone during the trial.** Restaurants will call about a wrong price or a missing dish. That person is a real monthly cost — see §5.
+
+### The Talabat / Deliveroo risk — read this before committing
+
+You can paste their link and we can try to read it. Expect it to be unreliable:
+
+- Talabat and Deliveroo **prohibit automated access in their terms**. A letter is a real risk if you do it at volume, and they have bot protection that will block a plain server fetch.
+- Their pages are built in the browser, so a server-side read often returns an empty shell. It needs a rendered browser, which is slower and easier to detect.
+- **Dish photos are the bigger problem.** The photographs on a platform page may be owned by the restaurant, by the platform, or by the photographer who sold them the shoot. Copying them onto your page is a copyright exposure you would carry, not the restaurant.
+
+My recommendation, in order:
+
+1. **Build the field, attempt the read, fail honestly.** Paste link → try → if it does not parse in six seconds, say so and switch to photo upload. This is what the prototype shows. It costs a few days and looks like a serious product.
+2. **Import text only from the link** — categories, names, prices. Do not copy their images; ask the restaurant to send photos, or show dishes without images (a text menu still sells).
+3. If a restaurant insists, have them send a PDF or a photo. It takes them one minute and costs you nothing.
+
+Do not promise automated Deliveroo import in a sales meeting. Promise the field, the attempt, and the fallback.
+
+---
+
+## 3. Phase 1 scope (updated)
 
 | Workstream | Content | Est. |
 |---|---|---|
-| Owner app | auth, 4-step onboarding, document upload, handle claim + availability, QR generation + PNG download, dashboard | 3 wks |
-| Guest app | category menu, diet markers, cart, 3 order modes with their own fields, WhatsApp handoff message | 3 wks |
-| Menu ingestion | upload → normalise (deskew/crop) → vision extraction → category grouping → price/diet parsing → **human review UI** → commit to menu | 4 wks |
-| Backend & tenancy | Postgres schema, per-restaurant isolation, file storage, signed URLs for licence documents, audit log | 2 wks |
-| Admin | approve licence, publish/suspend a restaurant, see extraction failures, plan + expiry | 2 wks |
-| Publish gate + legal | enforce logo + licence before publish, ToS/privacy pages, cookie notice | 1 wk |
-| QA & deploy | device matrix, staging, backups, monitoring | 2 wks |
+| Public site | landing, pricing, login page | 1 wk |
+| Owner app | signup, 4-step onboarding, documents, handle claim, QR + PNG, dashboard | 3 wks |
+| Guest app | categories, sold-out state, cart, dine-in / take-away / delivery, WhatsApp handoff | 3 wks |
+| Order pipeline | record the order server-side, email copy with retry + delivery log, order list + export | 1.5 wks |
+| Menu ingestion | upload → vision read → category grouping → human review screen → commit | 4 wks |
+| Link import | paste Talabat/Deliveroo/own-site link, rendered fetch, parse, honest failure path | 2 wks |
+| Menu editing | add/edit/reorder items and categories, sold-out toggles, price changes | 2 wks |
+| Backend & tenancy | Postgres, per-restaurant isolation, encrypted document storage, audit log | 2 wks |
+| Admin | approve licence, publish/suspend, see failed reads and failed emails | 1.5 wks |
+| QA & deploy | device matrix, staging, backups, monitoring, load test on the menu page | 2 wks |
 
-~15–17 dev-weeks. With two developers and a designer, that is **10–12 calendar weeks**.
+~22 dev-weeks. Two developers and a designer: **12–14 calendar weeks.**
 
-The line item everyone underestimates is menu ingestion. Photographed menus have combo prices ("half / full"), dishes with no price, prices in a separate column, and handwriting. The extraction gets you 85–90% right; the human review screen is what makes it sellable. Do not cut it.
+The two things that always overrun: menu reading accuracy (a photo of a printed menu is a harder input than a PDF), and the growth of the menu editor. Every restaurant will ask to add a dish, hide a category, or change a price at 7pm on a Friday.
 
 ---
 
-## 4. What it costs to run, per restaurant per month
+## 4. Cost to run, per restaurant per month
 
-Assumptions: one shared multi-tenant stack, AED 3.6725/USD (pegged), support at AED 45/hour, 12 minutes of support per restaurant per month, WhatsApp via Cloud API at UAE rates with the 1,000 free service messages per number.
+Fixed infrastructure **AED 349/month**: app hosting (AED 129), Postgres + backups (AED 55), object storage + CDN for logos and licences (AED 37), transactional email (AED 55), monitoring and error tracking (AED 73).
 
-Fixed infrastructure: **AED 349/month** total (app hosting, Postgres + backups, object storage + CDN, transactional email, monitoring).
+Variable per restaurant **AED 9.26**: support 12 min at AED 45/hr (AED 9.00), one AI re-read (AED 0.18), order emails (AED 0.07).
 
-Variable per restaurant: **~AED 16.50/month** (support AED 9.00 + AI re-scans ~AED 0.20 + WhatsApp ~AED 7.30 at ~1,900 messages).
-
-| Active restaurants | Fixed cost share | **Cost to serve / restaurant / month** |
+| Restaurants | Cost to serve / month | All-in, including build + maintenance |
 |---|---|---|
-| 10 | AED 34.89 | **AED 51.42** |
-| 25 | AED 13.96 | **AED 30.48** |
-| 50 | AED 6.98 | **AED 23.51** |
-| 100 | AED 3.49 | **AED 20.02** |
-| 250 | AED 1.40 | **AED 17.92** |
+| 10 | AED 44 | AED 496 |
+| 25 | AED 23 | AED 204 |
+| 50 | AED 16 | AED 107 |
+| 100 | AED 13 | **AED 58** |
+| 250 | AED 11 | AED 29 |
 
-That is the recurring cost. Now the development and maintenance load, spread across the subscriber base:
-
-Build AED 70,000 amortised over 24 months + maintenance AED 1,600/month:
-
-| Subscribers | Serve | Build share | Maintenance share | **All-in cost / restaurant / month** |
-|---|---|---|---|---|
-| 25 | 30.48 | 116.70 | 64.00 | **AED 211** |
-| 50 | 23.51 | 58.30 | 32.00 | **AED 114** |
-| 100 | 20.02 | 29.20 | 16.00 | **AED 65** |
-| 250 | 17.92 | 11.70 | 6.40 | **AED 36** |
-
-Read the last column honestly: **below ~40 paying restaurants this product does not pay for itself at AED 149/month.** The unit economics only look good at 100+.
+All-in assumes AED 70,000 of build amortised over 24 months and AED 1,600/month of maintenance, spread across the subscriber base. Below ~15 restaurants the fixed costs dominate; from ~100 they almost vanish.
 
 ---
 
-## 5. One-time build cost
+## 5. Build cost and maintenance
 
-Directional, not a quote — it moves with who builds it.
+- Two developers + designer, offshore, 12–14 weeks: **AED 70,000–110,000**
+- Same scope through a UAE agency: **AED 180,000–320,000**
+- Leaner v1 (English only, photo import only, no link import): **AED 50,000–70,000** in 8–9 weeks
 
-- Two developers + designer, offshore (India/Pakistan), 10–12 weeks: **AED 55,000–90,000**
-- Same scope through a UAE agency: **AED 150,000–280,000**
-- Leaner v1 (drop admin polish, English only, deep links only): **AED 40,000–55,000** in 7–8 weeks
-
-Ongoing maintenance, once live: **AED 1,200–2,000/month** — hosting, backups, monitoring, dependency upgrades, and keeping up with Meta and Google API changes, plus roughly one day a month of small changes. Budget a real feature release every month or the product starts to look abandoned next to the competitors.
+Maintenance after launch: **AED 1,200–2,000/month** — hosting, backups, monitoring, dependency and browser updates, email deliverability upkeep, plus about a day a month of change requests. Budget a visible improvement every month; a restaurant that sees nothing change stops paying.
 
 ---
 
 ## 6. What to charge
 
-| | Essential — AED 99/mo | Standard — AED 149/mo | Pro — AED 249/mo |
+The cost to serve is now so low that pricing is about what the market bears, not your cost.
+
+| | Essential — AED 99/mo | Standard — AED 149/mo | Growth — AED 249/mo |
 |---|---|---|---|
-| Guest menu + cart + 3 order modes | ✓ | ✓ | ✓ |
-| QR + menu link | ✓ | ✓ | ✓ |
-| AI menu import | 1 scan | 3 scans/mo | unlimited |
-| WhatsApp Cloud API automation (order log, re-send, print ticket) | — | ✓ | ✓ |
-| Second language | — | — | ✓ |
-| Analytics (views, add-to-cart, order value) | — | basic | full |
-| Support | email | WhatsApp, 24h | WhatsApp, priority |
+| Menu, QR, ordering, sold-out toggles | ✓ | ✓ | ✓ |
+| AI menu reads | 1 | 3/month | unlimited |
+| Order email copies + records | ✓ | ✓ | ✓ |
+| Talabat / Deliveroo link import | — | ✓ | ✓ |
+| Arabic menu | — | — | ✓ |
+| Category sales report | — | — | ✓ |
+| Support | email | WhatsApp, next day | WhatsApp, priority |
 
-Plus **AED 250 one-time setup** for "we digitise your menu for you". It costs you ~20 minutes of AI time and a review pass, and it is the single easiest thing to sell to a restaurant owner.
+Plus **AED 250 one-time** for "send us your menu and we digitise it". It costs you about 20 minutes and it is the easiest thing to sell in the first meeting.
 
-Gross margin at AED 149 with 100 subscribers: **(149 − 20) / 149 = 86.6%**.
+Gross margin at AED 149 with 100 restaurants: **91%**. That is healthy, so do not compete on price — compete on the menu looking like the restaurant, and on not breaking during Friday dinner.
 
-Break-even on a AED 70,000 build at AED 149 (AED 129 net per subscriber):
+Break-even on a AED 70,000 build at AED 149 (AED 136 net per subscriber):
 
 | Subscribers | Months to repay the build |
 |---|---|
-| 20 | 27 |
-| 40 | 13.6 |
-| 100 | 5.4 |
+| 20 | 25.7 |
+| 40 | 12.9 |
+| 100 | 5.2 |
 
-Annual prepay at 10 months' price is worth offering early — it funds the next phase.
-
----
-
-## 7. Risks worth naming now
-
-1. **Extraction accuracy is the product.** A menu that imports wrong is worse than no menu. Never publish an extraction without a human pass — the prototype enforces review before publish for exactly this reason.
-2. **Printed QR codes are permanent.** A slug claimed once is on table tents and window stickers forever. Reserve slugs, block trademark-looking ones, and never recycle a handle after a restaurant leaves.
-3. **Meta policy.** Deep links carry no risk. Cloud API numbers can be restricted; keep a fallback deep-link path in the guest app even after you add the API.
-4. **Licence documents are personal data.** Encrypt at rest, serve behind signed URLs, log access, and delete on churn. Say the retention period in the privacy policy.
-5. **Google Places caching.** Only `place_id` may be kept indefinitely; other Places content must be refreshed within 30 days.
-6. **Hosting region.** UAE customers expect data in-region. Pick a provider with a Middle East region and confirm the current list before you commit — don't assume.
-7. **Payments are not in phase 1.** Order → WhatsApp → pay at the table / on delivery. Adding card payments means per-merchant KYC with a UAE acquirer; that is a phase-2 project on its own, not a sprint.
+The honest read: **at 40 paying restaurants you repay the build inside a year; at 20 it takes over two.** Distribution, not margin, is the constraint.
 
 ---
 
-## 8. Suggested sequence
+## 7. Risks, in the order they will bite
 
-1. Decide §2.1 (WhatsApp path) and §2.4 (pricing) — one week.
-2. Lock the data model with `name_ar` and per-restaurant isolation — 3 days.
-3. Build guest app first (it is what the restaurant can see and sell), owner app second.
-4. Ingestion + review UI third, with 20 real menu photos from 20 real Abu Dhabi restaurants as the test set. Collect these photos before you write the extractor.
-5. Onboard 5 restaurants free. Watch them use it for two weeks. Then price it.
+1. **The order record is created before the guest actually presses send in WhatsApp.** They may close the app at that moment. Store the record as "sent to WhatsApp, awaiting restaurant confirmation", and let the restaurant mark it confirmed or dropped. Do not report it to the restaurant as a confirmed sale.
+2. **Email deliverability.** An order email that lands in spam is a lost order. Verify the receiving address at signup, send from a domain with SPF/DKIM/DMARC, and keep a retry log visible in the admin.
+3. **Menu reading accuracy.** A wrong price published is worse than no menu. Never auto-publish an extraction; the review screen is the product.
+4. **Platform scraping.** See §2 — terms, bot protection, and copyright on dish photos.
+5. **A permanent QR printed on 40 table cards.** Reserve slugs, refuse trademarked names, never recycle a handle after a restaurant leaves.
+6. **Licence documents are personal data.** Encrypt at rest, serve behind signed URLs, log who opened them, delete on churn.
+7. **No payments in phase 1.** Order → WhatsApp → pay at the table or on delivery. Adding card payments means per-merchant KYC with a UAE acquirer and is a phase-2 project, not a sprint.
+
+---
+
+## 8. Sequence
+
+1. Decide §2.3 (how far to push link import) and send the sending domain — one week.
+2. Lock the data model: restaurants, categories, items, sold-out flag, orders, order status, documents. Three days, before any UI is wired up.
+3. Build the guest app first. It is what a restaurant can see, hold in their hand and sell to their own customers.
+4. Menu ingestion and the review screen second, tested against 20 real menu photos from 20 real Abu Dhabi restaurants. Collect those photos before writing the reader.
+5. Onboard 5 restaurants free, watch one Friday dinner service, then price it.

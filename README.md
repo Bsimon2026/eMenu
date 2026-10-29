@@ -1,8 +1,7 @@
-# DigiMenu — owner sign-in, onboarding and guest ordering (phase 1 front end)
+# DigiMenu — QR menus and WhatsApp ordering for UAE restaurants
 
-A working, no-build-step front end for Ogle Live's digitised restaurant menu:
-sign up → claim `ogle.live/digimenu/<handle>` → get a QR → upload a menu photo →
-guests scan, order, and the order lands in the restaurant's WhatsApp.
+A product of [Ogle.live](https://ogle.live) Technologies. This repo is the phase-1 front end:
+a marketing site, restaurant sign-in, onboarding, dashboard, and the guest menu that takes orders.
 
 Commercial model, build scope and unit economics: **[PLAN.md](PLAN.md)**.
 
@@ -12,66 +11,68 @@ Commercial model, build scope and unit economics: **[PLAN.md](PLAN.md)**.
 python -m http.server 8899      # from this directory
 ```
 
-- Owner app — <http://localhost:8899/index.html>
-- Guest menu — <http://localhost:8899/menu.html>
+| Page | URL | What it is |
+|---|---|---|
+| Landing | <http://localhost:8899/index.html> | `ogle.live/digimenu` — hero with a live menu in a phone frame |
+| Login | <http://localhost:8899/login.html> | Restaurant sign in / create account |
+| App | <http://localhost:8899/app.html> | Dashboard, and the 3-step onboarding (`app.html?onboard=2`) |
+| Guest menu | <http://localhost:8899/menu.html> | What the QR opens; `?embed=1` is the phone-frame version |
 
-No npm, no build. State lives in `localStorage` under `digimenu.state.v1`, which is
-why the guest page picks up the restaurant you just created (name, logo colour,
-WhatsApp number, handle).
+No build step, no npm. State lives in `localStorage` under `digimenu.state.v1` (orders under
+`digimenu.orders.v1`), which is why the guest page reflects the restaurant you just set up and
+the dashboard sees the order you just placed.
 
 ## What actually works
 
 | Feature | Status |
 |---|---|
-| Sign in / sign up, field validation, returning-owner refill | real |
-| 4-step onboarding with resume | real |
-| Dominant-colour extraction from the uploaded logo, applied live to the menu card | real — canvas sampling, saturation-weighted |
-| Handle availability check + suggestions | real logic, stubbed directory (`TAKEN_HANDLES` in `assets/data.js`) |
-| QR generation (client-side, vendored `qrcode-generator`) | real, scan-verified |
-| QR PNG download | real |
-| Guest menu, cart, quantities, 3 order modes with their own required fields | real |
-| Order → `wa.me/<number>?text=…` handoff | real, uses the number captured at onboarding |
-| Menu photo upload → extraction table | **simulated** — the prototype shows sample data and says so on screen; no model is called |
+| Sign in / sign up with validation | real (no backend, auth is cosmetic) |
+| 3-step onboarding with resume | real |
+| Logo upload → dominant colour read (canvas sampling) | real — Ogle logo reads `#f7941d` |
+| Handle availability + suggestions | real logic, stubbed directory (`TAKEN` in `assets/app.js`) |
+| QR generation + PNG download | real, vendored encoder, scan-verified |
+| Menu editor with sold-out switches → guest page updates | real, persisted |
+| Guest cart, three order modes, WhatsApp handoff | real |
+| Order recorded in the dashboard | real (browser storage) |
+| Email copy of the order to the restaurant | **not built** — needs a backend and an email provider |
+| Menu photo → dishes | **simulated**, labelled on screen |
+| Talabat / Deliveroo link read | **simulated**, labelled on screen; see PLAN.md §2 for the real risk |
 
 ## Layout
 
 ```
-index.html                  owner app: auth, onboarding (4 steps), dashboard
-menu.html                   guest menu + cart + checkout sheet
-assets/app.css              owner app styles
-assets/app.js               owner app behaviour
-assets/menu.css             guest menu styles
-assets/menu.js              guest menu, cart, WhatsApp message builder
-assets/data.js              demo menu, saved state helpers, palette extraction
-assets/vendor/qrcode-generator.js   vendored QR encoder (MIT)
-_preview/                   review screenshots
+index.html              landing page
+login.html              sign in / create account
+app.html                dashboard + onboarding wizard
+menu.html               guest menu
+assets/base.css         tokens, buttons, forms (Ogle palette)
+assets/site.css         marketing pages
+assets/app.css          dashboard shell + wizard
+assets/menu.css         guest menu
+assets/app.js           dashboard, onboarding, menu editor, import, QR
+assets/menu.js          guest menu, cart, order message, order record
+assets/data.js          demo menu, storage helpers, palette extraction
+assets/vendor/          qrcode-generator (MIT)
+assets/ogle-live-logo.png   the real Ogle.live logo
+_preview/               review screenshots
 ```
 
-## Design notes
+## Design system
 
-The product's output is a printed menu card, so the interface borrows the menu
-card's own grammar instead of generic dashboard chrome: hairline section rules,
-dotted price leaders, veg/non-veg squares, tabular prices.
+Taken from the live ogle.live identity so the product sits inside the brand rather than beside it.
 
-- **Two-panel spread.** The left panel is a live menu card — it fills itself in as
-  the owner types and takes its accent from the dominant colour of the logo they
-  upload. That single interaction is what the page is trying to be remembered for,
-  so everything around it is quiet: one accent, one radius, no decorative shadows.
-- **Palette.** Aubergine stage `#241318`, bone paper `#F5F3EC`, ink `#191811`,
-  pomegranate `#7C2231`, brass `#A8823C`, veg `#2E6B3B`. Deliberately not the
-  cream + terracotta palette that every restaurant SaaS lands on, and not
-  near-black + acid green.
-- **Type.** Fraunces for display (it has a printed-menu warmth without being a
-  wedding invitation), Instrument Sans for UI. No third face.
-- **Rules over cards.** Hierarchy comes from rules, leaders and spacing, not from
-  putting every block in a rounded box with the same shadow.
-- Responsive to 360px, visible keyboard focus, `prefers-reduced-motion` honoured.
+- **Orange `#F7941D`** (their brand orange) is the only accent: primary buttons, the active tab,
+  the QR's owner. Everything else is neutral.
+- **Charcoal `#12161A`** for the sidebar and the CTA band; white cards on `#F6F7F8`.
+- **Inter** for interface text, **Outfit** for headings — the pair their own site uses.
+- One radius (8px), hairline borders, shadows only on things that float (device frame, dialogs, toast).
+- The marketing page uses real product screenshots — the hero phone is the actual menu page in an
+  iframe, and the QR beside it is generated at load, not a picture of one.
 
-## Known gaps (deliberately left for the build)
+## Known gaps
 
-- No backend: auth is cosmetic, documents are not uploaded anywhere, nothing is
-  persisted server-side.
-- Handle availability is a local stub, not a registry check.
-- Extraction is sample data (labelled in the UI).
-- English only; the Arabic column belongs in phase 1.5.
-- No payments — order → WhatsApp → pay at the table / on delivery.
+- No backend: nothing is saved server-side, uploads are not stored anywhere, email is not sent.
+- The order is recorded when the guest taps send, before they press send in WhatsApp — the real
+  build must mark it "awaiting restaurant confirmation" (see PLAN.md §7.1).
+- English only. Arabic needs a `name_ar` column from day one.
+- No payments.

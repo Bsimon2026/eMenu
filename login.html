@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restaurant sign in — DigiMenu by Ogle.live</title>
+<meta name="theme-color" content="#F7941D">
+<link rel="icon" href="assets/ogle-live-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body class="auth-body">
+
+<header class="auth-top">
+  <div class="wrap nav-in">
+    <a class="nav-logo" href="index.html" aria-label="Ogle.live DigiMenu home">
+      <img src="assets/ogle-live-logo.png" alt="Ogle.live">
+      <span class="prod">DigiMenu</span>
+    </a>
+    <div class="nav-right">
+      <a class="btn btn-outline btn-sm" href="index.html">Back to site</a>
+    </div>
+  </div>
+</header>
+
+<main class="auth-main">
+  <div>
+    <div class="auth-card">
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-mode="in">Sign in</button>
+        <button role="tab" aria-selected="false" data-mode="up">Create account</button>
+      </div>
+
+      <!-- sign in -->
+      <div id="paneIn">
+        <h1>Restaurant sign in</h1>
+        <p class="lede">Manage your menu, download your QR and see the orders that came in.</p>
+
+        <form id="formIn" novalidate>
+          <div class="field">
+            <label for="inEmail">Email or mobile</label>
+            <input class="input" id="inEmail" autocomplete="username" placeholder="owner@restaurant.com">
+            <div class="error-msg" id="inEmailErr">Enter the email or mobile you signed up with.</div>
+          </div>
+          <div class="field">
+            <label for="inPass">Password</label>
+            <input class="input" id="inPass" type="password" autocomplete="current-password" placeholder="Your password">
+            <div class="error-msg" id="inPassErr">Password is required.</div>
+          </div>
+          <button class="btn btn-brand btn-block" type="submit" style="margin-top:6px">Sign in</button>
+          <div class="auth-foot">
+            <span>Forgot your password?</span>
+            <button class="btn-quiet" type="button" id="forgot">Reset it by email</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- create account -->
+      <div id="paneUp" hidden>
+        <h1>Create your account</h1>
+        <p class="lede">Four short steps. Nothing is public until your menu is finished and your licence is in.</p>
+
+        <form id="formUp" novalidate>
+          <div class="field">
+            <label for="upName">Your name</label>
+            <input class="input" id="upName" autocomplete="name" placeholder="Who is setting this up">
+            <div class="error-msg" id="upNameErr">Please tell us your name.</div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="upMobile">Mobile</label>
+              <input class="input" id="upMobile" inputmode="tel" autocomplete="tel" placeholder="50 123 4567">
+              <div class="error-msg" id="upMobileErr">Enter a mobile number we can reach you on.</div>
+            </div>
+            <div class="field">
+              <label for="upEmail">Email</label>
+              <input class="input" id="upEmail" type="email" autocomplete="email" placeholder="owner@restaurant.com">
+              <div class="error-msg" id="upEmailErr">That email does not look complete.</div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="upPass">Password</label>
+            <input class="input" id="upPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+            <div class="hint">This account signs you in to the dashboard and is how we send you order copies.</div>
+            <div class="error-msg" id="upPassErr">Use at least 8 characters.</div>
+          </div>
+          <button class="btn btn-brand btn-block" type="submit" style="margin-top:6px">Continue to step 1 of 4</button>
+          <div class="auth-foot">
+            <span>Already have an account?</span>
+            <button class="btn-quiet" type="button" data-jump="in">Sign in instead</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <p class="auth-aside">
+      DigiMenu is a product of Ogle.live Technologies, Abu Dhabi.<br>
+      Need help? <a href="mailto:contact@ogle.live" style="color:var(--brand-text)">contact@ogle.live</a>
+    </p>
+  </div>
+</main>
+
+<script src="assets/data.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const state = loadState() || null;
+
+  function show(mode) {
+    $("#paneIn").hidden = mode !== "in";
+    $("#paneUp").hidden = mode !== "up";
+    $$(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === mode)));
+  }
+
+  $$(".tabs button").forEach((b) => b.addEventListener("click", () => show(b.dataset.mode)));
+  $$("[data-jump]").forEach((b) => b.addEventListener("click", () => show(b.dataset.jump)));
+
+  if (new URLSearchParams(location.search).get("mode") === "up") show("up");
+
+  if (state && state.account) {
+    if (state.account.email) $("#inEmail").value = state.account.email;
+    if (state.account.name) $("#upName").value = state.account.name;
+    if (state.account.email) $("#upEmail").value = state.account.email;
+    if (state.account.mobile) $("#upMobile").value = state.account.mobile;
+  }
+
+  function mark(input, errEl, bad) {
+    input.classList.toggle("err", !!bad);
+    errEl.classList.toggle("show", !!bad);
+    return !bad;
+  }
+
+  $("#formIn").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = $("#inEmail"), pw = $("#inPass");
+    let ok = true;
+    ok = mark(id, $("#inEmailErr"), id.value.trim().length < 4) && ok;
+    ok = mark(pw, $("#inPassErr"), pw.value.length < 4) && ok;
+    if (!ok) return;
+    location.href = "app.html";
+  });
+
+  $("#forgot").addEventListener("click", () => {
+    $("#inEmailErr").textContent = "A reset link will be sent to the email on the account.";
+    $("#inEmailErr").classList.add("show");
+  });
+
+  $("#formUp").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const n = $("#upName"), m = $("#upMobile"), em = $("#upEmail"), p = $("#upPass");
+    let ok = true;
+    ok = mark(n, $("#upNameErr"), !n.value.trim()) && ok;
+    ok = mark(m, $("#upMobileErr"), m.value.replace(/\D/g, "").length < 7) && ok;
+    ok = mark(em, $("#upEmailErr"), !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em.value.trim())) && ok;
+    ok = mark(p, $("#upPassErr"), p.value.length < 8) && ok;
+    if (!ok) return;
+
+    const s = loadState() || {
+      restaurant: { name: "", ownerName: "", purposes: ["Dine In", "Take Away"], whatsapp: "+971", mapsUrl: "" },
+      docs: { logo: null, license: null },
+      handle: "",
+      accent: "#f7941d"
+    };
+    s.account = {
+      name: n.value.trim(),
+      mobile: m.value.replace(/\D/g, ""),
+      email: em.value.trim(),
+      password: p.value
+    };
+    saveState(s);
+    location.href = "app.html?onboard=2";
+  });
+})();
+</script>
+</body>
+</html>

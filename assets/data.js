@@ -14,7 +14,7 @@ const DEMO_MENU = {
         { id: "hummus", name: "Hummus with Toasted Pita", desc: "Chickpeas, tahini, olive oil, cumin", price: 24, diet: "veg" },
         { id: "fattoush", name: "Fattoush", desc: "Sumac, crisp pita, pomegranate molasses", price: 28, diet: "veg" },
         { id: "chicken-65", name: "Chicken 65", desc: "Curry leaf, yoghurt, red chilli", price: 34, diet: "nonveg" },
-        { id: "prawn-koli", name: "Koliwada Prawns", desc: "Semolina crust, lime, green chutney", price: 46, diet: "nonveg" }
+        { id: "prawn-koli", name: "Koliwada Prawns", desc: "Semolina crust, lime, green chutney", price: 46, diet: "nonveg", soldOut: true }
       ]
     },
     {
@@ -32,7 +32,7 @@ const DEMO_MENU = {
       items: [
         { id: "rogan-josh", name: "Mutton Rogan Josh", desc: "Kashmiri chilli, fennel, slow braise", price: 62, diet: "nonveg" },
         { id: "butter-chicken", name: "Butter Chicken", desc: "Tandoori thigh, tomato cream", price: 54, diet: "nonveg" },
-        { id: "fish-moilee", name: "Fish Moilee", desc: "Coconut milk, raw mango, curry leaf", price: 58, diet: "nonveg" }
+        { id: "fish-moilee", name: "Fish Moilee", desc: "Coconut milk, raw mango, curry leaf", price: 58, diet: "nonveg", soldOut: true }
       ]
     },
     {
