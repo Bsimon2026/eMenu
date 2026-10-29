@@ -206,16 +206,19 @@
   $("#formRestaurant").addEventListener("submit", (e) => {
     e.preventDefault();
     const rn = $("#restName"), wa = $("#waNum");
+    const waDial = $("#waCC").value;
+    const waProblem = DigiPhone.problem(waDial, wa.value);
+    $("#waErr").textContent = waProblem || "Without a WhatsApp number, orders have nowhere to go.";
     let ok = true;
     ok = markErr(rn, $("#restNameErr"), !rn.value.trim()) && ok;
-    ok = markErr(wa, $("#waErr"), wa.value.replace(/\D/g, "").length < 7) && ok;
+    ok = markErr(wa, $("#waErr"), !!waProblem) && ok;
     const noPurpose = state.restaurant.purposes.length === 0;
     $("#purposeErr").classList.toggle("show", noPurpose);
     if (!ok || noPurpose) return;
 
     state.restaurant.name = rn.value.trim();
     state.restaurant.ownerName = $("#ownerName").value.trim();
-    state.restaurant.whatsapp = $("#waCC").value + wa.value.replace(/\D/g, "");
+    state.restaurant.whatsapp = DigiPhone.toE164(waDial, wa.value);
     const oe = $("#orderEmail").value.trim();
     state.restaurant.orderEmail = oe || state.account.email;
     save();
@@ -641,11 +644,10 @@
     $("#ownerName").value = state.restaurant.ownerName || state.account.name || "";
     if (state.restaurant.orderEmail) $("#orderEmail").value = state.restaurant.orderEmail;
     syncChoices();
-    const waDigits = String(state.restaurant.whatsapp || "").replace(/\D/g, "");
-    if (waDigits.length > 6) {
-      const cc = ["971", "966", "974", "968", "973", "965", "91", "44"].find((c) => waDigits.indexOf(c) === 0) || "971";
-      $("#waCC").value = cc;
-      $("#waNum").value = waDigits.slice(cc.length);
+    const waSplit = DigiPhone.split(state.restaurant.whatsapp);
+    if (waSplit.national) {
+      $("#waCC").value = waSplit.dial;
+      $("#waNum").value = waSplit.national;
     }
   } else {
     $("#shell").style.display = "";

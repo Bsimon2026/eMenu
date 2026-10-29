@@ -6,19 +6,19 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Restaurant sign in — DigiMenu by Ogle.live</title>
 <meta name="theme-color" content="#F7941D">
-<link rel="icon" href="assets/ogle-live-logo.png">
+<link rel="icon" href="assets/ogle-live-logo.png?v=20261029b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css">
-<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/base.css?v=20261029b">
+<link rel="stylesheet" href="assets/site.css?v=20261029b">
 </head>
 <body class="auth-body">
 
 <header class="auth-top">
   <div class="wrap nav-in">
     <a class="nav-logo" href="index.html" aria-label="Ogle.live DigiMenu home">
-      <img src="assets/ogle-live-logo.png" alt="Ogle.live">
+      <img src="assets/ogle-live-logo.png?v=20261029b" alt="Ogle.live">
       <span class="prod">DigiMenu</span>
     </a>
     <div class="nav-right">
@@ -70,17 +70,19 @@
             <input class="input" id="upName" autocomplete="name" placeholder="Who is setting this up">
             <div class="error-msg" id="upNameErr">Please tell us your name.</div>
           </div>
-          <div class="grid-2">
-            <div class="field">
-              <label for="upMobile">Mobile</label>
-              <input class="input" id="upMobile" inputmode="tel" autocomplete="tel" placeholder="50 123 4567">
-              <div class="error-msg" id="upMobileErr">Enter a mobile number we can reach you on.</div>
+          <div class="field">
+            <label for="upMobile">Mobile number</label>
+            <div class="phone-group">
+              <select class="input" id="upCC" aria-label="Country code"></select>
+              <input class="input" id="upMobile" inputmode="tel" autocomplete="tel-national" placeholder="52 575 7079">
             </div>
-            <div class="field">
-              <label for="upEmail">Email</label>
-              <input class="input" id="upEmail" type="email" autocomplete="email" placeholder="owner@restaurant.com">
-              <div class="error-msg" id="upEmailErr">That email does not look complete.</div>
-            </div>
+            <div class="hint">This is the number the guest's WhatsApp opens, and where your order copies are sent. Use the restaurant's WhatsApp Business line.</div>
+            <div class="error-msg" id="upMobileErr">Enter a mobile number we can reach you on.</div>
+          </div>
+          <div class="field">
+            <label for="upEmail">Email</label>
+            <input class="input" id="upEmail" type="email" autocomplete="email" placeholder="owner@restaurant.com">
+            <div class="error-msg" id="upEmailErr">That email does not look complete.</div>
           </div>
           <div class="field">
             <label for="upPass">Password</label>
@@ -104,7 +106,8 @@
   </div>
 </main>
 
-<script src="assets/data.js"></script>
+<script src="assets/data.js?v=20261029b"></script>
+<script src="assets/phone.js?v=20261029b"></script>
 <script>
 (function () {
   "use strict";
@@ -123,11 +126,20 @@
 
   if (new URLSearchParams(location.search).get("mode") === "up") show("up");
 
+  // the country list must exist before anyone types, signed in or not
+  $("#upCC").innerHTML = DigiPhone.options("971");
+
   if (state && state.account) {
     if (state.account.email) $("#inEmail").value = state.account.email;
     if (state.account.name) $("#upName").value = state.account.name;
     if (state.account.email) $("#upEmail").value = state.account.email;
-    if (state.account.mobile) $("#upMobile").value = state.account.mobile;
+    if (state.account.mobile_e164) {
+      var p = DigiPhone.split(state.account.mobile_e164);
+      $("#upCC").value = p.dial;
+      $("#upMobile").value = p.national;
+    } else if (state.account.mobile) {
+      $("#upMobile").value = state.account.mobile;
+    }
   }
 
   function mark(input, errEl, bad) {
@@ -156,7 +168,10 @@
     const n = $("#upName"), m = $("#upMobile"), em = $("#upEmail"), p = $("#upPass");
     let ok = true;
     ok = mark(n, $("#upNameErr"), !n.value.trim()) && ok;
-    ok = mark(m, $("#upMobileErr"), m.value.replace(/\D/g, "").length < 7) && ok;
+    var cc = $("#upCC").value;
+    var phoneProblem = DigiPhone.problem(cc, m.value);
+    $("#upMobileErr").textContent = phoneProblem || "Enter a mobile number we can reach you on.";
+    ok = mark(m, $("#upMobileErr"), !!phoneProblem) && ok;
     ok = mark(em, $("#upEmailErr"), !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em.value.trim())) && ok;
     ok = mark(p, $("#upPassErr"), p.value.length < 8) && ok;
     if (!ok) return;
@@ -169,7 +184,8 @@
     };
     s.account = {
       name: n.value.trim(),
-      mobile: m.value.replace(/\D/g, ""),
+      mobile: DigiPhone.digits(m.value),
+      mobile_e164: DigiPhone.toE164(cc, m.value),
       email: em.value.trim(),
       password: p.value
     };
