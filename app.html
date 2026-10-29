@@ -6,12 +6,12 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard — DigiMenu</title>
 <meta name="theme-color" content="#12161A">
-<link rel="icon" href="assets/ogle-live-logo.png?v=20261029b">
+<link rel="icon" href="assets/ogle-live-logo.png?v=20261030a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261029b">
-<link rel="stylesheet" href="assets/app.css?v=20261029b">
+<link rel="stylesheet" href="assets/base.css?v=20261030a">
+<link rel="stylesheet" href="assets/app.css?v=20261030a">
 </head>
 <body class="app-body">
 
@@ -20,7 +20,7 @@
 
   <aside class="side">
     <a class="side-logo" href="index.html" aria-label="Ogle.live">
-      <img src="assets/ogle-live-logo.png?v=20261029b" alt="Ogle.live">
+      <img src="assets/ogle-live-logo.png?v=20261030a" alt="Ogle.live">
       <span class="p">DigiMenu</span>
     </a>
 
@@ -165,11 +165,14 @@
               <div class="field">
                 <label for="partnerUrl">Menu page address</label>
                 <input class="input" id="partnerUrl" placeholder="https://www.talabat.com/uae/restaurant/…">
-                <div class="hint">Paste the link to your restaurant page on Talabat, Deliveroo or your own website. We read the categories, dishes, prices and photos.</div>
+                <div class="hint">Paste your Talabat link — the brand page or the branch page, either works. We read the categories, dishes, prices and photos.</div>
               </div>
               <button class="btn btn-brand" type="button" id="importLink">Read the page</button>
+
+              <div id="importError" hidden style="margin-top:14px;padding:14px 16px;border:1px solid #f0d7bd;background:#fff8f1;border-radius:10px;font-size:13.5px"></div>
+
               <div class="note" style="margin-top:14px">
-                <b>If the page cannot be read</b> — most delivery platforms block automated readers — we tell you at once and switch you to the photo upload, which always works.
+                <b>Deliveroo and noon</b> answer automated readers with a Cloudflare block, so those links cannot be read — the reader says so immediately and offers the photo upload instead, which always works.
               </div>
             </div>
 
@@ -185,7 +188,7 @@
 
             <div class="review" id="review" hidden>
               <div class="review-row" style="background:#fbfbfc;font-size:12px;color:var(--ink-3)">
-                <span></span><span>Dish</span><span style="text-align:right">Price</span><span style="text-align:right">Confidence</span>
+                <span></span><span>Dish</span><span style="text-align:right">Price</span><span style="text-align:right">Photo</span>
               </div>
               <div id="reviewRows"></div>
               <div class="review-foot">
@@ -456,9 +459,9 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="assets/data.js?v=20261029b"></script>
-<script src="assets/phone.js?v=20261029b"></script>
-<script src="assets/vendor/qrcode-generator.js?v=20261029b"></script>
-<script src="assets/app.js?v=20261029b"></script>
+<script src="assets/data.js?v=20261030a"></script>
+<script src="assets/phone.js?v=20261030a"></script>
+<script src="assets/vendor/qrcode-generator.js?v=20261030a"></script>
+<script src="assets/app.js?v=20261030a"></script>
 </body>
 </html>

@@ -79,11 +79,18 @@
           <span>${available} of ${c.items.length} available</span>
         </div>
         <div class="items">
-          ${c.items.map((it) => `
-            <div class="item ${it.soldOut ? "sold" : ""}" data-id="${it.id}">
+          ${(() => {
+            const sectionHasImg = c.items.some((x) => x.image);
+            return c.items.map((it) => {
+              const col = it.image ? "has-img" : sectionHasImg ? "has-img" : "";
+              return `
+            <div class="item ${it.soldOut ? "sold" : ""} ${col}" data-id="${it.id}">
+              ${it.image
+                ? `<img class="thumb" src="${it.image}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.item').classList.remove('has-img'); this.remove()">`
+                : sectionHasImg ? `<div class="thumb ph" aria-hidden="true"></div>` : ""}
               <div>
                 <div class="nm">
-                  <span class="diet ${it.diet === "veg" ? "" : "non"}" title="${it.diet === "veg" ? "Vegetarian" : "Non-vegetarian"}"></span>
+                  ${it.diet ? `<span class="diet ${it.diet === "veg" ? "" : "non"}" title="${it.diet === "veg" ? "Vegetarian" : "Non-vegetarian"}"></span>` : ""}
                   ${it.name}
                 </div>
                 <div class="ds">${it.desc}</div>
@@ -94,7 +101,9 @@
                   ? '<span class="sold-tag">Sold out</span>'
                   : `<button class="add" type="button" data-id="${it.id}" data-cat="${c.id}">Add</button>`}
               </div>
-            </div>`).join("")}
+            </div>`;
+            }).join("");
+          })()}
         </div>
       </section>`;
   }).join("");
