@@ -97,6 +97,15 @@ body.menu-body {
   overflow-x: auto;
   scrollbar-width: none;
   border-bottom: 1px solid var(--line);
+  /* the rail scrolls; fade the edge so the cut looks deliberate */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+}
+
+/* once scrolled to the end, the fade has nothing to hide */
+.rail.at-end {
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .rail::-webkit-scrollbar { display: none; }

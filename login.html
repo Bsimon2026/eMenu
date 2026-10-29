@@ -6,19 +6,19 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Restaurant sign in — DigiMenu by Ogle.live</title>
 <meta name="theme-color" content="#F7941D">
-<link rel="icon" href="assets/ogle-live-logo.png?v=20261030c">
+<link rel="icon" href="assets/ogle-live-logo.png?v=20261031c">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261030c">
-<link rel="stylesheet" href="assets/site.css?v=20261030c">
+<link rel="stylesheet" href="assets/base.css?v=20261031c">
+<link rel="stylesheet" href="assets/site.css?v=20261031c">
 </head>
 <body class="auth-body">
 
 <header class="auth-top">
   <div class="wrap nav-in">
     <a class="nav-logo" href="index.html" aria-label="Ogle.live DigiMenu home">
-      <img src="assets/ogle-live-logo.png?v=20261030c" alt="Ogle.live">
+      <img src="assets/ogle-live-logo.png?v=20261031c" alt="Ogle.live">
       <span class="prod">DigiMenu</span>
     </a>
     <div class="nav-right">
@@ -106,8 +106,10 @@
   </div>
 </main>
 
-<script src="assets/data.js?v=20261030c"></script>
-<script src="assets/phone.js?v=20261030c"></script>
+<script src="assets/config.js?v=20261031c"></script>
+<script src="assets/auth.js?v=20261031c"></script>
+<script src="assets/data.js?v=20261031c"></script>
+<script src="assets/phone.js?v=20261031c"></script>
 <script>
 (function () {
   "use strict";
@@ -148,13 +150,30 @@
     return !bad;
   }
 
-  $("#formIn").addEventListener("submit", (e) => {
+  $("#formIn").addEventListener("submit", async (e) => {
     e.preventDefault();
     const id = $("#inEmail"), pw = $("#inPass");
     let ok = true;
     ok = mark(id, $("#inEmailErr"), id.value.trim().length < 4) && ok;
     ok = mark(pw, $("#inPassErr"), pw.value.length < 4) && ok;
     if (!ok) return;
+
+    const btn = $("#formIn button[type=submit]");
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Signing in…";
+
+    const r = await window.Auth.signIn(id.value.trim(), pw.value);
+
+    btn.disabled = false;
+    btn.textContent = label;
+
+    if (!r.ok) {
+      pw.classList.add("err");
+      $("#inPassErr").textContent = r.message;
+      $("#inPassErr").classList.add("show");
+      return;
+    }
     location.href = "app.html";
   });
 
@@ -163,7 +182,7 @@
     $("#inEmailErr").classList.add("show");
   });
 
-  $("#formUp").addEventListener("submit", (e) => {
+  $("#formUp").addEventListener("submit", async (e) => {
     e.preventDefault();
     const n = $("#upName"), m = $("#upMobile"), em = $("#upEmail"), p = $("#upPass");
     let ok = true;
@@ -176,8 +195,42 @@
     ok = mark(p, $("#upPassErr"), p.value.length < 8) && ok;
     if (!ok) return;
 
+    const btn = $("#formUp button[type=submit]");
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Creating your account…";
+
+    const r = await window.Auth.signUp(em.value.trim(), p.value, {
+      name: n.value.trim(),
+      mobile_e164: DigiPhone.toE164(cc, m.value)
+    });
+
+    btn.disabled = false;
+    btn.textContent = label;
+
+    if (!r.ok) {
+      $("#upEmailErr").textContent = r.message;
+      $("#upEmailErr").classList.add("show");
+      return;
+    }
+
+    /* email confirmation on: no session yet, so say exactly what to do next */
+    if (!r.confirmed) {
+      $("#upEmailErr").textContent = "";
+      $("#upEmailErr").classList.remove("show");
+      $("#paneUp").innerHTML =
+        '<h1>Check your email</h1>' +
+        '<p class="lede">We sent a confirmation link to <b>' + em.value.trim() + '</b>. ' +
+        'Open it, then sign in. The link brings you back here.</p>' +
+        '<button class="btn btn-brand btn-block" type="button" id="toSignIn">Go to sign in</button>';
+      $("#toSignIn").addEventListener("click", () => location.href = "login.html");
+      return;
+    }
+
+    /* signed in immediately: keep the typed values for the onboarding wizard,
+       never the password */
     const s = loadState() || {
-      restaurant: { name: "", ownerName: "", purposes: ["Dine In", "Take Away"], whatsapp: "+971", mapsUrl: "" },
+      restaurant: { name: "", ownerName: n.value.trim(), purposes: ["Dine In", "Take Away"], whatsapp: "", mapsUrl: "" },
       docs: { logo: null, license: null },
       handle: "",
       accent: "#f7941d"
@@ -186,8 +239,7 @@
       name: n.value.trim(),
       mobile: DigiPhone.digits(m.value),
       mobile_e164: DigiPhone.toE164(cc, m.value),
-      email: em.value.trim(),
-      password: p.value
+      email: em.value.trim()
     };
     saveState(s);
     location.href = "app.html?onboard=2";

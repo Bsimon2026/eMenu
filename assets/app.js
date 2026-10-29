@@ -7,6 +7,13 @@
 (function () {
   "use strict";
 
+  /* The dashboard is the signed-in surface: with no session there is nothing
+     here to show. Every write is re-checked server-side against the same token. */
+  if (!window.Auth || !window.Auth.session()) {
+    location.replace("login.html");
+    return;
+  }
+
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
@@ -53,7 +60,10 @@
   if (!state.restaurant.purposes) state.restaurant.purposes = ["Dine In", "Take Away"];
 
   function menuSource() {
-    return (state.menu && state.menu.categories) ? state.menu : DEMO_MENU;
+    if (state.menu && state.menu.categories && state.menu.categories.length) return state.menu;
+    /* a real restaurant with no menu yet must not be shown the sample dishes */
+    if (state.restaurantId) return { categories: [] };
+    return DEMO_MENU;
   }
 
   function save() { saveState(state); }
@@ -150,7 +160,10 @@
     })
   );
 
-  $("#signOut").addEventListener("click", () => { location.href = "login.html"; });
+  $("#signOut").addEventListener("click", () => {
+    window.Auth.signOut();
+    location.href = "login.html";
+  });
 
   /* ---------------- onboarding ---------------- */
 
@@ -331,11 +344,27 @@
     $("#handleStatus").style.color = "";
 
     clearTimeout(handleTimer);
-    handleTimer = setTimeout(() => {
-      if (TAKEN.indexOf(v) !== -1) {
+    handleTimer = setTimeout(async () => {
+      let free = false;
+      let reason = "";
+      try {
+        const res = await fetch(window.Auth.apiBase + "/api/restaurant?check=" + encodeURIComponent(v));
+        const data = await res.json();
+        free = Boolean(data.available);
+        reason = data.reason || "";
+      } catch (e) {
+        $("#handleStatus").className = "handle-status";
+        $("#handleStatus").textContent = "Could not check that address. Try again.";
+        $("#finishOb").disabled = true;
+        return;
+      }
+
+      if (!free) {
         handleFree = false;
         $("#handleStatus").className = "handle-status taken";
-        $("#handleStatus").textContent = publicLink(v) + " is already taken.";
+        $("#handleStatus").textContent = reason === "too-short"
+          ? "Use at least 3 characters."
+          : publicLink(v) + " is already taken.";
         $("#suggestions").innerHTML = [v + "-abudhabi", v + "-uae", v + "-menu", v + "1"]
           .map((s) => `<button type="button" data-sug="${s}">${s}</button>`).join("");
         $$("#suggestions button").forEach((b) => b.addEventListener("click", () => checkHandle(b.dataset.sug)));
@@ -357,10 +386,38 @@
     checkHandle(handleInput.value);
   });
 
-  $("#finishOb").addEventListener("click", () => {
+  $("#finishOb").addEventListener("click", async () => {
     if (!handleFree) return;
-    state.onboarded = true;
-    save();
+    const btn = $("#finishOb");
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+
+    const payload = {
+      name: state.restaurant.name,
+      handle: state.handle,
+      owner_name: state.restaurant.ownerName || (state.account && state.account.name) || "",
+      whatsapp_e164: state.restaurant.whatsapp,
+      order_email: state.restaurant.orderEmail || (state.account && state.account.email) || "",
+      purposes: state.restaurant.purposes,
+      accent: state.accent,
+      maps_url: state.restaurant.mapsUrl || null
+    };
+
+    const r = await window.Auth.api("/api/restaurant", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    btn.disabled = false;
+    btn.textContent = label;
+
+    if (!r.ok) {
+      toast(r.data.message || "Could not save your restaurant.");
+      return;
+    }
+
+    applyRestaurant(r.data.restaurant);
     location.href = "app.html#overview";
   });
 
@@ -695,7 +752,7 @@
     pendingImport = null;
   });
 
-  $("#applyImport").addEventListener("click", () => {
+  $("#applyImport").addEventListener("click", async () => {
     const ticked = $$("[data-review]").filter((c) => c.checked).map((c) => Number(c.dataset.review));
     if (!ticked.length) { toast("Select at least one dish"); return; }
 
@@ -726,7 +783,9 @@
             price: it.price == null ? 0 : it.price,
             diet: null,
             image: it.image || null,
-            soldOut: false
+            soldOut: false,
+            source: pendingImport.source || "manual",
+            sourceId: it.sourceId || null
           });
         }
       });
@@ -737,7 +796,27 @@
     state.menu = { categories: categories };
     state.menuImported = true;
     save();
-    toast(kept + " dishes added to your menu");
+
+    const btn = $("#applyImport");
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+
+    const r = await window.Auth.api("/api/save-menu", {
+      method: "POST",
+      body: JSON.stringify({ categories: categories })
+    });
+
+    btn.disabled = false;
+    btn.textContent = label;
+
+    if (!r.ok) {
+      toast(r.data.message || "Kept on this device only — the database refused it.");
+      showView("menu");
+      return;
+    }
+
+    toast(kept + " dishes saved to your menu");
     showView("menu");
   });
 
@@ -779,23 +858,108 @@
 
   /* ---------------- boot ---------------- */
 
+  /* The restaurant row in Supabase is the source of truth; localStorage is a
+     cache for the wizard's half-filled fields. */
+
+  function applyRestaurant(r) {
+    if (!r) return;
+    state.restaurantId = r.id;
+    state.restaurant.name = r.name || "";
+    state.restaurant.ownerName = r.owner_name || "";
+    if (Array.isArray(r.purposes) && r.purposes.length) state.restaurant.purposes = r.purposes;
+    state.restaurant.whatsapp = r.whatsapp_e164 || "";
+    state.restaurant.orderEmail = r.order_email || "";
+    state.restaurant.mapsUrl = r.maps_url || "";
+    state.handle = r.handle || state.handle;
+    state.accent = r.accent || state.accent;
+    state.status = r.status || "trial";
+    state.onboarded = true;
+    save();
+  }
+
+  function blankState(account) {
+    return {
+      account: account || null,
+      restaurant: { name: "", ownerName: "", purposes: ["Dine In", "Take Away"], whatsapp: "", orderEmail: "", mapsUrl: "" },
+      docs: { logo: null, license: null },
+      handle: "",
+      accent: "#f7941d",
+      menuImported: false,
+      menu: null,
+      onboarded: false
+    };
+  }
+
   const obParam = new URLSearchParams(location.search).get("onboard");
 
-  if (obParam) {
-    showOb(Number(obParam) || 2);
-    $("#restName").value = state.restaurant.name || "";
-    $("#ownerName").value = state.restaurant.ownerName || state.account.name || "";
-    if (state.restaurant.orderEmail) $("#orderEmail").value = state.restaurant.orderEmail;
-    syncChoices();
-    const waSplit = DigiPhone.split(state.restaurant.whatsapp);
-    if (waSplit.national) {
-      $("#waCC").value = waSplit.dial;
-      $("#waNum").value = waSplit.national;
+  (async function boot() {
+    /* sample data must never leak into a real account */
+    if (!state.restaurantId) {
+      const u = window.Auth.user() || {};
+      const meta = u.user_metadata || {};
+      const acct = state.account || (u.email ? { name: meta.name || "", email: u.email, mobile_e164: meta.mobile_e164 || "" } : null);
+      state = blankState(acct);
+      if (acct && acct.name) state.restaurant.ownerName = acct.name;
+      saveState(state);
     }
-  } else {
+
+    let saved = null;
+    try {
+      const r = await window.Auth.api("/api/restaurant");
+      if (r.ok) saved = r.data.restaurant;
+    } catch (e) {
+      /* api() already sent us to the sign-in page on 401 */
+    }
+
+    if (saved) {
+      applyRestaurant(saved);
+
+      /* the menu lives in Postgres; pull it back so the editor shows what the
+         guest page shows, trial or not */
+      try {
+        const m = await window.Auth.api("/api/menu?mine=1");
+        if (m.ok && m.data.categories && m.data.categories.length) {
+          state.menu = {
+            categories: m.data.categories.map((c, i) => ({
+              id: "c" + i,
+              name: c.name,
+              items: c.items.map((it, j) => ({
+                id: "i" + i + "x" + j,
+                name: it.name,
+                desc: it.description || "",
+                price: it.price == null ? 0 : it.price,
+                diet: null,
+                image: it.image || null,
+                soldOut: !!it.soldOut
+              }))
+            }))
+          };
+          state.menuImported = true;
+          save();
+        }
+      } catch (e) {
+        /* an empty editor is better than a blocked dashboard */
+      }
+    }
+
+    /* no restaurant yet, or the wizard was explicitly opened */
+    if (!saved || obParam) {
+      showOb(Number(obParam) || 2);
+      $("#restName").value = state.restaurant.name || "";
+      $("#ownerName").value = state.restaurant.ownerName || (state.account && state.account.name) || "";
+      if (state.restaurant.orderEmail) $("#orderEmail").value = state.restaurant.orderEmail;
+      syncChoices();
+      const waSplit = DigiPhone.split(state.restaurant.whatsapp);
+      if (waSplit.national) {
+        $("#waCC").value = waSplit.dial;
+        $("#waNum").value = waSplit.national;
+      }
+      return;
+    }
+
     $("#shell").style.display = "";
     const hash = (location.hash || "").replace("#", "");
     renderOverview();
     showView(VIEW_TITLES[hash] ? hash : "overview");
-  }
+  })();
 })();

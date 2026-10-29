@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spice Route — menu</title>
+<meta name="theme-color" content="#F7941D">
+<link rel="icon" href="assets/ogle-live-logo.png?v=20261030b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/base.css?v=20261030b">
+<link rel="stylesheet" href="assets/menu.css?v=20261030b">
+</head>
+<body class="menu-body">
+
+<header class="mhead">
+  <div class="mhead-in">
+    <div class="mlogo" id="restLogo">SR</div>
+    <div>
+      <h1 id="restName">Spice Route</h1>
+      <div class="mmeta" id="restMeta">Abu Dhabi · Dine in · Take away</div>
+    </div>
+    <a class="mwa" id="waLink" href="#" target="_blank" rel="noopener">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M10 2.8a5.4 5.4 0 0 0-4.6 8.2L4.2 15l4.1-1.1A5.4 5.4 0 1 0 10 2.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+      </svg>
+      <span>Chat on WhatsApp</span>
+    </a>
+  </div>
+</header>
+
+<div class="mwrap">
+  <div>
+    <nav class="rail" id="rail" aria-label="Menu categories"></nav>
+    <div id="sections"></div>
+  </div>
+
+  <aside class="cart" id="cart" aria-label="Your order">
+    <h3>Your order <em id="cartCount">0 items</em></h3>
+    <div id="cartBody"></div>
+    <div id="cartFoot"></div>
+  </aside>
+</div>
+
+<div class="mbar" id="mobileBar">
+  <div>
+    <div class="bc" id="barCount">0 items</div>
+    <div class="bt" id="barTotal">AED 0</div>
+  </div>
+  <button type="button" id="barCheckout">Review order</button>
+</div>
+
+<footer class="mfoot">
+  <span id="footHandle">ogle.live/digimenu/spice-route</span>
+  <span>Digital menu by Ogle.live</span>
+</footer>
+
+<div class="sheet-back" id="sheetBack"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div id="sheetForm">
+    <h2 id="sheetTitle">How would you like it?</h2>
+    <p class="sub" id="sheetSub">Your order is sent to the restaurant on WhatsApp from your own phone. They reply to confirm.</p>
+
+    <div class="mode" id="modeBtns" role="group" aria-label="Order type">
+      <button type="button" data-mode="Dine In" aria-pressed="true">Dine In</button>
+      <button type="button" data-mode="Take Away" aria-pressed="false">Take Away</button>
+      <button type="button" data-mode="Delivery" aria-pressed="false">Delivery</button>
+    </div>
+
+    <div id="modeFields"></div>
+
+    <div class="field">
+      <label for="guestName">Your name <span style="color:var(--danger)">*</span></label>
+      <input class="input" id="guestName" placeholder="So the kitchen knows whose order it is">
+      <div class="err" id="nameErr">We need a name for the order.</div>
+    </div>
+
+    <div class="order-lines" id="sheetTotals"></div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-outline" type="button" id="closeSheet">Back to menu</button>
+      <button class="btn btn-brand" type="button" id="confirmOrder">Send on WhatsApp</button>
+    </div>
+  </div>
+
+  <div id="sheetDone" hidden>
+    <div class="done-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2>Order ready to send</h2>
+    <p class="sub" id="doneSub">WhatsApp is opening with your order already written. Press send and the restaurant has it.</p>
+    <div class="order-lines" id="doneReceipt"></div>
+    <p class="next-steps" id="doneNext"></p>
+    <div class="sheet-actions">
+      <a class="btn btn-outline" id="doneWa" href="#" target="_blank" rel="noopener">Open WhatsApp</a>
+      <button class="btn btn-brand" type="button" id="doneClose">Done</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/data.js?v=20261030b"></script>
+<script src="assets/menu.js?v=20261030b"></script>
+</body>
+</html>
