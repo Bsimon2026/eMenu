@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/digimenu/assets/:path*", "destination": "/assets/:path*" },
     { "source": "/digimenu", "destination": "/index.html" },
     { "source": "/digimenu/:handle", "destination": "/menu.html" }
   ],
