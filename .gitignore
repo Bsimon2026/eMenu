@@ -10,3 +10,9 @@ desktop.ini
 
 # deploy output
 _deploy/
+
+.vercel
+.env*
+
+# vercel cli link metadata
+.vercel/
