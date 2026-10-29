@@ -546,6 +546,8 @@
     $("#protoNote").hidden = true;
     const err = $("#importError");
     if (err) err.hidden = true;
+    const note = $("#linkNote");
+    if (note) note.hidden = false;
     $$("#scanSteps div").forEach((s) => s.classList.remove("on"));
     $("#scanBar").style.width = "8%";
   }
@@ -639,6 +641,8 @@
       "</div>";
     box.hidden = false;
     $("#scan").hidden = true;
+    const staticNote = $("#linkNote");
+    if (staticNote) staticNote.hidden = true;   /* the box now says it once */
 
     const go = $("#fallbackPhoto");
     if (go) go.addEventListener("click", () => {
