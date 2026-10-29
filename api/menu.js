@@ -20,7 +20,7 @@ async function buildMenu(restaurantId) {
     rest("menu_categories?restaurant_id=eq." + restaurantId + "&select=id,name,position&order=position.asc"),
     rest(
       "menu_items?restaurant_id=eq." + restaurantId +
-      "&select=category_id,name,description,price,image_url,sold_out,position&order=position.asc"
+      "&select=id,category_id,name,description,price,image_url,sold_out,position&order=position.asc"
     )
   ]);
   if (!cats.ok || !items.ok) return null;
@@ -29,6 +29,7 @@ async function buildMenu(restaurantId) {
   for (const it of items.data || []) {
     if (!byCat.has(it.category_id)) byCat.set(it.category_id, []);
     byCat.get(it.category_id).push({
+      id: it.id,
       name: it.name,
       description: it.description || "",
       price: it.price === null ? null : Number(it.price),
@@ -38,7 +39,7 @@ async function buildMenu(restaurantId) {
   }
 
   const categories = (cats.data || [])
-    .map((c) => ({ name: c.name, items: byCat.get(c.id) || [] }))
+    .map((c) => ({ id: c.id, name: c.name, items: byCat.get(c.id) || [] }))
     .filter((c) => c.items.length);
 
   return {
@@ -95,11 +96,16 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "That is not a valid menu address." });
   }
 
-  const found = await rest(
+  const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
+  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url";
+  const query = (cols) =>
     "restaurants?handle=eq." + encodeURIComponent(handle) +
-    "&status=eq.published" +
-    "&select=id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url"
-  );
+    "&status=eq.published&select=" + cols;
+
+  /* 0004 adds the identity columns; a deployment can land before the migration
+     is run, so fall back to the original columns instead of failing the page */
+  let found = await rest(query(FULL_COLS));
+  if (!found.ok) found = await rest(query(BASE_COLS));
   if (!found.ok) {
     return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
   }
@@ -129,7 +135,17 @@ module.exports = async function handler(req, res) {
       city: restaurant.city || "",
       accent: restaurant.accent || "#f7941d",
       logoUrl: restaurant.logo_url || null,
-      mapsUrl: restaurant.maps_url || null
+      mapsUrl: restaurant.maps_url || null,
+      currency: restaurant.currency || "AED",
+      tagline: restaurant.tagline || null,
+      address: restaurant.address_line || null,
+      social: {
+        instagram: restaurant.instagram || null,
+        facebook: restaurant.facebook || null,
+        tiktok: restaurant.tiktok || null,
+        website: restaurant.website || null
+      },
+      coverUrl: restaurant.cover_url || null
     },
     categories: built.categories,
     itemCount: built.itemCount

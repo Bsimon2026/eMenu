@@ -34,6 +34,18 @@
   let whatsapp = "";
   let purposes = ["Dine In", "Take Away"];
   let cats = [];
+
+  /* the restaurant picks its currency once; every price uses it */
+  const SYMBOL = { USD: "$", EUR: "€", GBP: "£", INR: "₹", PKR: "₨", EGP: "E£" };
+  let currency = "AED";
+  function money(n) {
+    const sym = SYMBOL[currency] || currency;
+    const v = Math.round((Number(n) || 0) * 100) / 100;
+    return /^[A-Z]{3}$/.test(sym) ? sym + " " + v : sym + v;
+  }
+  function esc(t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  }
   const cart = new Map();
   let mode = purposes[0] || "Dine In";
   let table = "";
@@ -93,7 +105,7 @@
                 <div class="ds">${it.desc}</div>
               </div>
               <div class="right">
-                <div class="pr">AED ${it.price}</div>
+                <div class="pr">${money(it.price)}</div>
                 ${it.soldOut
                   ? '<span class="sold-tag">Sold out</span>'
                   : `<button class="add" type="button" data-id="${it.id}" data-cat="${c.id}">Add</button>`}
@@ -360,6 +372,85 @@
   renderCart();
   }
 
+  /* ---------- the restaurant, before the food ---------- */
+
+  function initials(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    return (parts.length > 1 ? parts[0][0] + parts[1][0] : String(name || "?").slice(0, 2)).toUpperCase();
+  }
+
+  function renderHero(r, data) {
+    if (embed) return;
+    const hero = $("#hero");
+    if (!hero) return;
+
+    const rn = r.name || "Menu";
+    $("#heroName").textContent = rn;
+    $("#heroLogo").innerHTML = r.logoUrl ? '<img src="' + esc(r.logoUrl) + '" alt="">' : esc(initials(rn));
+
+    if (r.tagline) {
+      $("#heroTagline").textContent = r.tagline;
+      $("#heroTagline").hidden = false;
+    }
+
+    const bits = [];
+    if (r.address) bits.push(r.address);
+    else if (r.city) bits.push(r.city);
+    (r.purposes || []).forEach((p) => {
+      bits.push(p === "Dine In" ? "Dine in" : p === "Take Away" ? "Takeaway" : p);
+    });
+    $("#heroMeta").innerHTML = bits.map(esc).join("<i></i>");
+
+    $("#heroWa").href = "https://wa.me/" + whatsapp + "?text=" +
+      encodeURIComponent("Hello " + rn + ", I have a question about the menu.");
+
+    if (r.mapsUrl) {
+      $("#heroMap").href = r.mapsUrl;
+      $("#heroAddress").textContent = r.address ? "Directions" : "Open in Maps";
+      $("#heroMap").hidden = false;
+    }
+
+    const social = r.social || {};
+    if (social.instagram) {
+      $("#heroIg").href = "https://instagram.com/" + encodeURIComponent(social.instagram);
+      $("#heroIg").hidden = false;
+    }
+    if (social.facebook) {
+      $("#heroFb").href = "https://facebook.com/" + encodeURIComponent(social.facebook);
+      $("#heroFb").hidden = false;
+    }
+    if (social.tiktok) {
+      $("#heroTt").href = "https://tiktok.com/@" + encodeURIComponent(social.tiktok);
+      $("#heroTt").hidden = false;
+    }
+    if (social.website) {
+      $("#heroWeb").href = social.website;
+      $("#heroWeb").hidden = false;
+    }
+
+    /* their own cover if they have one, otherwise three of their dish photos */
+    const media = $("#heroMedia");
+    const photos = [];
+    if (r.coverUrl) photos.push(r.coverUrl);
+    else {
+      for (const c of data.categories || []) {
+        for (const it of c.items || []) {
+          if (it.image && photos.length < 3) photos.push(it.image);
+        }
+        if (photos.length >= 3) break;
+      }
+    }
+
+    if (photos.length) {
+      media.innerHTML = photos.map((src) => '<img src="' + esc(src) + '" alt="" loading="lazy">').join("");
+      if (photos.length === 1) media.classList.add("one");
+      hero.classList.add("has-media");
+    }
+
+    hero.hidden = false;
+    document.body.classList.add("has-hero");
+  }
+
   /* ---------- when there is no menu to show ---------- */
 
   function unavailable(message) {
@@ -424,6 +515,9 @@
         diet: null
       }))
     }));
+
+    currency = r.currency || "AED";
+    renderHero(r, data);
 
     paint();
   })();

@@ -92,8 +92,24 @@ module.exports = async function handler(req, res) {
     accent: body.accent !== undefined ? String(body.accent).slice(0, 20) : (existing?.accent ?? "#f7941d"),
     updated_at: new Date().toISOString()
   };
-  for (const k of ["logo_url", "licence_url", "maps_url"]) {
+  for (const k of ["logo_url", "licence_url", "maps_url", "cover_url"]) {
     if (body[k] !== undefined) patch[k] = body[k] ? String(body[k]).slice(0, 500) : null;
+  }
+  for (const k of ["instagram", "facebook", "tiktok"]) {
+    if (body[k] !== undefined) patch[k] = body[k] ? String(body[k]).replace(/^@/, "").trim().slice(0, 60) : null;
+  }
+  if (body.website !== undefined) {
+    const w = body.website ? String(body.website).trim() : "";
+    patch.website = w ? (/^https?:\/\//i.test(w) ? w : "https://" + w).slice(0, 300) : null;
+  }
+  if (body.tagline !== undefined) patch.tagline = body.tagline ? String(body.tagline).slice(0, 120) : null;
+  if (body.address_line !== undefined) patch.address_line = body.address_line ? String(body.address_line).slice(0, 200) : null;
+  if (body.currency !== undefined) {
+    const cur = String(body.currency || "").toUpperCase().trim();
+    if (!/^[A-Z]{3}$/.test(cur)) {
+      return res.status(400).json({ ok: false, code: "CURRENCY", message: "Currency must be a three-letter code, e.g. AED." });
+    }
+    patch.currency = cur;
   }
   if (body.status !== undefined && ["trial", "published", "suspended"].includes(body.status)) {
     patch.status = body.status;

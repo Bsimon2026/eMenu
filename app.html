@@ -6,12 +6,12 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard — DigiMenu</title>
 <meta name="theme-color" content="#12161A">
-<link rel="icon" href="assets/ogle-live-logo.png?v=20261031c">
+<link rel="icon" href="assets/ogle-live-logo.png?v=20261031g">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261031c">
-<link rel="stylesheet" href="assets/app.css?v=20261031c">
+<link rel="stylesheet" href="assets/base.css?v=20261031g">
+<link rel="stylesheet" href="assets/app.css?v=20261031g">
 </head>
 <body class="app-body">
 
@@ -20,7 +20,7 @@
 
   <aside class="side">
     <a class="side-logo" href="index.html" aria-label="Ogle.live">
-      <img src="assets/ogle-live-logo.png?v=20261031c" alt="Ogle.live">
+      <img src="assets/ogle-live-logo.png?v=20261031g" alt="Ogle.live">
       <span class="p">DigiMenu</span>
     </a>
 
@@ -283,6 +283,56 @@
             </div>
           </div>
         </div>
+
+        <!-- the restaurant's public identity: what a guest sees above the menu -->
+        <div class="card" style="margin-top:16px">
+          <div class="card-body">
+            <h2>Your guest page</h2>
+            <p class="sub">These appear above your menu when a guest scans the QR. All optional except the currency.</p>
+
+            <div class="field">
+              <label for="setTagline">One line about the restaurant</label>
+              <input class="input" id="setTagline" maxlength="120" placeholder="Iranian grills and stews, cooked over charcoal">
+            </div>
+
+            <div class="field">
+              <label for="setAddress">Address</label>
+              <input class="input" id="setAddress" maxlength="200" placeholder="Al Maqta, Abu Dhabi">
+            </div>
+
+            <div class="field">
+              <label for="setCurrency">Prices are in</label>
+              <select class="input" id="setCurrency">
+                <option value="AED">AED — UAE dirham</option>
+                <option value="SAR">SAR — Saudi riyal</option>
+                <option value="QAR">QAR — Qatari riyal</option>
+                <option value="KWD">KWD — Kuwaiti dinar</option>
+                <option value="BHD">BHD — Bahraini dinar</option>
+                <option value="OMR">OMR — Omani rial</option>
+                <option value="USD">USD — US dollar</option>
+                <option value="EUR">EUR — Euro</option>
+                <option value="GBP">GBP — Pound sterling</option>
+                <option value="INR">INR — Indian rupee</option>
+                <option value="PKR">PKR — Pakistani rupee</option>
+                <option value="EGP">EGP — Egyptian pound</option>
+              </select>
+              <div class="hint">Every price on the menu, in the cart and in the WhatsApp order uses this.</div>
+            </div>
+
+            <div class="field">
+              <label>Social media</label>
+              <div class="social-grid">
+                <input class="input" id="setIg" placeholder="Instagram handle" maxlength="60">
+                <input class="input" id="setFb" placeholder="Facebook page name" maxlength="60">
+                <input class="input" id="setTt" placeholder="TikTok handle" maxlength="60">
+                <input class="input" id="setWeb" placeholder="Website (https://…)" maxlength="300">
+              </div>
+              <div class="hint">Handles only — we build the link. Leave any blank to hide that button.</div>
+            </div>
+
+            <button class="btn btn-brand" type="button" id="saveProfile">Save guest page</button>
+          </div>
+        </div>
       </section>
 
     </div>
@@ -459,11 +509,11 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="assets/config.js?v=20261031c"></script>
-<script src="assets/auth.js?v=20261031c"></script>
-<script src="assets/data.js?v=20261031c"></script>
-<script src="assets/phone.js?v=20261031c"></script>
-<script src="assets/vendor/qrcode-generator.js?v=20261031c"></script>
-<script src="assets/app.js?v=20261031c"></script>
+<script src="assets/config.js?v=20261031g"></script>
+<script src="assets/auth.js?v=20261031g"></script>
+<script src="assets/data.js?v=20261031g"></script>
+<script src="assets/phone.js?v=20261031g"></script>
+<script src="assets/vendor/qrcode-generator.js?v=20261031g"></script>
+<script src="assets/app.js?v=20261031g"></script>
 </body>
 </html>

@@ -644,3 +644,47 @@ body.app-body { background: var(--canvas); }
   .review-row { grid-template-columns: 24px minmax(0, 1fr) 64px; }
   .review-row .rconf { display: none; }
 }
+
+/* ---------- menu editor controls ---------- */
+
+.cat-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.row-tools { display: flex; align-items: center; gap: 10px; }
+
+.btn-quiet.danger { color: #b03a2e; }
+.btn-quiet.danger:hover { background: #fdecea; }
+
+.mrow.editing {
+  display: block;
+  background: #fffdf8;
+  border: 1px solid #f0e3cf;
+  border-radius: 12px;
+  margin: 6px 0;
+  padding: 12px;
+}
+
+.mrow.new-row { border-style: dashed; }
+
+.edit-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 110px minmax(0, 1.6fr);
+  gap: 8px;
+}
+
+.edit-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+.cat-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+
+.cat-add .input { flex: 1; }
+
+@media (max-width: 720px) {
+  .edit-fields { grid-template-columns: 1fr; }
+  .cat-tools { margin-left: 0; }
+}
