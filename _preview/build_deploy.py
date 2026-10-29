@@ -15,6 +15,7 @@ ROOT = os.getcwd()
 OUT = os.path.join(ROOT, "_deploy")
 SITE = os.path.join(OUT, "digimenu")
 ZIP = os.path.join(OUT, "digimenu-upload.zip")
+FLAT = os.path.join(OUT, "digimenu-flat.zip")
 
 PAGES = ["index.html", "login.html", "app.html", "menu.html"]
 
@@ -44,12 +45,21 @@ def main():
                 rel = os.path.relpath(full, SITE)
                 z.write(full, os.path.join("digimenu", rel))
 
+    # a second archive with the files at its root, so extracting straight into
+    # public_html/digimenu/ cannot produce public_html/digimenu/digimenu/
+    with zipfile.ZipFile(FLAT, "w", zipfile.ZIP_DEFLATED) as z:
+        for base, _dirs, files in os.walk(SITE):
+            for f in files:
+                full = os.path.join(base, f)
+                z.write(full, os.path.relpath(full, SITE))
+
     count = 0
     for base, _dirs, files in os.walk(SITE):
         count += len(files)
     print("folder :", SITE)
     print("files  :", count)
     print("zip    :", ZIP, round(os.path.getsize(ZIP) / 1024), "KB")
+    print("flat   :", FLAT, round(os.path.getsize(FLAT) / 1024), "KB")
 
 
 if __name__ == "__main__":
