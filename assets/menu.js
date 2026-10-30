@@ -102,7 +102,7 @@
               return `
             <div class="item ${it.soldOut ? "sold" : ""} ${col}" data-id="${it.id}">
               ${it.image
-                ? `<img class="thumb" src="${sized(it.image, 320)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.item').classList.remove('has-img'); this.remove()">`
+                ? `<img class="thumb loading" src="${sized(it.image, 320)}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.closest('.item').classList.remove('has-img'); this.remove()">`
                 : sectionHasImg ? `<div class="thumb ph" aria-hidden="true"></div>` : ""}
               <div>
                 <div class="nm">

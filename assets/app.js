@@ -282,8 +282,43 @@
     });
   }
 
+  /* ---------------- file uploads ---------------- */
+
+  async function uploadTo(kind, file) {
+    if (!file) return null;
+    if (file.size > 2_500_000) {
+      toast("That file is " + (file.size / 1048576).toFixed(1) + " MB. Keep it under 2.5 MB.");
+      return null;
+    }
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+
+    const up = await window.Auth.api("/api/upload", {
+      method: "POST",
+      body: JSON.stringify({ kind, dataUrl })
+    });
+    if (!up.ok) { toast(up.data.message || "That file could not be uploaded."); return null; }
+
+    const column = kind === "logo" ? "logo_url" : kind === "cover" ? "cover_url" : "licence_url";
+    const payload = {};
+    payload[column] = up.data.url;
+    const saved = await window.Auth.api("/api/restaurant", { method: "POST", body: JSON.stringify(payload) });
+    if (!saved.ok) { toast(saved.data.message || "Uploaded, but the restaurant did not save."); return null; }
+
+    applyRestaurant(saved.data.restaurant);
+    return up.data.url;
+  }
+
   wireUpload("#obFileLogo", "#obRowLogo", (f) => acceptLogo(f, () => toast("Logo added — colours read from it")));
-  wireUpload("#fileLogo", "#rowLogo", (f) => acceptLogo(f, () => toast("Logo updated")));
+  wireUpload("#fileLogo", "#rowLogo", async (f) => {
+    const url = await uploadTo("logo", f);
+    if (url) { state.docs.logo = url; save(); renderDocs(); toast("Logo uploaded"); }
+  });
 
   function acceptLicence(file, ob) {
     state.docs.license = file.name;
@@ -294,7 +329,10 @@
   }
 
   wireUpload("#obFileLic", "#obRowLic", (f) => acceptLicence(f, true));
-  wireUpload("#fileLic", "#rowLic", (f) => acceptLicence(f, false));
+  wireUpload("#fileLic", "#rowLic", async (f) => {
+    const url = await uploadTo("licence", f);
+    if (url) { state.docs.license = url; save(); renderDocs(); toast("Licence uploaded"); }
+  });
 
   function renderObDocs() {
     const { logo, license } = state.docs;
@@ -1115,11 +1153,34 @@
     set("#setTagline", state.restaurant.tagline);
     set("#setAddress", state.restaurant.address);
     set("#setCurrency", state.currency || "AED");
+    const prev = $("#coverPreview");
+    if (prev) {
+      const url = state.restaurant.coverUrl;
+      prev.style.backgroundImage = url ? 'url("' + url + '")' : "";
+      prev.classList.toggle("has", Boolean(url));
+    }
+
     const soc = state.social || {};
     set("#setIg", soc.instagram);
     set("#setFb", soc.facebook);
     set("#setTt", soc.tiktok);
     set("#setWeb", soc.website);
+  }
+
+  const coverInput = $("#coverFile");
+  if (coverInput) {
+    coverInput.addEventListener("change", async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      toast("Uploading…");
+      const url = await uploadTo("cover", f);
+      if (url) {
+        state.restaurant.coverUrl = url;
+        save();
+        renderProfile();
+        toast("Cover uploaded — it is the background of your guest page");
+      }
+    });
   }
 
   $("#saveProfile").addEventListener("click", async () => {

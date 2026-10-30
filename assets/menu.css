@@ -713,3 +713,19 @@ body.embed .hero { display: none !important; }
 }
 
 .sec.featured .sec-head { border-bottom-color: #f3d7ae; }
+
+/* a dish photo that has not arrived yet should look like it is arriving */
+.item .thumb.loading {
+  background: linear-gradient(100deg, #eef1f2 30%, #e4e8ea 45%, #eef1f2 60%);
+  background-size: 300% 100%;
+  animation: thumbShimmer 1.3s ease-in-out infinite;
+}
+
+@keyframes thumbShimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item .thumb.loading { animation: none; }
+}

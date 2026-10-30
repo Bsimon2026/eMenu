@@ -839,3 +839,15 @@ body.app-body { background: var(--canvas); }
   top: 0;
   z-index: 1;
 }
+
+/* cover photo picker */
+.cover-row { display: flex; align-items: center; gap: 12px; }
+.cover-preview {
+  width: 120px;
+  height: 46px;
+  border-radius: 8px;
+  border: 1px dashed var(--line);
+  background: #f7f8f9 center/cover no-repeat;
+  display: inline-block;
+}
+.cover-preview.has { border-style: solid; }
