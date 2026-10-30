@@ -25,9 +25,10 @@
   /* Where this build is actually served. On ogle.live the printed link is the
      real one; anywhere else (a preview deployment) the QR encodes the URL that
      resolves right now, so the code still scans to a live menu. */
-  const PUBLIC_BASE = /^(www\.)?ogle\.live$/i.test(location.hostname)
-    ? "https://ogle.live/digimenu/"
-    : location.origin + "/digimenu/";
+  /* A QR code is printed once and lives on a table for years: it must never
+     contain a preview domain, so this is the production address whatever host
+     the dashboard is being viewed on. */
+  const PUBLIC_BASE = "https://ogle.live/digimenu/";
 
   const publicLink = (h) => PUBLIC_BASE.replace(/^https?:\/\//i, "") + (h || "—");
 
@@ -1048,7 +1049,15 @@
 
   /* ---------------- qr pane ---------------- */
 
+  function renderGuestLinks() {
+    const link = $("#guestViewLink");
+    if (link) {
+      link.href = state.handle ? "menu.html?r=" + encodeURIComponent(state.handle) : "menu.html";
+    }
+  }
+
   function renderQrPane() {
+    renderGuestLinks();
     $("#linkBig").textContent = publicLink(state.handle);
     paintQR($("#qrBig"), state.handle);
   }
@@ -1398,6 +1407,7 @@
     };
     state.onboarded = true;
     save();
+    renderGuestLinks();
   }
 
   function blankState(account) {
