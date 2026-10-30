@@ -19,7 +19,7 @@
   const pathHandle = (location.pathname.match(/\/digimenu\/([a-z0-9][a-z0-9-]*)\/?$/i) || [])[1] || null;
   const urlHandle = String(params.get("r") || pathHandle || "").toLowerCase() || null;
 
-  const PUBLIC_BASE = "https://ogle.live/digimenu/";
+  const PUBLIC_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "https://ogle.live/digimenu/";
 
   /* Filled from /api/menu before the first paint: the database decides what
      this page shows, so the same link looks the same on every phone. */

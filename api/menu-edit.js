@@ -179,6 +179,40 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ok: true, category: (saved.data || [])[0] });
       }
 
+      case "moveCategory": {
+        const cat = await ownsCategory(body.id);
+        if (!cat) return res.status(404).json({ ok: false, code: "NO_CATEGORY", message: "That category is not on your menu." });
+
+        let all = await rest(
+          "menu_categories?restaurant_id=eq." + rid + "&select=id,name,position,is_featured&order=is_featured.desc,position.asc"
+        );
+        if (!all.ok) {
+          /* 0006 not run yet: order without the featured band */
+          all = await rest("menu_categories?restaurant_id=eq." + rid + "&select=id,name,position&order=position.asc");
+        }
+        if (!all.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+
+        const list = all.data || [];
+        const at = list.findIndex((c) => c.id === cat.id);
+        const to = body.direction === "up" ? at - 1 : at + 1;
+        if (at === -1 || to < 0 || to >= list.length) {
+          return res.status(200).json({ ok: true, moved: false });   /* already at the edge */
+        }
+
+        /* only swap with a neighbour in the same band: a featured shelf never
+           trades places with an ordinary section */
+        const a = list[at];
+        const b = list[to];
+        if (Boolean(a.is_featured) !== Boolean(b.is_featured)) {
+          return res.status(200).json({ ok: true, moved: false });
+        }
+
+        await rest("menu_categories?id=eq." + a.id, { method: "PATCH", body: { position: b.position } });
+        await rest("menu_categories?id=eq." + b.id, { method: "PATCH", body: { position: a.position } });
+
+        return res.status(200).json({ ok: true, moved: true, order: [b.id, a.id] });
+      }
+
       case "deleteCategory": {
         const cat = await ownsCategory(body.id);
         if (!cat) return res.status(404).json({ ok: false, code: "NO_CATEGORY", message: "That category is not on your menu." });

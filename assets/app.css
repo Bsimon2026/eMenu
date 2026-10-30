@@ -814,3 +814,28 @@ body.app-body { background: var(--canvas); }
   background: #fff4e6;
   color: var(--brand-text);
 }
+
+/* category reordering */
+.ord { display: inline-flex; flex-direction: column; gap: 1px; }
+.ord-btn {
+  width: 20px;
+  height: 13px;
+  line-height: 1;
+  padding: 0;
+  font-size: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.ord-btn:hover { color: var(--ink); border-color: #cdd4d8; }
+
+/* search inside the dish picker */
+.picker-search {
+  width: 100%;
+  margin: 4px 0 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}

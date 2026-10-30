@@ -27,8 +27,8 @@
      resolves right now, so the code still scans to a live menu. */
   /* A QR code is printed once and lives on a table for years: it must never
      contain a preview domain, so this is the production address whatever host
-     the dashboard is being viewed on. */
-  const PUBLIC_BASE = "https://ogle.live/digimenu/";
+     the dashboard is being viewed on. Set it once in assets/config.js. */
+  const PUBLIC_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "https://ogle.live/digimenu/";
 
   const publicLink = (h) => PUBLIC_BASE.replace(/^https?:\/\//i, "") + (h || "—");
 
@@ -556,6 +556,10 @@
                     title="${c.featured ? "Shown first on the guest page" : "Show this category first"}"
                     aria-pressed="${c.featured ? "true" : "false"}">${c.featured ? "★ Highlighted" : "☆ Highlight"}</button>
             <button class="btn btn-outline btn-sm" type="button" data-add="${c.id}">+ Dish</button>
+            <span class="ord">
+              <button class="ord-btn" type="button" data-move="up" data-cat-move="${c.id}" title="Move up">▲</button>
+              <button class="ord-btn" type="button" data-move="down" data-cat-move="${c.id}" title="Move down">▼</button>
+            </span>
             ${c.items.length || allItemsFlat().length ? `<button class="btn-quiet" type="button" data-existing="${c.id}" title="Add dishes that already exist">+ Existing</button>` : ""}
             <button class="btn-quiet" type="button" data-catdel="${c.id}" title="Delete category">Delete</button>
           </span>
@@ -637,6 +641,18 @@
         save();
         await reloadOwnMenu();
         renderMenuEditor();
+      })
+    );
+
+    /* ---- reorder categories ---- */
+    $$("[data-cat-move]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.catMove;
+        const saved = await menuEdit({ action: "moveCategory", id, direction: btn.dataset.move });
+        if (saved) {
+          await reloadOwnMenu();
+          renderMenuEditor();
+        }
       })
     );
 
@@ -1194,22 +1210,40 @@
       $("#pickerAdd").disabled = true;
       $("#pickerCount").textContent = "0 selected";
     } else {
-      $("#pickerBody").innerHTML = pool.map((x) => `
-        <label class="picker-row">
+      $("#pickerBody").innerHTML =
+        '<input class="input picker-search" id="pickerSearch" type="search" placeholder="Search ' +
+        pool.length + ' dishes…" autocomplete="off">' +
+        pool.map((x) => `
+        <label class="picker-row" data-name="${esc(String(x.item.name).toLowerCase())}">
           <input type="checkbox" data-pick="${x.item.id}">
           <span class="pn">${esc(x.item.name)}</span>
           <span class="pp">${priceLabel(x.item.price)}</span>
           <span class="pc">${esc(x.firstCat)}</span>
         </label>`).join("");
+
+      const refresh = () => {
+        const n = $$("[data-pick]").filter((x) => x.checked).length;
+        const shown = $$(".picker-row").filter((r) => r.style.display !== "none").length;
+        $("#pickerCount").textContent = n + " selected · " + shown + " shown";
+        $("#pickerAdd").disabled = n === 0;
+      };
+
       $("#pickerCount").textContent = "0 selected";
       $("#pickerAdd").disabled = true;
-      $$("[data-pick]").forEach((cb) =>
-        cb.addEventListener("change", () => {
-          const n = $$("[data-pick]").filter((x) => x.checked).length;
-          $("#pickerCount").textContent = n + " selected";
-          $("#pickerAdd").disabled = n === 0;
-        })
-      );
+
+      $$("[data-pick]").forEach((cb) => cb.addEventListener("change", refresh));
+
+      const search = $("#pickerSearch");
+      if (search) {
+        search.addEventListener("input", () => {
+          const q = search.value.trim().toLowerCase();
+          $$(".picker-row").forEach((row) => {
+            row.style.display = !q || row.dataset.name.indexOf(q) !== -1 ? "" : "none";
+          });
+          refresh();
+        });
+        search.focus();
+      }
     }
     $("#picker").hidden = false;
   }
