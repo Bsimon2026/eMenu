@@ -6,15 +6,15 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard — DigiMenu</title>
 <meta name="theme-color" content="#12161A">
-<link rel="icon" href="assets/favicon.ico?v=20261031h" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261031h">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261031h">
+<link rel="icon" href="assets/favicon.ico?v=20261031i" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261031i">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261031i">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261031h">
-<link rel="stylesheet" href="assets/app.css?v=20261031h">
+<link rel="stylesheet" href="assets/base.css?v=20261031i">
+<link rel="stylesheet" href="assets/app.css?v=20261031i">
 </head>
 <body class="app-body">
 
@@ -23,7 +23,7 @@
 
   <aside class="side">
     <a class="side-logo" href="index.html" aria-label="Ogle.live">
-      <img src="assets/ogle-live-logo.png?v=20261031h" alt="Ogle.live">
+      <img src="assets/ogle-live-logo.png?v=20261031i" alt="Ogle.live">
       <span class="p">DigiMenu</span>
     </a>
 
@@ -152,6 +152,7 @@
           <div class="import-tabs" role="tablist">
             <button role="tab" aria-selected="true" data-tab="file">Photo, PDF or spreadsheet</button>
             <button role="tab" aria-selected="false" data-tab="link">Talabat link</button>
+            <button role="tab" aria-selected="false" data-tab="sheet">Excel or CSV</button>
           </div>
 
           <div class="card-body">
@@ -177,6 +178,26 @@
               <div class="note" id="linkNote" style="margin-top:14px">
                 <b>Deliveroo and noon</b> answer automated readers with a Cloudflare block, so those links cannot be read — the reader says so immediately and offers the photo upload instead, which always works.
               </div>
+            </div>
+
+            <div id="tabSheet" hidden>
+              <div class="field">
+                <label for="sheetFile">Spreadsheet</label>
+                <input class="input" type="file" id="sheetFile" accept=".xlsx,.xls,.csv">
+                <div class="hint">One row per dish. Columns: <b>Category</b>, <b>Item Name</b>, <b>Description</b>, <b>Price</b>, <b>Diet</b> (optional: veg / nonveg).</div>
+              </div>
+
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <button class="btn btn-brand" type="button" id="sheetAdd" disabled>Add these dishes</button>
+                <button class="btn btn-outline" type="button" id="sheetSample">Download the sample file</button>
+              </div>
+
+              <div class="note" style="margin-top:14px">
+                Existing categories are reused by name, and an existing dish with the same name in the same
+                category has its price updated instead of being duplicated.
+              </div>
+
+              <div id="sheetPreview" style="margin-top:14px" hidden></div>
             </div>
 
             <div id="scan" hidden>
@@ -510,13 +531,28 @@
   </div>
 </div>
 
+<div class="picker" id="picker" hidden>
+  <div class="picker-box" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+    <div class="picker-head">
+      <b id="pickerTitle">Add existing dishes</b>
+      <button class="btn-quiet" type="button" id="pickerClose">Close</button>
+    </div>
+    <div class="picker-body" id="pickerBody"></div>
+    <div class="picker-foot">
+      <span id="pickerCount">0 selected</span>
+      <button class="btn btn-brand btn-sm" type="button" id="pickerAdd" disabled>Add to category</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<script src="assets/config.js?v=20261031h"></script>
-<script src="assets/auth.js?v=20261031h"></script>
-<script src="assets/data.js?v=20261031h"></script>
-<script src="assets/phone.js?v=20261031h"></script>
-<script src="assets/vendor/qrcode-generator.js?v=20261031h"></script>
-<script src="assets/app.js?v=20261031h"></script>
+<script src="assets/config.js?v=20261031i"></script>
+<script src="assets/auth.js?v=20261031i"></script>
+<script src="assets/data.js?v=20261031i"></script>
+<script src="assets/phone.js?v=20261031i"></script>
+<script src="assets/vendor/xlsx.full.min.js?v=20261031i"></script>
+<script src="assets/vendor/qrcode-generator.js?v=20261031i"></script>
+<script src="assets/app.js?v=20261031i"></script>
 </body>
 </html>

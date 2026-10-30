@@ -14,7 +14,13 @@ const { rest, userFromToken, bearer, cors, configured } = require("./_lib/db");
 
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 
-/** Read a restaurant's menu in the shape both pages render. */
+/**
+ * Read a restaurant's menu in the shape both pages render.
+ *
+ * A dish belongs to its primary category (menu_items.category_id) and may also
+ * be listed in others through menu_item_categories. The join table is new, so
+ * if it is missing the read still works from the primary category alone.
+ */
 async function buildMenu(restaurantId) {
   const [cats, items] = await Promise.all([
     rest("menu_categories?restaurant_id=eq." + restaurantId + "&select=id,name,position&order=position.asc"),
@@ -25,17 +31,37 @@ async function buildMenu(restaurantId) {
   ]);
   if (!cats.ok || !items.ok) return null;
 
+  const catIds = (cats.data || []).map((c) => c.id);
+  let links = [];
+  if (catIds.length) {
+    const l = await rest(
+      "menu_item_categories?select=item_id,category_id&category_id=in.(" + catIds.join(",") + ")"
+    );
+    if (l.ok) links = l.data || [];   /* a 404 here just means 0005 is not run yet */
+  }
+
+  const itemById = new Map((items.data || []).map((it) => [it.id, it]));
+
   const byCat = new Map();
-  for (const it of items.data || []) {
-    if (!byCat.has(it.category_id)) byCat.set(it.category_id, []);
-    byCat.get(it.category_id).push({
+  const add = (catId, it) => {
+    if (!byCat.has(catId)) byCat.set(catId, []);
+    const arr = byCat.get(catId);
+    if (arr.some((x) => x.id === it.id)) return;
+    arr.push({
       id: it.id,
       name: it.name,
       description: it.description || "",
       price: it.price === null ? null : Number(it.price),
       image: it.image_url || null,
-      soldOut: Boolean(it.sold_out)
+      soldOut: Boolean(it.sold_out),
+      diet: it.diet || null
     });
+  };
+
+  for (const it of items.data || []) add(it.category_id, it);
+  for (const link of links) {
+    const it = itemById.get(link.item_id);
+    if (it) add(link.category_id, it);
   }
 
   const categories = (cats.data || [])
