@@ -124,7 +124,9 @@ module.exports = async function handler(req, res) {
     return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
   }
 
-  res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  /* short on purpose: a sold-out switch flipped mid-service must reach
+     guests in seconds, not minutes */
+  res.setHeader("Cache-Control", "public, s-maxage=15, stale-while-revalidate=45");
   return res.status(200).json({
     ok: true,
     restaurant: {
