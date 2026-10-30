@@ -462,6 +462,31 @@
 
   /* ---------------- overview ---------------- */
 
+  async function setStatus(status) {
+    const btn = $("#publishBtn");
+    const label = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = status === "published" ? "Publishing…" : "Working…"; }
+
+    const r = await window.Auth.api("/api/restaurant", { method: "POST", body: JSON.stringify({ status }) });
+
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+
+    if (!r.ok) {
+      const list = (r.data && r.data.missing) || [];
+      toast(list.length ? "Still needed: " + list.join(", ") : (r.data.message || "That did not work."));
+      renderOverview();
+      return;
+    }
+
+    applyRestaurant(r.data.restaurant);
+    state.status = r.data.restaurant.status;
+    save();
+    renderOverview();
+    toast(status === "published"
+      ? "Published — guests can open " + publicLink(state.handle)
+      : "Back to trial: the menu is hidden from guests");
+  }
+
   function renderOverview() {
     const { logo, license } = state.docs;
     const hasMenu = !!(state.menu || state.menuImported);
@@ -469,7 +494,7 @@
       { key: "logo", label: "Restaurant logo", note: logo ? "Added" : "Used on the menu header", ok: !!logo, go: "docs" },
       { key: "lic", label: "Trade licence copy", note: license ? "Added" : "Needed before publishing", ok: !!license, go: "docs" },
       { key: "menu", label: "Menu content", note: hasMenu ? "Imported · review any time" : "Import a photo or a link", ok: hasMenu, go: "import" },
-      { key: "maps", label: "Google Maps link", note: state.restaurant.mapsUrl ? "Added" : "Optional", ok: !!state.restaurant.mapsUrl, optional: true, go: "docs" }
+      { key: "maps", label: "Google Maps link", note: state.restaurant.mapsUrl ? "Added" : "Needed before publishing", ok: !!state.restaurant.mapsUrl, go: "docs" }
     ];
 
     $("#checkList").innerHTML = items.map((it) => `
@@ -483,17 +508,41 @@
 
     $$("[data-go]").forEach((b) => b.addEventListener("click", () => showView(b.dataset.go)));
 
-    const ready = !!(logo && license);
-    $("#publishPill").className = "pill " + (ready ? "pill-ok" : "pill-warn");
-    $("#publishPill").textContent = ready ? "Ready to publish" : "Draft";
-    $("#publishHint").textContent = ready
-      ? "Everything needed is here. Publish when you are happy with the menu."
-      : "Two things are needed before guests can see this menu.";
-    $("#topStatus").className = "pill " + (ready ? "pill-ok" : "pill-warn");
-    $("#topStatus").textContent = ready ? "Ready to publish" : "Trial";
-    $("#sideStatus").textContent = ready ? "Ready to publish" : "Trial · not published";
-    $("#sideDot").className = "dot" + (ready ? " live" : "");
+    const ready = items.every((it) => it.ok);
+    const live = state.status === "published";
+    const missing = items.filter((it) => !it.ok).map((it) => it.label.toLowerCase());
+
+    $("#publishPill").className = "pill " + (live ? "pill-ok" : ready ? "pill-ok" : "pill-warn");
+    $("#publishPill").textContent = live ? "Published" : ready ? "Ready to publish" : "Draft";
+    $("#publishHint").textContent = live
+      ? "Your menu is live. Guests can open it from the link below."
+      : ready
+        ? "Everything needed is here. Publish when you are happy with the menu."
+        : "Still needed: " + missing.join(", ") + ".";
+
+    const pubBtn = $("#publishBtn");
+    if (pubBtn) {
+      pubBtn.disabled = !ready || live;
+      pubBtn.textContent = live ? "Published" : "Publish my menu";
+      const un = $("#unpublishBtn");
+      if (un) un.hidden = !live;
+      const note = $("#publishNote");
+      if (note) note.textContent = live ? publicLink(state.handle) : "";
+    }
+
+    $("#topStatus").className = "pill " + (live ? "pill-ok" : ready ? "pill-warn" : "pill-warn");
+    $("#topStatus").textContent = live ? "Live" : ready ? "Ready to publish" : "Trial";
+    $("#sideStatus").textContent = live ? "Live · published" : ready ? "Ready to publish" : "Trial · not published";
+    $("#sideDot").className = "dot" + (live ? " live" : "");
     $("#sideRest").textContent = state.restaurant.name || "Your restaurant";
+
+    const publishBtn = $("#publishBtn");
+    if (publishBtn && !publishBtn.dataset.wired) {
+      publishBtn.dataset.wired = "1";
+      publishBtn.addEventListener("click", () => setStatus("published"));
+      const un = $("#unpublishBtn");
+      if (un) un.addEventListener("click", () => setStatus("trial"));
+    }
 
     $("#linkOverview").textContent = publicLink(state.handle);
     paintQR($("#qrOverview"), state.handle);

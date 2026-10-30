@@ -851,3 +851,15 @@ body.app-body { background: var(--canvas); }
   display: inline-block;
 }
 .cover-preview.has { border-style: solid; }
+
+/* publish row */
+.publish-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.publish-note { font-size: 12.5px; color: var(--ink-3); }

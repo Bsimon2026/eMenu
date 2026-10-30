@@ -111,7 +111,38 @@ module.exports = async function handler(req, res) {
     }
     patch.currency = cur;
   }
+  /* Publishing is a gate, not a toggle: the licence and the logo are the
+     restaurant's proof and identity, the map link is where guests go, and a
+     menu with nothing on it helps nobody. Enforced here so no client can skip
+     it, and so the dashboard can show the same list before the button works. */
   if (body.status !== undefined && ["trial", "published", "suspended"].includes(body.status)) {
+    if (body.status === "published") {
+      const finalLogo = patch.logo_url !== undefined ? patch.logo_url : (existing && existing.logo_url);
+      const finalLicence = patch.licence_url !== undefined ? patch.licence_url : (existing && existing.licence_url);
+      const finalMaps = patch.maps_url !== undefined ? patch.maps_url : (existing && existing.maps_url);
+      const finalWhatsapp = patch.whatsapp_e164 || (existing && existing.whatsapp_e164);
+
+      const missing = [];
+      if (!finalLogo) missing.push("logo");
+      if (!finalLicence) missing.push("licence");
+      if (!finalMaps) missing.push("Google Maps link");
+
+      let itemCount = 0;
+      if (existing) {
+        const items = await rest("menu_items?restaurant_id=eq." + existing.id + "&select=id");
+        itemCount = items.ok ? (items.data || []).length : 0;
+      }
+      if (!itemCount) missing.push("at least one dish");
+
+      if (missing.length) {
+        return res.status(409).json({
+          ok: false,
+          code: "NOT_READY",
+          message: "Not ready to publish yet: " + missing.join(", ") + ".",
+          missing
+        });
+      }
+    }
     patch.status = body.status;
     if (body.status === "published") patch.published_at = new Date().toISOString();
   }
