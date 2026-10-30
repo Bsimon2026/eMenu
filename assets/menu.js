@@ -77,14 +77,15 @@
 
   const rail = $("#rail");
   rail.innerHTML = cats.map((c) =>
-    '<a href="#c-' + c.id + '" data-cat="' + c.id + '">' + c.name + "</a>").join("");
+    '<a href="#c-' + c.id + '" data-cat="' + c.id + '"' + (c.featured ? ' class="feat"' : "") + ">" +
+    (c.featured ? '<span class="star" aria-hidden="true">★</span> ' : "") + c.name + "</a>").join("");
 
   $("#sections").innerHTML = cats.map((c) => {
     const available = c.items.filter((i) => !i.soldOut).length;
     return `
-      <section class="sec" id="c-${c.id}">
+      <section class="sec${c.featured ? " featured" : ""}" id="c-${c.id}">
         <div class="sec-head">
-          <h2>${c.name}</h2>
+          <h2>${c.featured ? '<span class="star" aria-hidden="true">★</span> ' : ""}${c.name}</h2>
           <span>${available} of ${c.items.length} available</span>
         </div>
         <div class="items">

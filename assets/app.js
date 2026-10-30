@@ -551,6 +551,9 @@
           <span class="cn">${esc(c.name)}</span>
           <span class="cc">${c.items.length} items · ${c.items.filter((i) => !i.soldOut).length} available</span>
           <span class="cat-tools">
+            <button class="feat ${c.featured ? "on" : ""}" type="button" data-feat="${c.id}"
+                    title="${c.featured ? "Shown first on the guest page" : "Show this category first"}"
+                    aria-pressed="${c.featured ? "true" : "false"}">${c.featured ? "★ Highlighted" : "☆ Highlight"}</button>
             <button class="btn btn-outline btn-sm" type="button" data-add="${c.id}">+ Dish</button>
             ${c.items.length || allItemsFlat().length ? `<button class="btn-quiet" type="button" data-existing="${c.id}" title="Add dishes that already exist">+ Existing</button>` : ""}
             <button class="btn-quiet" type="button" data-catdel="${c.id}" title="Delete category">Delete</button>
@@ -617,6 +620,23 @@
     /* ---- add dish ---- */
     $$("[data-add]").forEach((btn) =>
       btn.addEventListener("click", () => addDishRow(btn.dataset.add))
+    );
+
+    /* ---- highlight this category first ---- */
+    $$("[data-feat]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.feat;
+        const cat = menuSource().categories.find((c) => c.id === id);
+        if (!cat) return;
+        const next = !cat.featured;
+        const saved = await menuEdit({ action: "setCategoryFeatured", id, featured: next },
+          next ? "“" + cat.name + "” will show first" : "“" + cat.name + "” back in menu order");
+        if (!saved) return;
+        cat.featured = next;
+        save();
+        await reloadOwnMenu();
+        renderMenuEditor();
+      })
     );
 
     /* ---- pull in existing dishes ---- */
@@ -1129,6 +1149,7 @@
         categories: m.data.categories.map((c) => ({
           id: c.id,
           name: c.name,
+          featured: !!c.featured,
           items: c.items.map((it) => ({
             id: it.id,
             name: it.name,
@@ -1425,6 +1446,7 @@
             categories: m.data.categories.map((c, i) => ({
               id: c.id,
               name: c.name,
+              featured: !!c.featured,
               items: c.items.map((it, j) => ({
                 id: it.id,
                 name: it.name,

@@ -22,13 +22,22 @@ const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
  * if it is missing the read still works from the primary category alone.
  */
 async function buildMenu(restaurantId) {
-  const [cats, items] = await Promise.all([
-    rest("menu_categories?restaurant_id=eq." + restaurantId + "&select=id,name,position&order=position.asc"),
-    rest(
-      "menu_items?restaurant_id=eq." + restaurantId +
-      "&select=id,category_id,name,description,price,image_url,sold_out,position&order=position.asc"
-    )
-  ]);
+  /* 0006 adds is_featured: a deployment can land before the migration is run,
+     so fall back to plain menu order instead of taking the page down */
+  let cats = await rest(
+    "menu_categories?restaurant_id=eq." + restaurantId +
+    "&select=id,name,position,is_featured&order=is_featured.desc,position.asc"
+  );
+  if (!cats.ok) {
+    cats = await rest(
+      "menu_categories?restaurant_id=eq." + restaurantId + "&select=id,name,position&order=position.asc"
+    );
+  }
+
+  const items = await rest(
+    "menu_items?restaurant_id=eq." + restaurantId +
+    "&select=id,category_id,name,description,price,image_url,sold_out,position&order=position.asc"
+  );
   if (!cats.ok || !items.ok) return null;
 
   const catIds = (cats.data || []).map((c) => c.id);
@@ -65,7 +74,7 @@ async function buildMenu(restaurantId) {
   }
 
   const categories = (cats.data || [])
-    .map((c) => ({ id: c.id, name: c.name, items: byCat.get(c.id) || [] }))
+    .map((c) => ({ id: c.id, name: c.name, featured: Boolean(c.is_featured), items: byCat.get(c.id) || [] }))
     .filter((c) => c.items.length);
 
   return {

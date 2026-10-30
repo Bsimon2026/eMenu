@@ -159,6 +159,26 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ok: true, category: (saved.data || [])[0] });
       }
 
+      case "setCategoryFeatured": {
+        const cat = await ownsCategory(body.id);
+        if (!cat) return res.status(404).json({ ok: false, code: "NO_CATEGORY", message: "That category is not on your menu." });
+
+        const saved = await rest("menu_categories?id=eq." + cat.id, {
+          method: "PATCH",
+          body: { is_featured: Boolean(body.featured) },
+          prefer: "return=representation"
+        });
+        if (!saved.ok) {
+          return res.status(500).json({
+            ok: false,
+            code: "PATCH_FAILED",
+            message: "Could not change that. Has migration 0006 been run?",
+            detail: String(saved.data).slice(0, 200)
+          });
+        }
+        return res.status(200).json({ ok: true, category: (saved.data || [])[0] });
+      }
+
       case "deleteCategory": {
         const cat = await ownsCategory(body.id);
         if (!cat) return res.status(404).json({ ok: false, code: "NO_CATEGORY", message: "That category is not on your menu." });

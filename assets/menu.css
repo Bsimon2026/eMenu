@@ -679,3 +679,18 @@ body.has-hero .rail { top: 0; }
 .hero [hidden] { display: none !important; }
 
 body.embed .hero { display: none !important; }
+
+/* ---------- promo shelves on the guest menu ---------- */
+
+.rail a.feat { border-color: #f3d7ae; background: #fff6ea; color: var(--brand-text); }
+.rail a.feat.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+.sec.featured .sec-head h2 { color: var(--brand-text); }
+.sec.featured .sec-head .star { color: var(--brand); margin-right: 2px; }
+
+.sec.featured {
+  background: linear-gradient(180deg, #fffaf3 0%, rgba(255, 250, 243, 0) 120px);
+  border-radius: 14px;
+}
+
+.sec.featured .sec-head { border-bottom-color: #f3d7ae; }
