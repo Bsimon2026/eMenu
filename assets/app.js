@@ -1167,6 +1167,26 @@
     set("#setWeb", soc.website);
   }
 
+  const cleanBtn = $("#cleanFiles");
+  if (cleanBtn) {
+    cleanBtn.addEventListener("click", async () => {
+      cleanBtn.disabled = true;
+      cleanBtn.textContent = "Checking…";
+      const dry = await window.Auth.api("/api/upload?action=sweep");
+      const list = (dry.data && dry.data.wouldDelete) || [];
+      cleanBtn.textContent = "Clean up unused files";
+      cleanBtn.disabled = false;
+
+      if (!dry.ok) { toast(dry.data.message || "Could not check the storage."); return; }
+      if (!list.length) { toast("Nothing to clean — every file is in use"); return; }
+      if (!confirm(list.length + " unused file" + (list.length === 1 ? "" : "s") + " will be deleted. Continue?")) return;
+
+      const done = await window.Auth.api("/api/upload?action=sweep&go=1");
+      if (!done.ok) { toast(done.data.message || "Cleanup failed."); return; }
+      toast((done.data.deleted || []).length + " unused files removed");
+    });
+  }
+
   const coverInput = $("#coverFile");
   if (coverInput) {
     coverInput.addEventListener("change", async (e) => {

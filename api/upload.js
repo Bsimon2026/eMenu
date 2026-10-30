@@ -24,13 +24,68 @@ const TYPES = {
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
+  const isSweep = req.method === "GET" && req.query && req.query.action === "sweep";
+  if (req.method !== "POST" && !isSweep) return res.status(405).json({ ok: false, code: "METHOD" });
   if (!configured) {
     return res.status(500).json({ ok: false, code: "NOT_CONFIGURED", message: "Storage credentials missing on the server." });
   }
 
   const user = await userFromToken(bearer(req));
   if (!user) return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
+
+  /* ---------------------------------------------------------- sweep orphans
+   * Anything in this restaurant's prefix that is not one of the three URLs it
+   * currently points at is unreachable, so it can go. Dry run unless ?go=1. */
+  if (req.method === "GET" && req.query && req.query.action === "sweep") {
+    const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id,handle,logo_url,cover_url,licence_url");
+    if (!own.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+    const r = (own.data || [])[0];
+    if (!r) return res.status(409).json({ ok: false, code: "NO_RESTAURANT" });
+
+    const base = process.env.SUPABASE_URL.replace(/\/+$/, "");
+    const keep = [r.logo_url, r.cover_url, r.licence_url]
+      .filter(Boolean)
+      .map((u) => String(u).split("/menu-media/")[1])
+      .filter(Boolean);
+
+    const listRes = await fetch(base + "/storage/v1/object/list/menu-media", {
+      method: "POST",
+      headers: {
+        apikey: process.env.SUPABASE_SECRET_KEY,
+        Authorization: "Bearer " + process.env.SUPABASE_SECRET_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prefix: r.handle + "/", limit: 1000 }),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!listRes.ok) {
+      return res.status(502).json({ ok: false, code: "LIST_FAILED", detail: (await listRes.text()).slice(0, 200) });
+    }
+
+    const objects = await listRes.json();
+    const doomed = (objects || [])
+      .filter((o) => o && o.name)
+      .map((o) => r.handle + "/" + o.name)
+      .filter((full) => keep.indexOf(full) === -1);
+
+    if (req.query.go !== "1") {
+      return res.status(200).json({ ok: true, dryRun: true, keeping: keep.length, wouldDelete: doomed });
+    }
+
+    const deleted = [];
+    for (const path of doomed) {
+      const del = await fetch(base + "/storage/v1/object/menu-media/" + path, {
+        method: "DELETE",
+        headers: {
+          apikey: process.env.SUPABASE_SECRET_KEY,
+          Authorization: "Bearer " + process.env.SUPABASE_SECRET_KEY
+        },
+        signal: AbortSignal.timeout(15000)
+      });
+      if (del.ok) deleted.push(path);
+    }
+    return res.status(200).json({ ok: true, dryRun: false, keeping: keep.length, deleted });
+  }
 
   let body = req.body;
   if (typeof body === "string") {
@@ -64,12 +119,16 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id,handle");
+  const COLUMN = { logo: "logo_url", cover: "cover_url", licence: "licence_url" };
+  const col = COLUMN[kind];
+
+  const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id,handle," + col);
   if (!own.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
   const restaurant = (own.data || [])[0];
   if (!restaurant) {
     return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Finish the restaurant details first." });
   }
+  const previousUrl = restaurant[col] || null;
 
   /* the "folder" is this prefix, created implicitly on the first write */
   const stamp = Date.now();
@@ -102,11 +161,41 @@ module.exports = async function handler(req, res) {
   const publicUrl = process.env.SUPABASE_URL.replace(/\/+$/, "") +
     "/storage/v1/object/public/menu-media/" + path;
 
+  /* the file this upload replaces is dead weight: remove it now, so the bucket
+     only ever holds what the restaurant is actually using */
+  let replaced = null;
+  if (previousUrl && previousUrl.indexOf("/menu-media/") !== -1) {
+    const oldPath = previousUrl.split("/menu-media/")[1];
+    if (oldPath && oldPath !== path) {
+      try {
+        const del = await fetch(
+          process.env.SUPABASE_URL.replace(/\/+$/, "") + "/storage/v1/object/menu-media/" + oldPath,
+          {
+            method: "DELETE",
+            headers: {
+              apikey: process.env.SUPABASE_SECRET_KEY,
+              Authorization: "Bearer " + process.env.SUPABASE_SECRET_KEY
+            },
+            signal: AbortSignal.timeout(15000)
+          }
+        );
+        /* Supabase answers 200 with an empty list when the key did not match,
+           and 200 {"message":"Successfully deleted"} when it did. Only the
+           second is a delete. */
+        const echo = await del.text();
+        replaced = /Successfully deleted/i.test(echo) ? oldPath : null;
+      } catch (e) {
+        replaced = null;   /* a missed delete is not worth failing the upload */
+      }
+    }
+  }
+
   return res.status(200).json({
     ok: true,
     url: publicUrl,
     path,
     bytes: buffer.length,
-    kind
+    kind,
+    replaced
   });
 };
