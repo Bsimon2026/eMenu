@@ -25,10 +25,13 @@
   /* Where this build is actually served. On ogle.live the printed link is the
      real one; anywhere else (a preview deployment) the QR encodes the URL that
      resolves right now, so the code still scans to a live menu. */
-  /* A QR code is printed once and lives on a table for years: it must never
-     contain a preview domain, so this is the production address whatever host
-     the dashboard is being viewed on. Set it once in assets/config.js. */
-  const PUBLIC_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "https://ogle.live/digimenu/";
+  const PUBLIC_BASE = (function () {
+    const cfg = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "";
+    if (cfg) return cfg.replace(/\/?$/, "/");
+    /* no pinned domain: print the address the page is actually served from,
+       keeping the /digimenu prefix if this copy lives in that subfolder */
+    return location.origin + (/^\/digimenu/.test(location.pathname) ? "/digimenu/" : "/");
+  })();
 
   const publicLink = (h) => PUBLIC_BASE.replace(/^https?:\/\//i, "") + (h || "—");
 

@@ -15,11 +15,21 @@
 
   const stored = loadState();
 
-  /* the handle can arrive as ?r=<handle> or as /digimenu/<handle> (vercel.json rewrite) */
-  const pathHandle = (location.pathname.match(/\/digimenu\/([a-z0-9][a-z0-9-]*)\/?$/i) || [])[1] || null;
+  /* the handle arrives as ?r=<handle>, as /digimenu/<handle> on the old host,
+     or as /<handle> at the root of the Vercel deployment */
+  const RESERVED = { login: 1, app: 1, menu: 1, assets: 1, api: 1 };
+  const seg = (location.pathname.match(/^\/([a-z0-9][a-z0-9-]*)\/?$/i) || [])[1];
+  const sub = (location.pathname.match(/^\/digimenu\/([a-z0-9][a-z0-9-]*)\/?$/i) || [])[1];
+  const pathHandle = (seg && !RESERVED[seg.toLowerCase()]) ? seg : (sub || null);
   const urlHandle = String(params.get("r") || pathHandle || "").toLowerCase() || null;
 
-  const PUBLIC_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "https://ogle.live/digimenu/";
+  const PUBLIC_BASE = (function () {
+    const cfg = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "";
+    if (cfg) return cfg.replace(/\/?$/, "/");
+    /* no pinned domain: print the address the page is actually served from,
+       keeping the /digimenu prefix if this copy lives in that subfolder */
+    return location.origin + (/^\/digimenu/.test(location.pathname) ? "/digimenu/" : "/");
+  })();
 
   /* Filled from /api/menu before the first paint: the database decides what
      this page shows, so the same link looks the same on every phone. */
@@ -476,7 +486,9 @@
   (async function start() {
     const cfg = window.DIGIMENU_CONFIG || {};
     const base = cfg.apiBase || "";
-    const wanted = urlHandle || handle || "";
+    /* only the address decides which menu this is: an unknown URL must show
+       "not available", never whatever restaurant this browser saw last */
+    const wanted = urlHandle || "";
 
     if (!wanted) {
       unavailable("This link has no menu address in it. Scan the restaurant's QR code again.");

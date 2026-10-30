@@ -1,8 +1,16 @@
 {
+  "trailingSlash": false,
   "rewrites": [
+    { "source": "/favicon.ico", "destination": "/assets/favicon.ico" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/menu", "destination": "/menu.html" },
+
     { "source": "/digimenu/assets/:path*", "destination": "/assets/:path*" },
     { "source": "/digimenu", "destination": "/index.html" },
-    { "source": "/digimenu/:handle", "destination": "/menu.html" }
+    { "source": "/digimenu/:handle", "destination": "/menu.html" },
+
+    { "source": "/:handle", "destination": "/menu.html" }
   ],
   "headers": [
     {
