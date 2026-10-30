@@ -41,6 +41,14 @@
     const v = Math.round((Number(n) || 0) * 100) / 100;
     return /^[A-Z]{3}$/.test(sym) ? sym + " " + v : sym + v;
   }
+  /* the CDN serves the original unless asked for a width: a menu page with 40
+     dishes would pull tens of megabytes on mobile data without this */
+  function sized(url, w) {
+    if (!url) return url;
+    if (!/talabat\.dhmedia\.io/i.test(url)) return url;
+    return url + (url.indexOf("?") === -1 ? "?" : "&") + "width=" + w;
+  }
+
   function esc(t) {
     return String(t == null ? "" : t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
@@ -94,7 +102,7 @@
               return `
             <div class="item ${it.soldOut ? "sold" : ""} ${col}" data-id="${it.id}">
               ${it.image
-                ? `<img class="thumb" src="${it.image}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.item').classList.remove('has-img'); this.remove()">`
+                ? `<img class="thumb" src="${sized(it.image, 320)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.item').classList.remove('has-img'); this.remove()">`
                 : sectionHasImg ? `<div class="thumb ph" aria-hidden="true"></div>` : ""}
               <div>
                 <div class="nm">
@@ -441,7 +449,7 @@
     }
 
     if (photos.length) {
-      media.innerHTML = photos.map((src) => '<img src="' + esc(src) + '" alt="" loading="lazy">').join("");
+      media.innerHTML = photos.map((src) => '<img src="' + esc(sized(src, 1200)) + '" alt="" loading="lazy">').join("");
       if (photos.length === 1) media.classList.add("one");
       hero.classList.add("has-media");
     }
@@ -504,6 +512,7 @@
     cats = (data.categories || []).map((c, i) => ({
       id: "c" + i,
       name: c.name,
+      featured: !!c.featured,
       items: (c.items || []).map((it, j) => ({
         id: "i" + i + "x" + j,
         name: it.name,
