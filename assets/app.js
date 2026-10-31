@@ -582,16 +582,41 @@
     return `<div class="order-row">
       <span class="ot">${when}</span>
       <span>${o.guest} · ${o.count} item${o.count === 1 ? "" : "s"}</span>
+      <span class="ophone">${o.phone ? `<a href="tel:${esc(o.phone.replace(/[^\d+]/g, ""))}">${esc(o.phone)}</a>` : '<span class="ot">no number</span>'}</span>
       <span class="omode"><span class="pill">${o.mode}</span> <span class="ot">${place}</span></span>
       <span class="otot">AED ${o.total}</span>
     </div>`;
   }
 
-  function renderOrders() {
-    const list = orders();
+  /* Orders live in the database: a guest orders from their own phone, so a
+     copy in this browser's storage would never be seen by the restaurant. */
+  async function renderOrders() {
     const host = $("#ordersList");
+    host.innerHTML = '<div class="empty">Loading orders…</div>';
+
+    const r = await window.Auth.api("/api/orders");
+    if (!r.ok) {
+      host.innerHTML = '<div class="empty"><b>Could not load orders</b>' +
+        esc(r.data.message || "Try again in a moment.") + '</div>';
+      return;
+    }
+
+    const list = (r.data.orders || []).map((o) => ({
+      ts: o.createdAt,
+      mode: o.mode,
+      guest: o.guest,
+      phone: o.phone,
+      table: o.table || "",
+      pickup: o.pickupAt ? new Date(o.pickupAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "",
+      address: o.address || "",
+      total: o.total,
+      count: (o.items || []).reduce((n, i) => n + i.qty, 0),
+      items: o.items || [],
+      status: o.status
+    }));
+
     if (!list.length) {
-      host.innerHTML = `<div class="empty"><b>No orders recorded yet</b>Orders are sent from the guest's own WhatsApp to your number. A copy is kept here so you have a record of what came through.</div>`;
+      host.innerHTML = `<div class="empty"><b>No orders yet</b>When a guest sends an order it appears here with their name and mobile number, even if the WhatsApp message never arrives.</div>`;
       return;
     }
     host.innerHTML = list.map(orderRowHtml).join("");

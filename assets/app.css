@@ -863,3 +863,8 @@ body.app-body { background: var(--canvas); }
   border-top: 1px solid var(--line);
 }
 .publish-note { font-size: 12.5px; color: var(--ink-3); }
+
+/* the guest's number, tappable on a phone */
+.order-row .ophone { font-size: 12.5px; }
+.order-row .ophone a { color: var(--brand-text); text-decoration: none; }
+.order-row .ophone a:hover { text-decoration: underline; }

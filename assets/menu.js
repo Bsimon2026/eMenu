@@ -300,19 +300,21 @@
     return !bad;
   }
 
-  function buildMessage(guest) {
+  function buildMessage(guest, phone) {
     const { sum } = totals();
     const lines = ["*New order — " + name + "*", "Type: " + mode, ""];
     if (mode === "Dine In") lines.push("Table: " + table);
     if (mode === "Take Away") lines.push("Pickup in: " + pickup);
     if (mode === "Delivery") lines.push("Address: " + address.replace(/\s+/g, " ").trim());
-    lines.push("Guest: " + guest, "");
+    lines.push("Guest: " + guest);
+    if (phone) lines.push("Mobile: " + phone);
+    lines.push("");
     cart.forEach((r) => lines.push(r.qty + " × " + r.item.name + " — AED " + r.qty * r.item.price));
     lines.push("", "Total: AED " + sum, "", "Sent from " + publicLink);
     return lines.join("\n");
   }
 
-  function recordOrder(guest, msg) {
+  function recordOrder(guest, msg, phone) {
     try {
       const key = "digimenu.orders.v1";
       const list = JSON.parse(localStorage.getItem(key) || "[]");
@@ -320,6 +322,7 @@
         ts: Date.now(),
         mode: mode,
         guest: guest,
+        phone: phone || "",
         table: table,
         pickup: pickup,
         address: address,
@@ -332,30 +335,73 @@
     } catch (e) { /* storage full or blocked */ }
   }
 
-  $("#confirmOrder").addEventListener("click", () => {
+  /* The guest is handed to WhatsApp either way, but the restaurant needs a
+     record even when that message never arrives — which is exactly why the
+     mobile number is now required. */
+  const API_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.apiBase) || "";
+  let sending = false;
+
+  async function submitOrder(guest, phone) {
+    if (sending) return null;
+    sending = true;
+    try {
+      const res = await fetch(API_BASE + "/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          handle: handle,
+          mode: mode,
+          table: table,
+          pickupAt: pickup || null,
+          address: address,
+          name: guest,
+          phone: phone,
+          total: totals().sum,
+          items: Array.from(cart.values()).map((r) => ({
+            id: r.item.id, name: r.item.name, qty: r.qty, price: r.item.price
+          }))
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      return res.ok ? data : { ok: false, message: data.message || "not saved" };
+    } catch (e) {
+      return { ok: false, message: "network" };
+    } finally {
+      sending = false;
+    }
+  }
+
+  $("#confirmOrder").addEventListener("click", async () => {
     let ok = true;
     ok = err("#nameErr", !$("#guestName").value.trim()) && ok;
+    const phoneRaw = ($("#guestPhone").value || "").trim();
+    ok = err("#phoneErr", phoneRaw.replace(/[^\d]/g, "").length < 7) && ok;
     if (mode === "Dine In") ok = err("#tableErr", !String(table).trim()) && ok;
     if (mode === "Take Away") ok = err("#pickErr", !pickup) && ok;
     if (mode === "Delivery") ok = err("#addrErr", !address.trim()) && ok;
     if (!ok) return;
 
     const guest = $("#guestName").value.trim();
-    const msg = buildMessage(guest);
+    const msg = buildMessage(guest, phoneRaw);
+    const saved = await submitOrder(guest, phoneRaw);
     const url = "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent(msg);
-    recordOrder(guest, msg);
+    recordOrder(guest, msg, phoneRaw);
 
     const place = mode === "Dine In" ? "table " + table : mode === "Take Away" ? pickup : "Delivery";
     $("#doneWa").href = url;
     $("#doneReceipt").innerHTML =
       `<div class="ol-row"><span>${mode} · ${place}</span><span>AED ${totals().sum}</span></div>` +
       `<div class="ol-row"><span>${totals().count} item${totals().count === 1 ? "" : "s"} for ${guest}</span><span>${name}</span></div>`;
+    if (saved && saved.ok === false) {
+      $("#doneNext").textContent = "WhatsApp is ready — but we could not save a copy for the restaurant. Send the message so they get it.";
+    } else {
     $("#doneNext").textContent =
       mode === "Dine In"
         ? "The restaurant confirms your table order on WhatsApp. Payment stays at the table."
         : mode === "Take Away"
         ? "The restaurant confirms the pickup time on WhatsApp. Nothing is charged online."
         : "The restaurant confirms the address and delivery charge on WhatsApp before sending.";
+    }
 
     $("#sheetForm").hidden = true;
     $("#sheetDone").hidden = false;
@@ -538,6 +584,13 @@
 
     currency = r.currency || "AED";
     renderHero(r, data);
+
+    /* most guests are local: start the number with the restaurant's own dial code */
+    const phoneInput = $("#guestPhone");
+    if (phoneInput && !phoneInput.value) {
+      const dial = (String(r.whatsapp || "").match(/^\+\d{1,3}/) || [])[0];
+      if (dial) phoneInput.value = dial + " ";
+    }
 
     paint();
   })();
