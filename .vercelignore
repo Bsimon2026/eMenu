@@ -1,8 +1,19 @@
 # kept out of the deployment
+# Vercel serves any file it receives as a static path, so a repo file that is not
+# excluded here is a public URL. api/, assets/ and the four .html files are all
+# the site needs.
 _preview/
+_deploy/
+db/
+tools/
+server.js
+package.json
+package-lock.json
 PLAN.md
 README.md
+.env
+.env.*
 .git/
 .gitignore
+.gitattributes
 *.md
-_deploy/

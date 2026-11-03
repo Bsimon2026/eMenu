@@ -18,7 +18,7 @@ const { importTalabat } = require("../api/_lib/talabat");
 
 const DEMO = {
   email: "emenu@ogle.live",
-  password: "DigiMenu2026!",
+  password: "SpiceRoute#2026Menu",
   name: "Demo Owner",
   restaurant: "Spice Route",
   handle: "spice-route",

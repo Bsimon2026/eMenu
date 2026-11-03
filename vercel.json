@@ -8,9 +8,9 @@
 
     { "source": "/digimenu/assets/:path*", "destination": "/assets/:path*" },
     { "source": "/digimenu", "destination": "/index.html" },
-    { "source": "/digimenu/:handle", "destination": "/menu.html" },
+    { "source": "/digimenu/:handle([a-z0-9][a-z0-9-]{2,31})", "destination": "/menu.html" },
 
-    { "source": "/:handle", "destination": "/menu.html" }
+    { "source": "/:handle([a-z0-9][a-z0-9-]{2,31})", "destination": "/menu.html" }
   ],
   "headers": [
     {
