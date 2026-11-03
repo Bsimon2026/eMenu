@@ -10,6 +10,7 @@
  */
 
 const { rest, cors, configured } = require("./_lib/db");
+const mail = require("./_lib/mail");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
@@ -55,7 +56,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "NO_ITEMS", message: "The order had no dishes." });
   }
 
-  const found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&status=eq.published&select=id,name,whatsapp_e164");
+  const found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&status=eq.published&select=id,name,whatsapp_e164,order_email");
   if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
   const restaurant = (found.data || [])[0];
   if (!restaurant) {
@@ -103,11 +104,52 @@ module.exports = async function handler(req, res) {
   const lines = rows.map((r) => ({ ...r, order_id: saved.id }));
   const lineRes = await rest("order_items", { method: "POST", body: lines, prefer: "return=minimal" });
 
+  /* Tell the restaurant, by email, in the same request. The record is already
+     stored, so a mail failure is reported in the response but never fails the
+     guest — they did their part. */
+  const when = new Date().toLocaleString("en-AE", { timeZone: "Asia/Dubai", hour12: true });
+  const detail =
+    mode === "Dine In" ? "Dine In · table " + (order.table_no || "—")
+    : mode === "Take Away" ? "Take Away · collect at " + (body.pickup || "as soon as ready")
+    : "Delivery · " + (order.address || "address on the phone");
+  const itemLines = rows.map((r) => "  " + r.qty + " × " + r.name + "  —  AED " + (r.unit_price * r.qty).toFixed(2)).join("\n");
+  const text = [
+    "New order — " + restaurant.name,
+    "",
+    detail,
+    "Guest: " + guestName,
+    "Mobile: " + order.guest_phone,
+    "",
+    itemLines,
+    "",
+    "Total: AED " + total.toFixed(2),
+    "",
+    when,
+    "Reference: " + String(saved.id).slice(0, 8)
+  ].join("\n");
+
+  const to = restaurant.order_email ? [restaurant.order_email] : [];
+  const cc = [process.env.NOTIFY_EMAIL || "connect@indubaicity.com"].filter((e) => e && !to.includes(e));
+  let notified = false;
+  if ((to.length || cc.length) && mail.ready) {
+    const sent = await mail.sendMail({
+      to: to.length ? to : cc,
+      cc: to.length ? cc : [],
+      subject: "New order — " + restaurant.name + " · AED " + total.toFixed(2) + " · " + mode,
+      fromName: restaurant.name + " (DigiMenu)",
+      replyTo: restaurant.order_email || undefined,
+      text
+    }, 9000);
+    notified = Boolean(sent.ok);
+    if (!sent.ok) console.error("[order] mail", sent.code, sent.detail);
+  }
+
   return res.status(200).json({
     ok: true,
     orderId: saved.id,
     total,
     items: lines.length,
-    linesSaved: lineRes.ok
+    linesSaved: lineRes.ok,
+    notified
   });
 };
