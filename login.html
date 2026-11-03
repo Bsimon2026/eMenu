@@ -6,22 +6,22 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Restaurant sign in — DigiMenu by Ogle.live</title>
 <meta name="theme-color" content="#F7941D">
-<link rel="icon" href="assets/favicon.ico?v=20261101r" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261101r">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261101r">
+<link rel="icon" href="assets/favicon.ico?v=20261104b" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104b">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104b">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261101r">
-<link rel="stylesheet" href="assets/site.css?v=20261101r">
+<link rel="stylesheet" href="assets/base.css?v=20261104b">
+<link rel="stylesheet" href="assets/site.css?v=20261104b">
 </head>
 <body class="auth-body">
 
 <header class="auth-top">
   <div class="wrap nav-in">
     <a class="nav-logo" href="index.html" aria-label="Ogle.live DigiMenu home">
-      <img src="assets/ogle-live-logo.png?v=20261101r" alt="Ogle.live">
+      <img src="assets/ogle-live-logo.png?v=20261104b" alt="Ogle.live">
       <span class="prod">DigiMenu</span>
     </a>
     <div class="nav-right">
@@ -100,6 +100,26 @@
           </div>
         </form>
       </div>
+
+      <!-- choose a new password — reached from a reset link -->
+      <div id="paneReset" hidden>
+        <h1>Choose a new password</h1>
+        <p class="lede">You opened a reset link. Set the password you will use from now on.</p>
+
+        <form id="formReset" novalidate>
+          <div class="field">
+            <label for="resetPass">New password</label>
+            <input class="input" id="resetPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+            <div class="error-msg" id="resetPassErr">Use at least 8 characters.</div>
+          </div>
+          <div class="field">
+            <label for="resetPass2">Type it again</label>
+            <input class="input" id="resetPass2" type="password" autocomplete="new-password" placeholder="Same password">
+            <div class="error-msg" id="resetPass2Err">Both passwords must match.</div>
+          </div>
+          <button class="btn btn-brand btn-block" type="submit" style="margin-top:6px">Save and sign in</button>
+        </form>
+      </div>
     </div>
 
     <p class="auth-aside">
@@ -109,10 +129,10 @@
   </div>
 </main>
 
-<script src="assets/config.js?v=20261101r"></script>
-<script src="assets/auth.js?v=20261101r"></script>
-<script src="assets/data.js?v=20261101r"></script>
-<script src="assets/phone.js?v=20261101r"></script>
+<script src="assets/config.js?v=20261104b"></script>
+<script src="assets/auth.js?v=20261104b"></script>
+<script src="assets/data.js?v=20261104b"></script>
+<script src="assets/phone.js?v=20261104b"></script>
 <script>
 (function () {
   "use strict";
@@ -123,6 +143,7 @@
   function show(mode) {
     $("#paneIn").hidden = mode !== "in";
     $("#paneUp").hidden = mode !== "up";
+    $("#paneReset").hidden = mode !== "reset";
     $$(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === mode)));
   }
 
@@ -130,6 +151,18 @@
   $$("[data-jump]").forEach((b) => b.addEventListener("click", () => show(b.dataset.jump)));
 
   if (new URLSearchParams(location.search).get("mode") === "up") show("up");
+
+  /* A reset link arrives here with its tokens in the fragment. Supabase sends it
+     to the Site URL, which is the landing page, so index.html forwards the hash on. */
+  var fromHash = window.Auth.tokensFromHash(location.hash);
+  var resetToken = (fromHash && fromHash.access_token) || null;
+  if (resetToken) {
+    show("reset");
+  } else if (fromHash && fromHash.error) {
+    show("in");
+    $("#inEmailErr").textContent = "That reset link has already been used or has expired. Ask for a new one.";
+    $("#inEmailErr").classList.add("show");
+  }
 
   // the country list must exist before anyone types, signed in or not
   $("#upCC").innerHTML = DigiPhone.options("971");
@@ -180,9 +213,57 @@
     location.href = "app.html";
   });
 
-  $("#forgot").addEventListener("click", () => {
-    $("#inEmailErr").textContent = "A reset link will be sent to the email on the account.";
+  /* Actually ask Supabase for the reset email — this button used to claim one
+     was sent without calling anything. */
+  $("#forgot").addEventListener("click", async () => {
+    const em = $("#inEmail").value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em)) {
+      mark($("#inEmail"), $("#inEmailErr"), true);
+      $("#inEmailErr").textContent = "Type the email on the account first.";
+      $("#inEmailErr").classList.add("show");
+      return;
+    }
+    const b = $("#forgot"), label = b.textContent;
+    b.disabled = true;
+    b.textContent = "Sending…";
+    await window.Auth.recover(em);
+    b.disabled = false;
+    b.textContent = label;
+    $("#inEmailErr").classList.remove("show");
+    $("#inEmailErr").textContent = "If " + em + " has an account, a reset link is on its way. Open it and choose a new password.";
     $("#inEmailErr").classList.add("show");
+  });
+
+  /* Saving the new password also signs them in: the link's token is a real session. */
+  $("#formReset").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const p1 = $("#resetPass"), p2 = $("#resetPass2");
+    let ok = true;
+    ok = mark(p1, $("#resetPassErr"), p1.value.length < 8) && ok;
+    ok = mark(p2, $("#resetPass2Err"), p2.value !== p1.value) && ok;
+    if (!ok) return;
+    if (!resetToken) { show("in"); return; }
+
+    const btn = $("#formReset button[type=submit]"), label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+    const r = await window.Auth.setPassword(resetToken, p1.value);
+    btn.disabled = false;
+    btn.textContent = label;
+
+    if (!r.ok) {
+      $("#resetPassErr").textContent = r.message;
+      $("#resetPassErr").classList.add("show");
+      return;
+    }
+    window.Auth.adopt({
+      access_token: resetToken,
+      refresh_token: fromHash.refresh_token,
+      expires_in: fromHash.expires_in,
+      user: r.user
+    });
+    history.replaceState(null, "", "login.html");
+    location.href = "app.html";
   });
 
   $("#formUp").addEventListener("submit", async (e) => {

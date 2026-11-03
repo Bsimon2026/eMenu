@@ -79,6 +79,53 @@ window.Auth = (function () {
     return { ok: true, session: null, confirmed: false, user: r.data.user || r.data };
   }
 
+  /** Pull the tokens Supabase puts in the fragment of a recovery/confirm link. */
+  function tokensFromHash(hash) {
+    const h = (hash || "").replace(/^#/, "");
+    if (!h) return null;
+    const p = new URLSearchParams(h);
+    const access = p.get("access_token");
+    if (!access) return { error: p.get("error_code") || p.get("error") || "" };
+    return {
+      access_token: access,
+      refresh_token: p.get("refresh_token") || "",
+      type: p.get("type") || "",
+      expires_in: Number(p.get("expires_in")) || 3600
+    };
+  }
+
+  /** Ask Supabase to email a reset link. Always reports success to the page —
+   *  telling a stranger whether an address has an account is a free user list. */
+  async function recover(email) {
+    const r = await post("/auth/v1/recover", { email });
+    return { ok: r.ok || r.status === 429, message: r.data.msg || r.data.message || "" };
+  }
+
+  /** Set a new password using the access token from the recovery link, and keep
+   *  the resulting session so the owner lands signed in rather than back at the door. */
+  async function setPassword(accessToken, password) {
+    const res = await fetch(SUPA + "/auth/v1/user", {
+      method: "PUT",
+      headers: { apikey: ANON, Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    let data = null;
+    const text = await res.text();
+    if (text) { try { data = JSON.parse(text); } catch (e) { data = { message: text }; } }
+    if (!res.ok) {
+      const raw = (data && (data.msg || data.message || data.error_description)) || "Could not change the password.";
+      return { ok: false, message: /should be at least|weak/i.test(raw) ? "Use at least 6 characters." : raw };
+    }
+    return { ok: true, user: data };
+  }
+
+  /** Adopt a recovery token as the live session. */
+  function adopt(tok) {
+    write(stamp({ access_token: tok.access_token, refresh_token: tok.refresh_token,
+      expires_in: tok.expires_in, user: tok.user || null }));
+    return read();
+  }
+
   async function refresh() {
     const s = read();
     if (!s || !s.refresh_token) return null;
@@ -127,5 +174,6 @@ window.Auth = (function () {
     return { ok: res.ok, status: res.status, data: data || {} };
   }
 
-  return { signIn, signUp, signOut, requireSession, session, user, token, refresh, api, apiBase: API };
+  return { signIn, signUp, signOut, requireSession, session, user, token, refresh, api, apiBase: API,
+    recover, setPassword, tokensFromHash, adopt };
 })();
