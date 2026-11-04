@@ -1,14 +1,14 @@
 /**
- * GET /api/orders
+ * GET /api/orders (also reachable as GET /api/order — see vercel.json)
  *
  * The restaurant's own orders, newest first, with their lines. Resolved from the
  * caller's token — never from a query parameter — so one restaurant cannot read
  * another's.
  */
 
-const { rest, userFromToken, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, bearer, cors, configured } = require("./db");
 
-module.exports = async function handler(req, res) {
+module.exports = async function listOrders(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") return res.status(405).json({ ok: false, code: "METHOD" });

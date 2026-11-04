@@ -135,16 +135,20 @@ function resolveStatic(pathname) {
 /* ---------- api ---------- */
 
 const handlerCache = new Map();
+/* /api/orders lives inside order.js to stay under Vercel's function limit */
+const ALIAS = { orders: "order" };
+
 function loadHandler(name) {
   if (!/^[a-z0-9-]+$/i.test(name)) return null;
-  if (handlerCache.has(name)) return handlerCache.get(name);
+  const file = ALIAS[name] || name;
+  if (handlerCache.has(file)) return handlerCache.get(file);
   let fn = null;
   try {
-    fn = require(path.join(ROOT, "api", name + ".js"));
+    fn = require(path.join(ROOT, "api", file + ".js"));
   } catch (e) {
-    if (e.code !== "MODULE_NOT_FOUND") console.error("[api] failed to load", name, e && e.message);
+    if (e.code !== "MODULE_NOT_FOUND") console.error("[api] failed to load", file, e && e.message);
   }
-  handlerCache.set(name, fn);
+  handlerCache.set(file, fn);
   return fn;
 }
 

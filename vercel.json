@@ -2,6 +2,7 @@
   "trailingSlash": false,
   "regions": ["bom1"],
   "rewrites": [
+    { "source": "/api/orders", "destination": "/api/order" },
     { "source": "/favicon.ico", "destination": "/assets/favicon.ico" },
     { "source": "/login", "destination": "/login.html" },
     { "source": "/app", "destination": "/app.html" },

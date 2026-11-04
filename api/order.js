@@ -11,6 +11,7 @@
 
 const { rest, cors, configured } = require("./_lib/db");
 const mail = require("./_lib/mail");
+const listOrders = require("./_lib/order-list");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
@@ -22,6 +23,9 @@ function clean(v, max) {
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
+  /* one function, two verbs: POST places an order, GET lists the owner's orders.
+     The Hobby plan allows 12 functions and we were at the ceiling. */
+  if (req.method === "GET") return listOrders(req, res);
   if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
   if (!configured) {
     return res.status(500).json({ ok: false, code: "NOT_CONFIGURED", message: "Credentials missing on the server." });
