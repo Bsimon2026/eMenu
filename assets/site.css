@@ -894,3 +894,38 @@ html { scrollbar-color: #3a3d42 var(--night); }
   white-space: nowrap;
 }
 .pa-p span { font-family: var(--ui); font-size: 12px; color: #8a8578; }
+
+/* ---------------- Google sign-in ---------------- */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 44px;
+  border: 1px solid #d7dde1;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f2328;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms var(--ease), border-color 140ms var(--ease);
+}
+.btn-google:hover { background: #f7f8f9; border-color: #c3cbd1; }
+.btn-google:disabled { opacity: .65; cursor: default; }
+.or-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 14px;
+  color: #98a1a8;
+  font-size: 12.5px;
+}
+.or-line::before, .or-line::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e3e7ea;
+}

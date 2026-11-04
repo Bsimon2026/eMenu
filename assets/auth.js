@@ -197,6 +197,45 @@ window.Auth = (function () {
     return { ok: res.ok, status: res.status, data: data || {} };
   }
 
+  /* ---------------- Google sign-in (PKCE) ----------------
+     Our own token handling, so the OAuth flow is four lines of crypto: make a
+     verifier, send its hash, exchange the code that comes back. No library. */
+
+  function b64url(bytes) {
+    const arr = new Uint8Array(bytes);
+    let s = "";
+    for (let i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i]);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  async function googleStart() {
+    const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+    localStorage.setItem("digimenu.pkce.v1", verifier);
+    const back = location.origin + "/login.html";
+    location.href = SUPA + "/auth/v1/authorize?provider=google" +
+      "&redirect_to=" + encodeURIComponent(back) +
+      "&code_challenge=" + b64url(digest) + "&code_challenge_method=s256";
+  }
+
+  /** Called on the login page after Google sends the user back. */
+  async function googleFinish() {
+    const q = new URLSearchParams(location.search);
+    const err = q.get("error_description") || q.get("error");
+    if (err && !q.get("code")) return { ok: false, message: String(err).replace(/_/g, " ") };
+    const code = q.get("code");
+    if (!code) return null;
+    const verifier = localStorage.getItem("digimenu.pkce.v1") || "";
+    localStorage.removeItem("digimenu.pkce.v1");
+    const r = await post("/auth/v1/token?grant_type=pkce", { auth_code: code, code_verifier: verifier });
+    if (!r.ok) {
+      const msg = r.data.error_description || r.data.msg || r.data.message || "Google sign-in failed.";
+      return { ok: false, message: msg };
+    }
+    write(stamp(r.data));
+    return { ok: true, session: read(), isNew: Boolean(r.data.user && r.data.user.created_at) };
+  }
+
   return { signIn, signUp, signOut, requireSession, session, user, token, refresh, api, apiBase: API,
-    changePassword, recover, setPassword, tokensFromHash, adopt };
+    changePassword, googleStart, googleFinish, recover, setPassword, tokensFromHash, adopt };
 })();

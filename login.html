@@ -6,22 +6,22 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Restaurant sign in — DigiMenu by Ogle.live</title>
 <meta name="theme-color" content="#F7941D">
-<link rel="icon" href="assets/favicon.ico?v=20261104v" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104v">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104v">
+<link rel="icon" href="assets/favicon.ico?v=20261104x" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104x">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104x">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261104v">
-<link rel="stylesheet" href="assets/site.css?v=20261104v">
+<link rel="stylesheet" href="assets/base.css?v=20261104x">
+<link rel="stylesheet" href="assets/site.css?v=20261104x">
 </head>
 <body class="auth-body">
 
 <header class="auth-top">
   <div class="wrap nav-in">
     <a class="nav-logo" href="index.html" aria-label="Indubaicity DigiMenu home">
-      <img src="assets/indubaicity-mark.png?v=20261104v" alt="Indubaicity">
+      <img src="assets/indubaicity-mark.png?v=20261104x" alt="Indubaicity">
       <span class="prod">DigiMenu</span>
     </a>
     <div class="nav-right">
@@ -42,6 +42,17 @@
       <div id="paneIn">
         <h1>Restaurant sign in</h1>
         <p class="lede">Manage your menu, download your QR and see the orders that came in.</p>
+
+        <button class="btn-google" type="button" id="btnGoogle">
+          <svg viewBox="0 0 48 48" aria-hidden="true" width="18" height="18">
+            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5Z"/>
+            <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-2.8-.4-4.1H24v8.4h12.5c-.3 2.1-1.6 5.2-4.7 7.3l7.6 5.9c4.5-4.2 6.7-10.3 6.7-17.5Z"/>
+            <path fill="#FBBC05" d="M10.4 28.7a14.5 14.5 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1Z"/>
+            <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.4-5.6l-7.6-5.9c-2 1.4-4.7 2.4-7.8 2.4-6.4 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48Z"/>
+          </svg>
+          Continue with Google
+        </button>
+        <div class="or-line"><span>or use your email</span></div>
 
         <form id="formIn" novalidate>
           <div class="field">
@@ -119,10 +130,10 @@
   </div>
 </main>
 
-<script src="assets/config.js?v=20261104v"></script>
-<script src="assets/auth.js?v=20261104v"></script>
-<script src="assets/data.js?v=20261104v"></script>
-<script src="assets/phone.js?v=20261104v"></script>
+<script src="assets/config.js?v=20261104x"></script>
+<script src="assets/auth.js?v=20261104x"></script>
+<script src="assets/data.js?v=20261104x"></script>
+<script src="assets/phone.js?v=20261104x"></script>
 <script>
 (function () {
   "use strict";
@@ -190,6 +201,27 @@
     }
     location.href = "app.html";
   });
+
+  /* Google sign-in: leave for Google, come back here with a code, trade it for a session. */
+  const btnGoogle = $("#btnGoogle");
+  if (btnGoogle) {
+    btnGoogle.addEventListener("click", () => {
+      btnGoogle.disabled = true;
+      btnGoogle.textContent = "Opening Google…";
+      window.Auth.googleStart();
+    });
+  }
+
+  (async function returningFromGoogle() {
+    const r = await window.Auth.googleFinish();
+    if (!r) return;
+    if (r.ok) { location.replace("app.html"); return; }
+    show("in");
+    $("#inEmailErr").textContent = r.message;
+    $("#inEmailErr").classList.remove("ok");
+    $("#inEmailErr").classList.add("show");
+    history.replaceState(null, "", "login.html");
+  })();
 
   /* One flow: email a temporary password, then require a new one after sign-in.
      No link, no token in the URL, no page that has to interpret a fragment. */
