@@ -24,20 +24,27 @@ const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 async function buildMenu(restaurantId) {
   /* 0006 adds is_featured: a deployment can land before the migration is run,
      so fall back to plain menu order instead of taking the page down */
-  let cats = await rest(
-    "menu_categories?restaurant_id=eq." + restaurantId +
-    "&select=id,name,position,is_featured&order=is_featured.desc,position.asc"
-  );
-  if (!cats.ok) {
-    cats = await rest(
-      "menu_categories?restaurant_id=eq." + restaurantId + "&select=id,name,position&order=position.asc"
+  /* Categories and items do not depend on each other, so ask for both at once —
+     each saved round trip is a full hop to Sydney. */
+  const catsPromise = (async () => {
+    let c = await rest(
+      "menu_categories?restaurant_id=eq." + restaurantId +
+      "&select=id,name,position,is_featured&order=is_featured.desc,position.asc"
     );
-  }
+    if (!c.ok) {
+      c = await rest(
+        "menu_categories?restaurant_id=eq." + restaurantId + "&select=id,name,position&order=position.asc"
+      );
+    }
+    return c;
+  })();
 
-  const items = await rest(
+  const itemsPromise = rest(
     "menu_items?restaurant_id=eq." + restaurantId +
     "&select=id,category_id,name,description,price,image_url,sold_out,position&order=position.asc"
   );
+
+  const [cats, items] = await Promise.all([catsPromise, itemsPromise]);
   if (!cats.ok || !items.ok) return null;
 
   const catIds = (cats.data || []).map((c) => c.id);
@@ -132,7 +139,7 @@ module.exports = async function handler(req, res) {
   }
 
   const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
-  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url";
+  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through";
   const query = (cols) =>
     "restaurants?handle=eq." + encodeURIComponent(handle) +
     "&status=eq.published&select=" + cols;
@@ -160,16 +167,23 @@ module.exports = async function handler(req, res) {
   }
 
   /* Is this restaurant entitled to take orders? The $2 plan is a menu, not a till.
-     Before migration 0007 the columns are absent — keep the old behaviour then,
-     rather than switching ordering off for everyone on deploy day. */
+     The columns arrive with 0007 — when they are present we already have them from
+     the query above; when they are not, ask once and keep the old behaviour. */
   let ordering = true;
   let planSeen = null;
-  const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
-  if (gate.ok && (gate.data || [])[0]) {
-    const g = gate.data[0];
-    planSeen = g.plan || "qr";
+  const hasGateCols = Object.prototype.hasOwnProperty.call(restaurant, "paid_through");
+  if (hasGateCols) {
+    planSeen = restaurant.plan || "qr";
     const today = new Date().toISOString().slice(0, 10);
-    ordering = planSeen === "order" && Boolean(g.paid_through && g.paid_through >= today);
+    ordering = planSeen === "order" && Boolean(restaurant.paid_through && restaurant.paid_through >= today);
+  } else {
+    const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
+    if (gate.ok && (gate.data || [])[0]) {
+      const g = gate.data[0];
+      planSeen = g.plan || "qr";
+      const today = new Date().toISOString().slice(0, 10);
+      ordering = planSeen === "order" && Boolean(g.paid_through && g.paid_through >= today);
+    }
   }
 
   /* short on purpose: a sold-out switch flipped mid-service must reach
