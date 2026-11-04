@@ -1734,13 +1734,8 @@
 
     /* ---------------- password ---------------- */
 
-    const me = window.Auth.user();
-    const temp = !!(me && me.user_metadata && me.user_metadata.must_change_password);
-    if (temp) {
-      $("#tempPwNote").hidden = false;
-      showView("docs");
-      toast("You are signed in with a temporary password — choose your own below.");
-    }
+    /* No forced prompt: the emailed password signs them in and works like any
+       other. "Your sign-in" sits in Documents for whenever they want to change it. */
 
     const pwSave = $("#pwSave");
     if (pwSave) {
