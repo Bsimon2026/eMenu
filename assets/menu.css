@@ -739,11 +739,12 @@ body.embed .hero { display: none !important; }
   gap: 9px;
   margin: 18px 0 4px;
   padding: 11px 14px;
-  border: 1px solid rgba(240, 72, 95, 0.28);
-  background: rgba(240, 72, 95, 0.07);
+  border: 1px solid rgba(240, 72, 95, 0.35);
+  background: #fdf1f3;
   border-radius: 10px;
   font-size: 13px;
-  color: #d8dee3;
+  color: #7d2434;
+  font-weight: 500;
 }
 .view-note svg { width: 15px; height: 15px; fill: #f0485f; flex: none; }
 .view-note[hidden] { display: none !important; }

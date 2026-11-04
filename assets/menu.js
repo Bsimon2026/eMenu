@@ -449,7 +449,16 @@
 
     const rn = r.name || "Menu";
     $("#heroName").textContent = rn;
-    $("#heroLogo").innerHTML = r.logoUrl ? '<img src="' + esc(r.logoUrl) + '" alt="">' : esc(initials(rn));
+    /* a logo URL can outlive its file — replaced uploads delete the old object.
+       Falling back to initials beats showing a broken-image box to a diner. */
+    const logoHost = $("#heroLogo");
+    if (r.logoUrl) {
+      logoHost.innerHTML = '<img src="' + esc(r.logoUrl) + '" alt="">';
+      const img = logoHost.querySelector("img");
+      img.addEventListener("error", () => { logoHost.textContent = initials(rn); });
+    } else {
+      logoHost.textContent = initials(rn);
+    }
 
     if (r.tagline) {
       $("#heroTagline").textContent = r.tagline;

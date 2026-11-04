@@ -100,10 +100,15 @@ module.exports = async function handler(req, res) {
   const row = (upd.data || [])[0] || {};
   const today = new Date().toISOString().slice(0, 10);
 
-  /* stopping payment must not leave a menu live that nobody has paid for */
+  /* stopping payment must not leave a menu live that nobody has paid for.
+     'trial' is the schema's word for "not published" — 'draft' is not a status
+     this database accepts, and a silent check violation would leave the menu up. */
   if (action === "stop" && row.status === "published") {
-    await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: { status: "draft" } });
-    row.status = "draft";
+    const off = await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: { status: "trial" }, prefer: "return=representation" });
+    if (!off.ok) {
+      return res.status(502).json({ ok: false, code: "UNPUBLISH_FAILED", detail: String(off.data).slice(0, 200) });
+    }
+    row.status = "trial";
   }
 
   return res.status(200).json({
