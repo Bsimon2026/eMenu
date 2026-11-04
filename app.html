@@ -6,15 +6,15 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard — DigiMenu</title>
 <meta name="theme-color" content="#12161A">
-<link rel="icon" href="assets/favicon.ico?v=20261104q" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104q">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104q">
+<link rel="icon" href="assets/favicon.ico?v=20261104t" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104t">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104t">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261104q">
-<link rel="stylesheet" href="assets/app.css?v=20261104q">
+<link rel="stylesheet" href="assets/base.css?v=20261104t">
+<link rel="stylesheet" href="assets/app.css?v=20261104t">
 </head>
 <body class="app-body">
 
@@ -23,7 +23,7 @@
 
   <aside class="side">
     <a class="side-logo" href="index.html" aria-label="Indubaicity">
-      <img src="assets/indubaicity-mark.png?v=20261104q" alt="Indubaicity">
+      <img src="assets/indubaicity-mark.png?v=20261104t" alt="Indubaicity">
       <span class="p">DigiMenu</span>
     </a>
 
@@ -156,7 +156,7 @@
         <div class="card">
           <div class="import-tabs" role="tablist">
             <button role="tab" aria-selected="true" data-tab="file">Photo, PDF or spreadsheet</button>
-            <button role="tab" aria-selected="false" data-tab="link">Talabat link</button>
+            <button role="tab" aria-selected="false" data-tab="link">Import from a link</button>
             <button role="tab" aria-selected="false" data-tab="sheet">Excel or CSV</button>
           </div>
 
@@ -164,7 +164,7 @@
             <div id="tabFile">
               <div class="drop" id="dropZone" tabindex="0" role="button" aria-label="Upload a menu photo or PDF">
                 <div class="dt">Drop your menu here</div>
-                <div class="dd">JPG, PNG, PDF or XLSX, up to 20 MB. One page or the whole menu.</div>
+                <div class="dd">JPG, PNG or WebP. One page at a time — shoot it straight on.</div>
                 <input type="file" id="fileMenu" accept="image/*,application/pdf,.xlsx,.xls,.csv" hidden>
                 <div style="margin-top:14px"><span class="btn btn-outline btn-sm">Choose a file</span></div>
               </div>
@@ -173,15 +173,15 @@
             <div id="tabLink" hidden>
               <div class="field">
                 <label for="partnerUrl">Menu page address</label>
-                <input class="input" id="partnerUrl" placeholder="https://www.talabat.com/uae/restaurant/…">
-                <div class="hint">Paste your Talabat link — the brand page or the branch page, either works. We read the categories, dishes, prices and photos.</div>
+                <input class="input" id="partnerUrl" placeholder="https://…/restaurant/menu">
+                <div class="hint">Paste the restaurant's menu page link — the main page or a branch page, either works. We read the categories, dishes, prices and photos. Only public pages can be read.</div>
               </div>
               <button class="btn btn-brand" type="button" id="importLink">Read the page</button>
 
               <div id="importError" hidden style="margin-top:14px;padding:14px 16px;border:1px solid #f0d7bd;background:#fff8f1;border-radius:10px;font-size:13.5px"></div>
 
               <div class="note" id="linkNote" style="margin-top:14px">
-                <b>Deliveroo and noon</b> answer automated readers with a Cloudflare block, so those links cannot be read — the reader says so immediately and offers the photo upload instead, which always works.
+                Some sites answer automated readers with a bot block, so those links cannot be read — the reader says so straight away and offers the photo upload instead, which always works.
               </div>
             </div>
 
@@ -565,12 +565,12 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="assets/config.js?v=20261104q"></script>
-<script src="assets/auth.js?v=20261104q"></script>
-<script src="assets/data.js?v=20261104q"></script>
-<script src="assets/phone.js?v=20261104q"></script>
-<script src="assets/vendor/xlsx.full.min.js?v=20261104q"></script>
-<script src="assets/vendor/qrcode-generator.js?v=20261104q"></script>
-<script src="assets/app.js?v=20261104q"></script>
+<script src="assets/config.js?v=20261104t"></script>
+<script src="assets/auth.js?v=20261104t"></script>
+<script src="assets/data.js?v=20261104t"></script>
+<script src="assets/phone.js?v=20261104t"></script>
+<script src="assets/vendor/xlsx.full.min.js?v=20261104t"></script>
+<script src="assets/vendor/qrcode-generator.js?v=20261104t"></script>
+<script src="assets/app.js?v=20261104t"></script>
 </body>
 </html>

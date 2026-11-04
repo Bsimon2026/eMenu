@@ -933,18 +933,15 @@
   ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("dragover"); }));
   drop.addEventListener("drop", (e) => {
     const f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) startScan("your menu photo");
+    if (f) startScan(f);
   });
   fileMenu.addEventListener("change", (e) => {
     const f = e.target.files && e.target.files[0];
-    if (f) startScan(f.name);
+    if (f) startScan(f);
   });
 
-  /* The link reader is real: it calls the deployed API, which reads Talabat's
-     menu payload. Photo reading is still simulated, and says so on screen. */
-  const API_BASE = /(^|\.)vercel\.app$/i.test(location.hostname)
-    ? ""
-    : "https://digimenu-blush.vercel.app";
+  /* The API lives on the same host as the page — no cross-host hop, no CORS. */
+  const API_BASE = "";
 
   let pendingImport = null;
   let scanning = false;
@@ -1033,6 +1030,7 @@
       data.withImages + " with photos" +
       (data.restaurant && data.restaurant.name ? " · read from " + data.restaurant.name : "");
 
+    $("#scan").hidden = true;          /* the progress panel has done its job */
     $("#review").hidden = false;
     $("#protoNote").hidden = false;
     $("#protoNote").innerHTML =
@@ -1070,19 +1068,65 @@
     if (close) close.addEventListener("click", () => { box.hidden = true; });
   }
 
-  /* the photo tab is still a simulation and says so */
-  function startScan(label) {
+  /* A real read: shrink the photo in the browser, send it to our endpoint, and let
+     the same review screen do the rest — nothing is written until the owner checks it. */
+  async function startScan(file) {
     if (scanning) return;
+    if (!file) return;
+    if (/^application\/pdf$/i.test(file.type)) {
+      toast("PDF reading is not built yet — photograph the page and upload that.");
+      return;
+    }
+    if (!/^image\//i.test(file.type)) {
+      toast("Use a photo — JPG, PNG or WebP.");
+      return;
+    }
+
     scanning = true;
     scanOn();
-    toast("Reading " + label);
-    scanProgress(520).then(() => {
-      pendingImport = null;
-      $("#protoNote").hidden = false;
-      $("#protoNote").innerHTML =
-        "<b>Prototype.</b> Photo reading is not connected in this build. The rows below are sample data, not what a model returned.";
-      showSampleReview();
-      scanning = false;
+    toast("Reading " + (file.name || "your photo"));
+
+    const progress = scanProgress(700);
+    let data = null;
+    try {
+      const dataUrl = await shrinkPhoto(file);
+      const token = await window.Auth.token();
+      const res = await fetch(API_BASE + "/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ image: dataUrl })
+      });
+      data = await res.json();
+      if (!res.ok && data && data.code === "NO_SESSION") location.replace("login.html");
+    } catch (e) {
+      data = { ok: false, message: "We could not read that photo. Check your connection and try again." };
+    }
+
+    await progress;
+    scanning = false;
+
+    if (data && data.ok) showImportResult(data);
+    else showImportFailure(data);
+  }
+
+  /** Downscale to something a model reads well and a 4.5 MB body can carry. */
+  function shrinkPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const max = 1600;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("IMAGE")); };
+      img.src = url;
     });
   }
 

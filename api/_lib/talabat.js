@@ -152,7 +152,7 @@ async function fetchPage(url, opts = {}) {
   }
 
   if (!res.ok) {
-    return { ok: false, error: { ok: false, code: "HTTP_" + res.status, message: "Talabat answered " + res.status } };
+    return { ok: false, error: { ok: false, code: "HTTP_" + res.status, message: "The site answered " + res.status } };
   }
 
   const html = await res.text();
@@ -166,7 +166,7 @@ async function fetchPage(url, opts = {}) {
 async function importTalabat(url, opts = {}) {
   const target = String(url || "").trim();
   if (!isTalabatUrl(target)) {
-    return { ok: false, code: "NOT_TALABAT", message: "That is not a Talabat page URL." };
+    return { ok: false, code: "NOT_TALABAT", message: "That link is not a menu page the reader can open." };
   }
 
   const first = await fetchPage(target, opts);

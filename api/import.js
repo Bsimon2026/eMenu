@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
       code: "PROTECTED",
       source: "deliveroo",
       message:
-        "Deliveroo answers automated requests with a Cloudflare challenge, so a server fetch cannot read the menu.",
+        "That site blocks automated readers, so the menu cannot be fetched from here.",
       fallback: "photo",
       fallbackMessage: "Ask the restaurant to upload a photo or PDF of their menu."
     });
@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       code: "NOT_IMPLEMENTED",
       source: "noon",
-      message: "noon Food import is not implemented yet — I have not verified that their menu payload is reachable.",
+      message: "That site is not one the reader can open.",
       fallback: "photo",
       fallbackMessage: "Ask the restaurant to upload a photo or PDF of their menu."
     });
@@ -120,7 +120,7 @@ module.exports = async function handler(req, res) {
     ok: false,
     code: "UNSUPPORTED_SOURCE",
     source: host,
-    message: "We only import Talabat automatically today.",
+    message: "Only public menu pages on supported sites can be read. Upload a photo of the menu and we will read that instead.",
     fallback: "photo",
     fallbackMessage: "Ask the restaurant to upload a photo or PDF of their menu."
   });
