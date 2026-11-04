@@ -126,6 +126,29 @@ window.Auth = (function () {
     return read();
   }
 
+  /** Change the password of the signed-in user, and clear the "temporary" flag. */
+  async function changePassword(password, clearTempFlag) {
+    const t = await token();
+    if (!t) return { ok: false, message: "Sign in again — that session has expired." };
+    const s = read();
+    const meta = Object.assign({}, (s && s.user && s.user.user_metadata) || {});
+    if (clearTempFlag) meta.must_change_password = false;
+    const res = await fetch(SUPA + "/auth/v1/user", {
+      method: "PUT",
+      headers: { apikey: ANON, Authorization: "Bearer " + t, "Content-Type": "application/json" },
+      body: JSON.stringify({ password, data: meta })
+    });
+    let data = null;
+    const text = await res.text();
+    if (text) { try { data = JSON.parse(text); } catch (e) { data = null; } }
+    if (!res.ok) {
+      const raw = (data && (data.msg || data.message || data.error_description)) || "Could not change the password.";
+      return { ok: false, message: /at least|weak|short/i.test(raw) ? "Use at least 8 characters." : raw };
+    }
+    if (s && s.user && data) { s.user.user_metadata = data.user_metadata || meta; write(s); }
+    return { ok: true };
+  }
+
   async function refresh() {
     const s = read();
     if (!s || !s.refresh_token) return null;
@@ -175,5 +198,5 @@ window.Auth = (function () {
   }
 
   return { signIn, signUp, signOut, requireSession, session, user, token, refresh, api, apiBase: API,
-    recover, setPassword, tokensFromHash, adopt };
+    changePassword, recover, setPassword, tokensFromHash, adopt };
 })();

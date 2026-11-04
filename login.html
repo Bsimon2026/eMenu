@@ -6,22 +6,22 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Restaurant sign in — DigiMenu by Ogle.live</title>
 <meta name="theme-color" content="#F7941D">
-<link rel="icon" href="assets/favicon.ico?v=20261104t" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104t">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104t">
+<link rel="icon" href="assets/favicon.ico?v=20261104u" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104u">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104u">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261104t">
-<link rel="stylesheet" href="assets/site.css?v=20261104t">
+<link rel="stylesheet" href="assets/base.css?v=20261104u">
+<link rel="stylesheet" href="assets/site.css?v=20261104u">
 </head>
 <body class="auth-body">
 
 <header class="auth-top">
   <div class="wrap nav-in">
     <a class="nav-logo" href="index.html" aria-label="Indubaicity DigiMenu home">
-      <img src="assets/indubaicity-mark.png?v=20261104t" alt="Indubaicity">
+      <img src="assets/indubaicity-mark.png?v=20261104u" alt="Indubaicity">
       <span class="prod">DigiMenu</span>
     </a>
     <div class="nav-right">
@@ -101,17 +101,7 @@
         </form>
       </div>
 
-      <!-- choose a new password — reached from a reset link -->
-      <div id="paneReset" hidden>
-        <h1>Choose a new password</h1>
-        <p class="lede">You opened a reset link. Set the password you will use from now on.</p>
-
-        <form id="formReset" novalidate>
-          <div class="field">
-            <label for="resetPass">New password</label>
-            <input class="input" id="resetPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
-            <div class="error-msg" id="resetPassErr">Use at least 8 characters.</div>
-          </div>
+    </div>
           <div class="field">
             <label for="resetPass2">Type it again</label>
             <input class="input" id="resetPass2" type="password" autocomplete="new-password" placeholder="Same password">
@@ -129,10 +119,10 @@
   </div>
 </main>
 
-<script src="assets/config.js?v=20261104t"></script>
-<script src="assets/auth.js?v=20261104t"></script>
-<script src="assets/data.js?v=20261104t"></script>
-<script src="assets/phone.js?v=20261104t"></script>
+<script src="assets/config.js?v=20261104u"></script>
+<script src="assets/auth.js?v=20261104u"></script>
+<script src="assets/data.js?v=20261104u"></script>
+<script src="assets/phone.js?v=20261104u"></script>
 <script>
 (function () {
   "use strict";
@@ -143,7 +133,6 @@
   function show(mode) {
     $("#paneIn").hidden = mode !== "in";
     $("#paneUp").hidden = mode !== "up";
-    $("#paneReset").hidden = mode !== "reset";
     $$(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === mode)));
   }
 
@@ -152,17 +141,6 @@
 
   if (new URLSearchParams(location.search).get("mode") === "up") show("up");
 
-  /* A reset link arrives here with its tokens in the fragment. Supabase sends it
-     to the Site URL, which is the landing page, so index.html forwards the hash on. */
-  var fromHash = window.Auth.tokensFromHash(location.hash);
-  var resetToken = (fromHash && fromHash.access_token) || null;
-  if (resetToken) {
-    show("reset");
-  } else if (fromHash && fromHash.error) {
-    show("in");
-    $("#inEmailErr").textContent = "That reset link has already been used or has expired. Ask for a new one.";
-    $("#inEmailErr").classList.add("show");
-  }
 
   // the country list must exist before anyone types, signed in or not
   $("#upCC").innerHTML = DigiPhone.options("971");
@@ -213,8 +191,8 @@
     location.href = "app.html";
   });
 
-  /* Ask Supabase for the reset email — but check the account exists first, so
-     nobody is told "a link is on its way" when there is no account to send it to. */
+  /* One flow: email a temporary password, then require a new one after sign-in.
+     No link, no token in the URL, no page that has to interpret a fragment. */
   $("#forgot").addEventListener("click", async () => {
     const em = $("#inEmail").value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em)) {
@@ -225,66 +203,39 @@
     }
     const b = $("#forgot"), label = b.textContent;
     b.disabled = true;
-    b.textContent = "Checking…";
+    b.textContent = "Sending…";
 
-    let exists = null;
+    let data = null;
     try {
-      const r = await fetch("/api/account?email=" + encodeURIComponent(em));
-      const d = await r.json();
-      if (d && typeof d.exists === "boolean") exists = d.exists;
-    } catch (e) { /* network trouble: fall back to sending blind */ }
+      const r = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: em })
+      });
+      data = await r.json();
+    } catch (e) { data = { ok: false, message: "We could not reach the server. Check your connection." }; }
 
-    if (exists === false) {
-      b.disabled = false;
-      b.textContent = label;
+    b.disabled = false;
+    b.textContent = label;
+
+    if (!data || !data.ok) {
       mark($("#inEmail"), $("#inEmailErr"), true);
-      $("#inEmailErr").textContent = "There is no account for " + em + ". Use “Create account” to set one up.";
+      $("#inEmailErr").textContent = (data && data.message) || "That did not work. Try again.";
       $("#inEmailErr").classList.remove("ok");
       $("#inEmailErr").classList.add("show");
       return;
     }
-
-    b.textContent = "Sending…";
-    await window.Auth.recover(em);
-    b.disabled = false;
-    b.textContent = label;
     mark($("#inEmail"), $("#inEmailErr"), false);
-    $("#inEmailErr").textContent = "Reset link sent to " + em + ". Open it and choose a new password.";
-    $("#inEmailErr").classList.add("ok");
+    if (data.exists === false) {
+      $("#inEmailErr").textContent = "There is no account for " + em + ". Use “Create account” to set one up.";
+      $("#inEmailErr").classList.remove("ok");
+    } else {
+      $("#inEmailErr").textContent = "A temporary password is on its way to " + em + ". Sign in with it and choose your own straight away.";
+      $("#inEmailErr").classList.add("ok");
+    }
     $("#inEmailErr").classList.add("show");
   });
 
-  /* Saving the new password also signs them in: the link's token is a real session. */
-  $("#formReset").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const p1 = $("#resetPass"), p2 = $("#resetPass2");
-    let ok = true;
-    ok = mark(p1, $("#resetPassErr"), p1.value.length < 8) && ok;
-    ok = mark(p2, $("#resetPass2Err"), p2.value !== p1.value) && ok;
-    if (!ok) return;
-    if (!resetToken) { show("in"); return; }
-
-    const btn = $("#formReset button[type=submit]"), label = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Saving…";
-    const r = await window.Auth.setPassword(resetToken, p1.value);
-    btn.disabled = false;
-    btn.textContent = label;
-
-    if (!r.ok) {
-      $("#resetPassErr").textContent = r.message;
-      $("#resetPassErr").classList.add("show");
-      return;
-    }
-    window.Auth.adopt({
-      access_token: resetToken,
-      refresh_token: fromHash.refresh_token,
-      expires_in: fromHash.expires_in,
-      user: r.user
-    });
-    history.replaceState(null, "", "login.html");
-    location.href = "app.html";
-  });
 
   $("#formUp").addEventListener("submit", async (e) => {
     e.preventDefault();

@@ -1731,5 +1731,49 @@
     const hash = (location.hash || "").replace("#", "");
     renderOverview();
     showView(VIEW_TITLES[hash] ? hash : "overview");
+
+    /* ---------------- password ---------------- */
+
+    const me = window.Auth.user();
+    const temp = !!(me && me.user_metadata && me.user_metadata.must_change_password);
+    if (temp) {
+      $("#tempPwNote").hidden = false;
+      showView("docs");
+      toast("You are signed in with a temporary password — choose your own below.");
+    }
+
+    const pwSave = $("#pwSave");
+    if (pwSave) {
+      pwSave.addEventListener("click", async () => {
+        const a = $("#newPass"), b = $("#newPass2");
+        let ok = true;
+        ok = markErr(a, $("#newPassErr"), a.value.length < 8) && ok;
+        ok = markErr(b, $("#newPass2Err"), b.value !== a.value) && ok;
+        if (!ok) return;
+        const label = pwSave.textContent;
+        pwSave.disabled = true;
+        pwSave.textContent = "Saving…";
+        const r = await window.Auth.changePassword(a.value, true);
+        pwSave.disabled = false;
+        pwSave.textContent = label;
+        if (!r.ok) {
+          a.classList.add("err");
+          $("#newPassErr").textContent = r.message;
+          $("#newPassErr").classList.add("show");
+          return;
+        }
+        a.value = ""; b.value = "";
+        $("#newPassErr").classList.remove("show");
+        $("#newPass2Err").classList.remove("show");
+        $("#tempPwNote").hidden = true;
+        toast("Password changed — use the new one next time you sign in.");
+      });
+    }
+
+    function markErr(input, errEl, bad) {
+      input.classList.toggle("err", !!bad);
+      errEl.classList.toggle("show", !!bad);
+      return !bad;
+    }
   })();
 })();

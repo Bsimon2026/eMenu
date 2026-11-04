@@ -6,15 +6,15 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard — DigiMenu</title>
 <meta name="theme-color" content="#12161A">
-<link rel="icon" href="assets/favicon.ico?v=20261104t" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104t">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104t">
+<link rel="icon" href="assets/favicon.ico?v=20261104u" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104u">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104u">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261104t">
-<link rel="stylesheet" href="assets/app.css?v=20261104t">
+<link rel="stylesheet" href="assets/base.css?v=20261104u">
+<link rel="stylesheet" href="assets/app.css?v=20261104u">
 </head>
 <body class="app-body">
 
@@ -23,7 +23,7 @@
 
   <aside class="side">
     <a class="side-logo" href="index.html" aria-label="Indubaicity">
-      <img src="assets/indubaicity-mark.png?v=20261104t" alt="Indubaicity">
+      <img src="assets/indubaicity-mark.png?v=20261104u" alt="Indubaicity">
       <span class="p">DigiMenu</span>
     </a>
 
@@ -277,6 +277,35 @@
 
       <!-- ---------------- documents ---------------- -->
       <section class="content-in" data-pane="docs" hidden>
+        <div class="card" id="passwordCard">
+          <div class="card-head">
+            <div>
+              <h2>Your sign-in</h2>
+              <p>Change the password you use for this dashboard.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="note" id="tempPwNote" hidden style="margin-bottom:14px">
+              You signed in with a temporary password. Choose your own now — the temporary one stops being valid
+              as soon as you save.
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="newPass">New password</label>
+                <input class="input" id="newPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+                <div class="error-msg" id="newPassErr">Use at least 8 characters.</div>
+              </div>
+              <div class="field">
+                <label for="newPass2">Type it again</label>
+                <input class="input" id="newPass2" type="password" autocomplete="new-password" placeholder="Same password">
+                <div class="error-msg" id="newPass2Err">Both passwords must match.</div>
+              </div>
+            </div>
+            <button class="btn btn-brand" type="button" id="pwSave" style="margin-top:6px">Save password</button>
+          </div>
+        </div>
+
+
         <div class="card">
           <div class="card-head">
             <div>
@@ -565,12 +594,12 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="assets/config.js?v=20261104t"></script>
-<script src="assets/auth.js?v=20261104t"></script>
-<script src="assets/data.js?v=20261104t"></script>
-<script src="assets/phone.js?v=20261104t"></script>
-<script src="assets/vendor/xlsx.full.min.js?v=20261104t"></script>
-<script src="assets/vendor/qrcode-generator.js?v=20261104t"></script>
-<script src="assets/app.js?v=20261104t"></script>
+<script src="assets/config.js?v=20261104u"></script>
+<script src="assets/auth.js?v=20261104u"></script>
+<script src="assets/data.js?v=20261104u"></script>
+<script src="assets/phone.js?v=20261104u"></script>
+<script src="assets/vendor/xlsx.full.min.js?v=20261104u"></script>
+<script src="assets/vendor/qrcode-generator.js?v=20261104u"></script>
+<script src="assets/app.js?v=20261104u"></script>
 </body>
 </html>
