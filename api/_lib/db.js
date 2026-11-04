@@ -52,6 +52,22 @@ async function userFromToken(token) {
   }
 }
 
+/** Ask the Auth admin API something with the service key. Server-side only. */
+async function adminAuth(path) {
+  try {
+    const res = await fetch(URL_BASE + "/auth/v1/admin" + path, {
+      headers: { apikey: SECRET, Authorization: "Bearer " + SECRET },
+      signal: AbortSignal.timeout(15000)
+    });
+    const text = await res.text();
+    let data = null;
+    if (text) { try { data = JSON.parse(text); } catch (e) { data = null; } }
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    return { ok: false, status: 0, data: null };
+  }
+}
+
 function bearer(req) {
   const h = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
   const m = /^Bearer\s+(.+)$/i.exec(String(h).trim());
@@ -66,4 +82,4 @@ function cors(res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 }
 
-module.exports = { rest, userFromToken, bearer, cors, configured: Boolean(URL_BASE && SECRET) };
+module.exports = { rest, userFromToken, adminAuth, bearer, cors, configured: Boolean(URL_BASE && SECRET) };

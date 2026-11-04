@@ -6,22 +6,22 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Restaurant sign in — DigiMenu by Ogle.live</title>
 <meta name="theme-color" content="#F7941D">
-<link rel="icon" href="assets/favicon.ico?v=20261104d" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104d">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104d">
+<link rel="icon" href="assets/favicon.ico?v=20261104e" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261104e">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261104e">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261104d">
-<link rel="stylesheet" href="assets/site.css?v=20261104d">
+<link rel="stylesheet" href="assets/base.css?v=20261104e">
+<link rel="stylesheet" href="assets/site.css?v=20261104e">
 </head>
 <body class="auth-body">
 
 <header class="auth-top">
   <div class="wrap nav-in">
     <a class="nav-logo" href="index.html" aria-label="Indubaicity DigiMenu home">
-      <img src="assets/indubaicity-mark.png?v=20261104d" alt="Indubaicity">
+      <img src="assets/indubaicity-mark.png?v=20261104e" alt="Indubaicity">
       <span class="prod">DigiMenu</span>
     </a>
     <div class="nav-right">
@@ -129,10 +129,10 @@
   </div>
 </main>
 
-<script src="assets/config.js?v=20261104d"></script>
-<script src="assets/auth.js?v=20261104d"></script>
-<script src="assets/data.js?v=20261104d"></script>
-<script src="assets/phone.js?v=20261104d"></script>
+<script src="assets/config.js?v=20261104e"></script>
+<script src="assets/auth.js?v=20261104e"></script>
+<script src="assets/data.js?v=20261104e"></script>
+<script src="assets/phone.js?v=20261104e"></script>
 <script>
 (function () {
   "use strict";
@@ -213,8 +213,8 @@
     location.href = "app.html";
   });
 
-  /* Actually ask Supabase for the reset email — this button used to claim one
-     was sent without calling anything. */
+  /* Ask Supabase for the reset email — but check the account exists first, so
+     nobody is told "a link is on its way" when there is no account to send it to. */
   $("#forgot").addEventListener("click", async () => {
     const em = $("#inEmail").value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em)) {
@@ -225,12 +225,32 @@
     }
     const b = $("#forgot"), label = b.textContent;
     b.disabled = true;
+    b.textContent = "Checking…";
+
+    let exists = null;
+    try {
+      const r = await fetch("/api/account?email=" + encodeURIComponent(em));
+      const d = await r.json();
+      if (d && typeof d.exists === "boolean") exists = d.exists;
+    } catch (e) { /* network trouble: fall back to sending blind */ }
+
+    if (exists === false) {
+      b.disabled = false;
+      b.textContent = label;
+      mark($("#inEmail"), $("#inEmailErr"), true);
+      $("#inEmailErr").textContent = "There is no account for " + em + ". Use “Create account” to set one up.";
+      $("#inEmailErr").classList.remove("ok");
+      $("#inEmailErr").classList.add("show");
+      return;
+    }
+
     b.textContent = "Sending…";
     await window.Auth.recover(em);
     b.disabled = false;
     b.textContent = label;
-    $("#inEmailErr").classList.remove("show");
-    $("#inEmailErr").textContent = "If " + em + " has an account, a reset link is on its way. Open it and choose a new password.";
+    mark($("#inEmail"), $("#inEmailErr"), false);
+    $("#inEmailErr").textContent = "Reset link sent to " + em + ". Open it and choose a new password.";
+    $("#inEmailErr").classList.add("ok");
     $("#inEmailErr").classList.add("show");
   });
 
