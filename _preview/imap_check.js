@@ -62,7 +62,7 @@ sock.on("data", (c) => {
   } else if (phase === 2) {
     const m = /\* (\d+) EXISTS/.exec(chunk);
     results.push("INBOX has " + (m ? m[1] : "?") + " messages");
-    send('a3 SEARCH SUBJECT "' + TERM + '"');
+    send(TERM === "*" ? "a3 SEARCH ALL" : 'a3 SEARCH SUBJECT "' + TERM + '"');
     phase = 3;
   } else if (phase === 3) {
     const m = /\* SEARCH ([0-9 ]*)/.exec(chunk);
