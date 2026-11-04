@@ -150,6 +150,7 @@ module.exports = async function handler(req, res) {
     total,
     items: lines.length,
     linesSaved: lineRes.ok,
-    notified
+    notified,
+    mailReady: mail.ready
   });
 };
