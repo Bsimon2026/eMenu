@@ -539,7 +539,7 @@ html.embed-root::-webkit-scrollbar { width: 0; height: 0; }
   display: flex;
   align-items: flex-end;
   background:
-    radial-gradient(130% 150% at 8% 0%, #f7941d 0%, #b9570f 52%, #3a1e08 100%);
+    radial-gradient(130% 150% at 8% 0%, #f0485f 0%, #a5273a 52%, #2c1418 100%);
 }
 
 .hero.has-media { background: #131416; }
