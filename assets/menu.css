@@ -730,3 +730,28 @@ body.embed .hero { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .item .thumb.loading { animation: none; }
 }
+
+
+/* ---------------- view-only menu (the $2 plan) ---------------- */
+.view-note {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0 4px;
+  padding: 11px 14px;
+  border: 1px solid rgba(240, 72, 95, 0.28);
+  background: rgba(240, 72, 95, 0.07);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #d8dee3;
+}
+.view-note svg { width: 15px; height: 15px; fill: #f0485f; flex: none; }
+.view-note[hidden] { display: none !important; }
+
+body.view-only .cart,
+body.view-only #mobileBar,
+body.view-only .add { display: none !important; }
+
+/* with no cart rail the menu column can breathe */
+body.view-only .mwrap { grid-template-columns: minmax(0, 1fr); }
+body.view-only #sheet, body.view-only #sheetBack { display: none !important; }

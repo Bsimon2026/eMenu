@@ -63,6 +63,27 @@ module.exports = async function handler(req, res) {
     return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No published menu at that address." });
   }
 
+  /* The paywall, enforced where the order is actually written. A restaurant on
+     the menu-only plan cannot take orders, whatever its page happens to show. */
+  const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
+  if (gate.ok && (gate.data || [])[0] && (gate.data[0].plan || "qr") !== "order") {
+    return res.status(403).json({
+      ok: false,
+      code: "ORDERING_NOT_INCLUDED",
+      message: "This restaurant's menu is view-only. Call them to order."
+    });
+  }
+  if (gate.ok && (gate.data || [])[0]) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (!gate.data[0].paid_through || gate.data[0].paid_through < today) {
+      return res.status(403).json({
+        ok: false,
+        code: "SUBSCRIPTION_INACTIVE",
+        message: "Ordering is paused for this restaurant. Please call them."
+      });
+    }
+  }
+
   /* the total is recomputed here: a client-side total is a claim, not a fact */
   let total = 0;
   const rows = items.map((it) => {

@@ -159,6 +159,19 @@ module.exports = async function handler(req, res) {
     return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
   }
 
+  /* Is this restaurant entitled to take orders? The $2 plan is a menu, not a till.
+     Before migration 0007 the columns are absent — keep the old behaviour then,
+     rather than switching ordering off for everyone on deploy day. */
+  let ordering = true;
+  let planSeen = null;
+  const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
+  if (gate.ok && (gate.data || [])[0]) {
+    const g = gate.data[0];
+    planSeen = g.plan || "qr";
+    const today = new Date().toISOString().slice(0, 10);
+    ordering = planSeen === "order" && Boolean(g.paid_through && g.paid_through >= today);
+  }
+
   /* short on purpose: a sold-out switch flipped mid-service must reach
      guests in seconds, not minutes */
   res.setHeader("Cache-Control", "public, s-maxage=15, stale-while-revalidate=45");
@@ -167,7 +180,9 @@ module.exports = async function handler(req, res) {
     restaurant: {
       name: restaurant.name,
       handle: restaurant.handle,
-      purposes: restaurant.purposes || [],
+      purposes: ordering ? (restaurant.purposes || []) : [],
+      ordering,
+      plan: planSeen,
       whatsapp: restaurant.whatsapp_e164,
       city: restaurant.city || "",
       accent: restaurant.accent || "#f7941d",

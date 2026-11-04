@@ -142,6 +142,26 @@ module.exports = async function handler(req, res) {
           missing
         });
       }
+
+      /* The paywall. A menu can be built in full for nothing, but it does not
+         become public until a paid period exists. Checked here rather than in
+         the dashboard, so no client can publish around it.
+         Until migration 0007 runs the column is absent — then behave as before. */
+      const hasPlanColumns = Boolean(existing && Object.prototype.hasOwnProperty.call(existing, "paid_through"));
+      const paidThrough = existing && existing.paid_through;
+      const today = new Date().toISOString().slice(0, 10);
+      if (hasPlanColumns && (!paidThrough || paidThrough < today)) {
+        const plan = (existing && existing.plan) || "qr";
+        const price = plan === "order" ? { m: 19, y: 190 } : { m: 2, y: 20 };
+        return res.status(402).json({
+          ok: false,
+          code: "PAYMENT_REQUIRED",
+          message: "Your menu is ready. Pay $" + (plan === "order" ? "19/month or $190/year" : "2/month or $20/year") +
+            " by transfer or on WhatsApp — connect@indubaicity.com — and it goes live the same day.",
+          plan,
+          prices: price
+        });
+      }
     }
     patch.status = body.status;
     if (body.status === "published") patch.published_at = new Date().toISOString();

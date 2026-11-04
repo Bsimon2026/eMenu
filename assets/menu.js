@@ -456,7 +456,15 @@
       $("#heroTagline").hidden = false;
     }
 
-    const bits = [];
+    /* The $2 plan is a menu, not a till. When ordering is not included there is no
+     cart to show — the page becomes a clean read-only menu. */
+  if (r.ordering === false) {
+    document.body.classList.add("view-only");
+    const note = document.getElementById("viewOnlyNote");
+    if (note) note.hidden = false;
+  }
+
+  const bits = [];
     if (r.address) bits.push(r.address);
     else if (r.city) bits.push(r.city);
     (r.purposes || []).forEach((p) => {
