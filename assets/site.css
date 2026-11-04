@@ -88,7 +88,7 @@
 }
 
 .mnav-logo { display: flex; align-items: center; gap: 11px; }
-.mnav-logo img { height: 25px; width: auto; }
+.mnav-logo img { height: 34px; width: auto; }
 
 .mnav-logo .p {
   font-family: var(--display);
@@ -673,7 +673,7 @@
 
 .mfoot-in { display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
 .mfoot-brand { max-width: 320px; }
-.mfoot-brand img { height: 22px; margin-bottom: 14px; }
+.mfoot-brand img { height: 40px; margin-bottom: 14px; }
 .mfoot-brand p { font-size: 13px; line-height: 1.6; }
 
 .mfoot-cols { display: flex; gap: 68px; flex-wrap: wrap; }
@@ -717,7 +717,7 @@ html { scrollbar-color: #3a3d42 var(--night); }
 .auth-top { border-bottom: 1px solid var(--day-line); background: #fff; }
 .auth-top .nav-in { height: 64px; display: flex; align-items: center; gap: 11px; }
 .auth-top .nav-logo { display: flex; align-items: center; gap: 11px; }
-.auth-top .nav-logo img { height: 24px; width: auto; }
+.auth-top .nav-logo img { height: 32px; width: auto; }
 .auth-top .nav-logo .prod {
   font-family: var(--display);
   font-size: 13px;

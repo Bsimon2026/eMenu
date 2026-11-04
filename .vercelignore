@@ -4,6 +4,7 @@
 # the site needs.
 _preview/
 _deploy/
+logo/
 db/
 tools/
 server.js
