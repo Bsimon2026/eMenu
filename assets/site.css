@@ -934,9 +934,9 @@ html { scrollbar-color: #3a3d42 var(--night); }
 /* ---------------- pricing: two plans, no comparison table ---------------- */
 .plans {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  max-width: 880px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  max-width: 1120px;
   align-items: stretch;
 }
 .plan {
@@ -1018,9 +1018,37 @@ html { scrollbar-color: #3a3d42 var(--night); }
 .plan li.off svg { fill: #b9b3a6; }
 .plan .cta { margin-top: auto; text-align: center; }
 
+/* the half-price line under the ordering plan */
+.plan .halfnote {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(240, 72, 95, 0.08);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--brand-deep);
+  text-decoration: none;
+}
+.plan .halfnote b { font-weight: 600; }
+.plan .halfnote:hover { background: rgba(240, 72, 95, 0.14); }
+
+@media (max-width: 1060px) {
+  .plans { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan.launch { grid-column: 1 / -1; }
+}
+
 @media (max-width: 760px) {
   .plans { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .plan.launch { grid-column: auto; }
   .plan { padding: 22px 20px 20px; }
   .plan .who { min-height: 0; }
   .plan .price b { font-size: 34px; }
+}
+
+@media (min-width: 761px) and (max-width: 1060px) {
+  .plan.launch ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 26px;
+  }
 }
