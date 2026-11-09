@@ -94,15 +94,15 @@
   const rail = $("#rail");
   rail.innerHTML = cats.map((c) =>
     '<a href="#c-' + c.id + '" data-cat="' + c.id + '"' + (c.featured ? ' class="feat"' : "") + ">" +
-    (c.featured ? '<span class="star" aria-hidden="true">★</span> ' : "") + c.name + "</a>").join("");
+    (c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : "") + c.name + "</a>").join("");
 
   $("#sections").innerHTML = cats.map((c) => {
     const available = c.items.filter((i) => !i.soldOut).length;
     return `
       <section class="sec${c.featured ? " featured" : ""}" id="c-${c.id}">
         <div class="sec-head">
-          <h2>${c.featured ? '<span class="star" aria-hidden="true">★</span> ' : ""}${c.name}</h2>
-          <span>${available} of ${c.items.length} available</span>
+          <h2>${c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : ""}${c.name}</h2>
+          <span>${available === c.items.length ? c.items.length + (c.items.length === 1 ? " dish" : " dishes") : available + " of " + c.items.length + " available"}</span>
         </div>
         <div class="items">
           ${(() => {
@@ -479,50 +479,83 @@
     (r.purposes || []).forEach((p) => {
       bits.push(p === "Dine In" ? "Dine in" : p === "Take Away" ? "Takeaway" : p);
     });
-    $("#heroMeta").innerHTML = bits.map(esc).join("<i></i>");
+    $("#heroMeta").innerHTML = bits.map(esc).join('<span class="sep" aria-hidden="true">·</span>');
 
     $("#heroWa").href = "https://wa.me/" + whatsapp + "?text=" +
       encodeURIComponent("Hello " + rn + ", I have a question about the menu.");
 
-    if (r.mapsUrl) {
-      $("#heroMap").href = r.mapsUrl;
+    /* Call uses the same line — most restaurants publish one number for both. */
+    if (whatsapp) {
+      const call = $("#heroCall");
+      if (call) { call.href = "tel:+" + whatsapp; call.hidden = false; }
+    }
+
+    /* a real link if they gave one, otherwise a Maps search built from the address */
+    const mapHref = r.mapsUrl || (r.address
+      ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(r.address)
+      : "");
+    if (mapHref) {
+      $("#heroMap").href = mapHref;
       $("#heroAddress").textContent = r.address ? "Directions" : "Open in Maps";
       $("#heroMap").hidden = false;
     }
 
     const social = r.social || {};
-    if (social.instagram) {
-      $("#heroIg").href = "https://instagram.com/" + encodeURIComponent(social.instagram);
+    /* hand-entered values arrive as handles, as URLs, and sometimes as URLs with
+       the slashes mangled. Normalise them, or leave the pill off entirely. */
+    const socialHref = (raw, build) => {
+      const v = String(raw || "").trim();
+      if (!v) return "";
+      if (/^https?:\/\//i.test(v)) return v;
+      if (/^https?:\//i.test(v)) return v.replace(/^https?:\//i, "https://");   /* https:/host */
+      if (v.charAt(0) === "/") return "";                                          /* a bare path */
+      if (v.indexOf("/") !== -1) return "https://" + v.replace(/^\/+/, "");       /* instagram.com/x */
+      return build(v.replace(/^@/, "").replace(/\/+$/, ""));                       /* a handle, dots allowed */
+    };
+    const igUrl = socialHref(social.instagram, (h) => "https://instagram.com/" + encodeURIComponent(h));
+    const fbUrl = socialHref(social.facebook, (h) => "https://facebook.com/" + encodeURIComponent(h));
+    const ttUrl = socialHref(social.tiktok, (h) => "https://tiktok.com/@" + encodeURIComponent(h));
+    const webUrl = /^https?:\/\//i.test(String(social.website || "")) ? social.website : "";
+
+    if (igUrl) {
+      $("#heroIg").href = igUrl;
       $("#heroIg").hidden = false;
     }
-    if (social.facebook) {
-      $("#heroFb").href = "https://facebook.com/" + encodeURIComponent(social.facebook);
+    if (fbUrl) {
+      $("#heroFb").href = fbUrl;
       $("#heroFb").hidden = false;
     }
-    if (social.tiktok) {
-      $("#heroTt").href = "https://tiktok.com/@" + encodeURIComponent(social.tiktok);
+    if (ttUrl) {
+      $("#heroTt").href = ttUrl;
       $("#heroTt").hidden = false;
     }
-    if (social.website) {
-      $("#heroWeb").href = social.website;
+    if (webUrl) {
+      $("#heroWeb").href = webUrl;
       $("#heroWeb").hidden = false;
     }
 
     /* their own cover if they have one, otherwise three of their dish photos */
     const media = $("#heroMedia");
+    /* one photograph, edge to edge. Three dish shots side by side meet at hard
+       seams and read like a collage from a takeaway flyer. */
     const photos = [];
     if (r.coverUrl) photos.push(r.coverUrl);
     else {
       for (const c of data.categories || []) {
         for (const it of c.items || []) {
-          if (it.image && photos.length < 3) photos.push(it.image);
+          if (it.image) { photos.push(it.image); break; }
         }
-        if (photos.length >= 3) break;
+        if (photos.length) break;
       }
     }
 
     if (photos.length) {
-      media.innerHTML = photos.map((src) => '<img src="' + esc(sized(src, 1200)) + '" alt="" loading="lazy">').join("");
+      /* the hero must never be a grey box: it is the first thing a guest sees,
+         and the photo comes off a third-party CDN that can be slow */
+      media.innerHTML = photos
+        .map((src, i) => '<img src="' + esc(sized(src, 1200)) + '" alt="" '
+          + (i === 0 ? 'loading="eager" fetchpriority="high" decoding="async"' : 'loading="lazy"') + '>')
+        .join("");
       if (photos.length === 1) media.classList.add("one");
       hero.classList.add("has-media");
     }
