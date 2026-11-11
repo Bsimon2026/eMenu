@@ -456,7 +456,7 @@
       fr.readAsDataURL(file);
     });
 
-    const up = await window.Auth.api("/api/upload", {
+    const up = await window.Auth.api("/api/restaurant?upload=1", {
       method: "POST",
       body: JSON.stringify({ kind, dataUrl })
     });
@@ -815,7 +815,7 @@
 
   /* every edit goes to Postgres and only then to the screen */
   async function menuEdit(payload, okMessage) {
-    const r = await window.Auth.api("/api/menu-edit", { method: "POST", body: JSON.stringify(payload) });
+    const r = await window.Auth.api("/api/menu?op=edit", { method: "POST", body: JSON.stringify(payload) });
     if (!r.ok) {
       toast(r.data.message || "That change was not saved.");
       return null;
@@ -1378,7 +1378,7 @@
     btn.disabled = true;
     btn.textContent = "Saving…";
 
-    const r = await window.Auth.api("/api/save-menu", {
+    const r = await window.Auth.api("/api/menu?op=save", {
       method: "POST",
       body: JSON.stringify({ categories: categories })
     });
@@ -1467,7 +1467,7 @@
     cleanBtn.addEventListener("click", async () => {
       cleanBtn.disabled = true;
       cleanBtn.textContent = "Checking…";
-      const dry = await window.Auth.api("/api/upload?action=sweep");
+      const dry = await window.Auth.api("/api/restaurant?upload=1&action=sweep");
       const list = (dry.data && dry.data.wouldDelete) || [];
       cleanBtn.textContent = "Clean up unused files";
       cleanBtn.disabled = false;
@@ -1476,7 +1476,7 @@
       if (!list.length) { toast("Nothing to clean — every file is in use"); return; }
       if (!confirm(list.length + " unused file" + (list.length === 1 ? "" : "s") + " will be deleted. Continue?")) return;
 
-      const done = await window.Auth.api("/api/upload?action=sweep&go=1");
+      const done = await window.Auth.api("/api/restaurant?upload=1&action=sweep&go=1");
       if (!done.ok) { toast(done.data.message || "Cleanup failed."); return; }
       toast((done.data.deleted || []).length + " unused files removed");
     });

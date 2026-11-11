@@ -1,5 +1,5 @@
 /**
- * POST /api/reset-password — email a temporary password instead of a magic link.
+ * POST /api/team?reset=1 — email a temporary password instead of a magic link.
  *
  * A reset link means two systems have to agree: the token in the URL, the browser
  * that opens it, the Site URL that must be right, and a page that knows what to do
@@ -10,8 +10,8 @@
  */
 
 const crypto = require("crypto");
-const { rest, adminAuth, cors, configured } = require("./_lib/db");
-const mail = require("./_lib/mail");
+const { rest, adminAuth, cors, configured } = require("./db");
+const mail = require("./mail");
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 const WINDOW_MS = 60 * 60 * 1000;

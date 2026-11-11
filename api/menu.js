@@ -12,6 +12,12 @@
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
 
+/* The whole menu in one deployment slot. Vercel counts top-level functions, not
+   files under _lib — so save-menu and menu-edit live there and this file routes
+   to them: POST /api/menu?op=save, POST /api/menu?op=edit. */
+const saveMenu = require("./_lib/save-menu");
+const menuEdit = require("./_lib/menu-edit");
+
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 
 /**
@@ -90,7 +96,7 @@ async function buildMenu(restaurantId) {
   };
 }
 
-module.exports = async function handler(req, res) {
+async function menuHandler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
 
@@ -213,4 +219,12 @@ module.exports = async function handler(req, res) {
     categories: built.categories,
     itemCount: built.itemCount
   });
+};
+
+/* One function, three jobs. Everything under ?op= is a write to this menu. */
+module.exports = async function route(req, res) {
+  const op = String((req.query && req.query.op) || "");
+  if (req.method === "POST" && op === "save") return saveMenu(req, res);
+  if (req.method === "POST" && op === "edit") return menuEdit(req, res);
+  return menuHandler(req, res);
 };

@@ -1,5 +1,5 @@
 /**
- * POST /api/menu-edit
+ * POST /api/menu?op=edit
  *
  * Single-item editing after the menu is live: the dashboard changes one dish
  * without resending the whole menu.
@@ -16,7 +16,7 @@
  * be able to edit another restaurant's menu.
  */
 
-const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./db");
 
 function money(v) {
   const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, ""));

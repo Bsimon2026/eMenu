@@ -1,5 +1,5 @@
 /**
- * POST /api/upload
+ * POST /api/restaurant?upload=1
  *
  * Accepts { kind: "logo" | "cover" | "licence", dataUrl } and puts the file in
  * the public `menu-media` bucket, under a prefix named after the restaurant's
@@ -10,7 +10,7 @@
  * the path is built here from the authenticated user's restaurant.
  */
 
-const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./db");
 
 const MAX_BYTES = 2_500_000;            /* base64 inflates ~33%, Vercel caps the body */
 const KINDS = { logo: "logo", cover: "cover", licence: "licence" };

@@ -11,6 +11,10 @@
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
 
+/* Media belongs to the restaurant, so it rides in the same deployment slot:
+   POST /api/restaurant?upload=1 and GET ?upload=1&action=sweep. */
+const uploadMedia = require("./_lib/upload");
+
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 const E164 = /^\+[1-9][0-9]{7,14}$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
@@ -24,7 +28,7 @@ function cleanHandle(s) {
     .slice(0, 32);
 }
 
-module.exports = async function handler(req, res) {
+async function restaurantHandler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (!configured) {
@@ -204,4 +208,11 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(200).json({ ok: true, restaurant: (saved.data || [])[0] || null });
+};
+
+/* The row, the handle check, and this restaurant's own files. */
+module.exports = async function route(req, res) {
+  const q = (req.query || {});
+  if (String(q.upload || "") === "1" || String(q.upload || "") === "true") return uploadMedia(req, res);
+  return restaurantHandler(req, res);
 };

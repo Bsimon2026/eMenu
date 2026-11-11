@@ -22,6 +22,11 @@ const {
   rest, userFromToken, actorRestaurant, adminAuth, adminAuthJson, memberEmail, bearer, cors, configured
 } = require("./_lib/db");
 
+/* Credentials, all in one slot: ?reset=1 emails a temporary password for an
+   account whose address is an email (owners), ?login=1 is the staff door, and
+   the bare URL manages this restaurant's logins. */
+const resetPassword = require("./_lib/reset-password");
+
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 const SAFE_USER = /^[a-z0-9][a-z0-9._-]{1,23}$/i;
 const TEAM_ROLES = ["menu", "orders"];
@@ -336,6 +341,9 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (!configured) return res.status(500).json({ ok: false, code: "NOT_CONFIGURED" });
 
+  if (req.query && (req.query.reset === "1" || req.query.reset === "true")) {
+    return resetPassword(req, res);
+  }
   if (req.query && (req.query.login === "1" || req.query.login === "true")) {
     return staffLogin(req, res);
   }

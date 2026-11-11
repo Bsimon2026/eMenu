@@ -1,5 +1,5 @@
 /**
- * POST /api/save-menu
+ * POST /api/menu?op=save
  *
  * Replaces the signed-in owner's menu with the categories/items from the
  * import review screen.
@@ -17,7 +17,7 @@
  * and a shelf left empty disappears. Rows without a source id are never merged.
  */
 
-const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./db");
 
 function money(v) {
   const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
