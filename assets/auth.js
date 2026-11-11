@@ -191,16 +191,16 @@ window.Auth = (function () {
 
   /** Redirect to the sign-in page unless a session exists. */
   async function requireSession() {
-    if (!read()) { location.replace("login.html"); return false; }
+    if (!read()) { location.replace("/login.html"); return false; }
     const t = await token();
-    if (!t) { write(null); location.replace("login.html"); return false; }
+    if (!t) { write(null); location.replace("/login.html"); return false; }
     return true;
   }
 
   /** Call one of our own API endpoints with the user's token. */
   async function api(path, opts) {
     const t = await token();
-    if (!t) { location.replace("login.html"); throw new Error("NO_SESSION"); }
+    if (!t) { location.replace("/login.html"); throw new Error("NO_SESSION"); }
     const res = await fetch(API + path, {
       ...opts,
       headers: {
@@ -212,7 +212,7 @@ window.Auth = (function () {
     let data = null;
     const text = await res.text();
     if (text) { try { data = JSON.parse(text); } catch (e) { data = { message: text }; } }
-    if (res.status === 401) { write(null); location.replace("login.html"); }
+    if (res.status === 401) { write(null); location.replace("/login.html"); }
     return { ok: res.ok, status: res.status, data: data || {} };
   }
 

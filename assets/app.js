@@ -16,7 +16,7 @@
   const DEMO = /(^|[?&])demo=1(&|$)/.test(location.search);
 
   if (!DEMO && (!window.Auth || !window.Auth.session())) {
-    location.replace("login.html");
+    location.replace("/login.html");
     return;
   }
 
@@ -194,7 +194,7 @@
     const staff = state.role && state.role !== "owner";
     const handle = state.handle;
     window.Auth.signOut();
-    location.href = staff && handle ? "/" + handle + "/login" : "login.html";
+    location.href = staff && handle ? "/" + handle + "/login" : "/login.html";
   });
 
   /* ---------------- team logins (owner only) ----------------
@@ -354,7 +354,7 @@
   $$("[data-ob]").forEach((b) =>
     b.addEventListener("click", () => {
       const n = Number(b.dataset.ob);
-      if (n === 1) { location.href = "login.html?mode=up"; return; }
+      if (n === 1) { location.href = "/login.html?mode=up"; return; }
       showOb(n);
     })
   );
@@ -615,7 +615,7 @@
     }
 
     applyRestaurant(r.data.restaurant);
-    location.href = "app.html#overview";
+    location.href = "/app.html#overview";
   });
 
   /* ---------------- overview ---------------- */
@@ -1271,7 +1271,7 @@
         body: JSON.stringify({ image: dataUrl })
       });
       data = await res.json();
-      if (!res.ok && data && data.code === "NO_SESSION") location.replace("login.html");
+      if (!res.ok && data && data.code === "NO_SESSION") location.replace("/login.html");
     } catch (e) {
       data = { ok: false, message: "We could not read that photo. Check your connection and try again." };
     }
