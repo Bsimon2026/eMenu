@@ -166,6 +166,7 @@
     import: "Import menu",
     qr: "QR & link",
     orders: "Orders",
+    marketing: "Marketing",
     docs: "Documents"
   };
 
@@ -178,6 +179,7 @@
     location.hash = name === "overview" ? "" : name;
     if (name === "menu") renderMenuEditor();
     if (name === "orders") renderOrders();
+    if (name === "marketing") renderMarketing();
     if (name === "docs") { renderDocs(); renderProfile(); renderTeam(); }
     if (name === "qr") renderQrPane();
     if (name === "overview") renderOverview();
@@ -323,6 +325,257 @@
   }
 
 
+
+  /* ---------------- marketing ----------------
+     Asking past customers how it went. Two senders, one queue: 'free' opens
+     WhatsApp with the message typed and a human presses send; 'cloud' lets the
+     server do it, paced, for restaurants that have a WhatsApp Business account.
+     Either way the message carries a private link, and only that page decides
+     whether a happy guest is offered the Google review link. */
+
+  const mk = { mode: "free", customers: null, queue: [] };
+
+  const mkLink = (token) => location.origin + "/f/" + token;
+
+  function mkText(name, link) {
+    const first = String(name || "").trim().split(/\s+/)[0];
+    return (first ? "Hello " + first + ", " : "Hello, ") +
+      "thank you for ordering from " + (state.restaurant.name || "us") + "." +
+      "\n\nHow was it? Two taps, honestly — it helps us more than you would think:\n" + link;
+  }
+
+  function mkWa(phone, text) {
+    return "https://wa.me/" + String(phone).replace(/[^\d]/g, "") + "?text=" + encodeURIComponent(text);
+  }
+
+  async function mkLoadSettings() {
+    const r = await window.Auth.api("/api/marketing?settings=1");
+    if (!r.ok) {
+      $("#mkModePill").textContent = "—";
+      $("#mkGoogle").parentNode.querySelector(".hint").textContent = r.data.message || "Marketing settings could not be loaded.";
+      return;
+    }
+    const d = r.data;
+    mk.mode = d.sender;
+    $("#mkFreeIn").checked = d.sender === "free";
+    $("#mkCloudIn").checked = d.sender === "cloud";
+    $("#mkModePill").textContent = d.sender === "cloud" ? "Cloud API" : "Free";
+    $("#mkCloudFields").hidden = d.sender !== "cloud";
+    $("#mkPhoneId").value = d.phoneNumberId || "";
+    $("#mkTemplate").value = d.template || "";
+    $("#mkLang").value = d.lang || "en";
+    $("#mkGoogle").value = d.google || "";
+    $("#mkTokenHint").textContent = d.tokenHint ? "Saved token " + d.tokenHint : "No token saved yet";
+  }
+
+  async function mkSaveSettings(patch) {
+    const r = await window.Auth.api("/api/marketing?settings=1", { method: "POST", body: JSON.stringify(patch) });
+    if (!r.ok) { toast(r.data.message || "Those settings were not saved."); return null; }
+    await mkLoadSettings();
+    return r.data;
+  }
+
+  async function mkLoadQueue() {
+    const r = await window.Auth.api("/api/marketing?queue=1");
+    if (!r.ok) return;
+    mk.queue = r.data.rows || [];
+    mkPaintQueue();
+  }
+
+  function mkPaintQueue() {
+    const card = $("#mkQueueCard");
+    const body = $("#mkQueueBody");
+    if (!card || !body) return;
+
+    if (!mk.queue.length) { card.hidden = true; body.innerHTML = ""; return; }
+    card.hidden = false;
+
+    const free = mk.mode !== "cloud";
+    $("#mkQueueTitle").textContent = free ? "Tap to send — " + mk.queue.length + " waiting" : "Sending — " + mk.queue.length + " waiting";
+    $("#mkQueueLede").textContent = free
+      ? "Each button opens WhatsApp with the message typed. Press send there, then come back — the row ticks itself off."
+      : "The server sends these, paced, five at a time. You can close this tab.";
+
+    body.innerHTML =
+      (free
+        ? '<div class="hint" style="margin-bottom:8px">Sending from your own number keeps it safe. Never send more than 20–30 in an hour.</div>'
+        : '<button class="btn btn-brand btn-sm" type="button" id="mkCloudSend" style="margin-bottom:10px">Send the next 5</button><div class="hint" id="mkCloudProgress"></div>') +
+      mk.queue.map((row, i) =>
+        '<div class="mk-row" data-row="' + esc(row.id) + '">' +
+          '<span class="grow"><span class="who">' + esc(row.guest_name || "Guest") + "</span> " +
+          '<span class="meta">' + esc(row.phone || row.phone_raw || "") +
+          (row.status === "failed" ? " · failed: " + esc(row.error || "") : "") + "</span></span>" +
+          (free
+            ? '<a class="btn btn-brand btn-sm" target="_blank" rel="noopener" href="' +
+              esc(mkWa(row.phone, mkText(row.guest_name, mkLink(row.token)))) +
+              '" data-wa="' + esc(row.id) + '">Open WhatsApp</a>'
+            : "") +
+        "</div>"
+      ).join("");
+
+    if (free) {
+      $$("[data-wa]").forEach((a) =>
+        a.addEventListener("click", async () => {
+          const id = a.dataset.wa;
+          a.closest(".mk-row").classList.add("done");
+          a.textContent = "Opened";
+          /* clicking the link is the only evidence we have; WhatsApp never
+             tells us whether the send arrow was pressed */
+          await window.Auth.api("/api/marketing?sent=1", { method: "POST", body: JSON.stringify({ id }) });
+          const next = a.closest(".mk-row").nextElementSibling;
+          if (next) { next.scrollIntoView({ block: "center" }); const b = next.querySelector("[data-wa]"); if (b) b.focus(); }
+        })
+      );
+    } else {
+      const send = $("#mkCloudSend");
+      if (send) {
+        send.addEventListener("click", async () => {
+          send.disabled = true;
+          const out = $("#mkCloudProgress");
+          let sent = 0, failed = 0, guard = 0;
+          while (guard++ < 40) {
+            const r = await window.Auth.api("/api/marketing?cloud=1", { method: "POST", body: JSON.stringify({ limit: 5 }) });
+            if (!r.ok) { out.textContent = r.data.message || "That batch failed."; break; }
+            sent += r.data.sent; failed += r.data.failed;
+            out.textContent = sent + " sent, " + failed + " failed, " + r.data.remaining + " left";
+            if (!r.data.remaining) break;
+          }
+          send.disabled = false;
+          toast(sent + " sent" + (failed ? ", " + failed + " failed" : ""));
+          await mkLoadQueue();
+        });
+      }
+    }
+  }
+
+  async function mkLoadReviews() {
+    const r = await window.Auth.api("/api/marketing?reviews=1");
+    const host = $("#mkReviews");
+    if (!host) return;
+    if (!r.ok) { host.innerHTML = '<p class="hint">' + esc(r.data.message || "No reviews yet.") + "</p>"; return; }
+    const d = r.data;
+    $("#mkReviewSummary").textContent = d.count
+      ? d.average + " out of 5 from " + d.count + (d.count === 1 ? " answer" : " answers") + " · " + d.happy + " happy"
+      : "Nothing yet. Ask the people who ordered.";
+    host.innerHTML = d.count
+      ? d.reviews.slice(0, 20).map((x) =>
+          '<div class="mk-row"><span class="grow"><span class="mk-stars">' + "★".repeat(x.rating) + "☆".repeat(5 - x.rating) + "</span> " +
+          '<span class="who">' + esc(x.name || "Guest") + "</span>" +
+          (x.comment ? '<div class="meta">' + esc(x.comment) + "</div>" : "") +
+          '<div class="meta">' + esc(new Date(x.at).toLocaleDateString()) + "</div></span></div>"
+        ).join("")
+      : "";
+  }
+
+  async function renderMarketing() {
+    const f = $("#mkFrom"), t = $("#mkTo");
+    if (f && !f.value) {
+      const now = new Date();
+      t.value = now.toISOString().slice(0, 10);
+      f.value = new Date(now.getTime() - 29 * 86400000).toISOString().slice(0, 10);
+    }
+    await mkLoadSettings();
+    await mkLoadQueue();
+    await mkLoadReviews();
+  }
+
+  function mkWireOnce() {
+    const save = $("#mkSave");
+    if (!save || save.dataset.wired) return;
+    save.dataset.wired = "1";
+
+    const paintMode = () => {
+      const cloud = $("#mkCloudIn").checked;
+      $("#mkCloudFields").hidden = !cloud;
+      $("#mkModePill").textContent = cloud ? "Cloud API" : "Free";
+      mk.mode = cloud ? "cloud" : "free";
+      mkPaintQueue();
+    };
+    $$('input[name="mkSender"]').forEach((r) => r.addEventListener("change", async () => {
+      paintMode();
+      await mkSaveSettings({ mode: $("#mkCloudIn").checked ? "cloud" : "free" });
+      toast($("#mkCloudIn").checked ? "Cloud API selected — connect it below." : "Free sending selected.");
+    }));
+
+    save.addEventListener("click", async () => {
+      const patch = {
+        google: $("#mkGoogle").value.trim(),
+        template: $("#mkTemplate").value.trim(),
+        lang: $("#mkLang").value.trim() || "en",
+        phoneNumberId: $("#mkPhoneId").value.trim()
+      };
+      const tok = $("#mkToken").value.trim();
+      if (tok) patch.token = tok;
+      save.disabled = true;
+      const d = await mkSaveSettings(patch);
+      save.disabled = false;
+      if (d) { $("#mkToken").value = ""; toast("Saved."); }
+    });
+
+    $("#mkLoad").addEventListener("click", async () => {
+      const btn = $("#mkLoad");
+      btn.disabled = true;
+      btn.textContent = "Loading…";
+      const r = await window.Auth.api("/api/marketing?customers=1&from=" + $("#mkFrom").value + "&to=" + $("#mkTo").value);
+      btn.disabled = false;
+      btn.textContent = "Load customers";
+      const host = $("#mkList");
+      if (!r.ok) { host.innerHTML = '<p class="hint">' + esc(r.data.message || "Could not load.") + "</p>"; $("#mkActions").hidden = true; return; }
+
+      mk.customers = r.data.customers || [];
+      if (!mk.customers.length) {
+        host.innerHTML = '<p class="hint" style="margin-top:12px">No orders in that period.</p>';
+        $("#mkActions").hidden = true;
+        return;
+      }
+
+      host.innerHTML =
+        '<div class="mk-row" style="margin-top:12px"><label style="display:flex;gap:8px;align-items:center;font-weight:600">' +
+        '<input type="checkbox" id="mkAll" checked> Select all ' + mk.customers.length + " customers</label></div>" +
+        mk.customers.map((c, i) =>
+          '<div class="mk-row' + (c.usable ? "" : " dead") + '">' +
+            '<input type="checkbox" data-pick="' + i + '"' + (c.usable && !c.skip ? " checked" : "") + (c.usable ? "" : " disabled") + ">" +
+            '<span class="grow"><span class="who">' + esc(c.name || "Guest") + "</span> " +
+            '<span class="meta">' + esc(c.usable ? "…" + c.phone.slice(-8) : "unusable: " + (c.raw || "blank")) +
+            " · " + c.orders + (c.orders === 1 ? " order" : " orders") +
+            " · " + esc(new Date(c.lastOrder).toLocaleDateString()) +
+            (c.skip ? " · already asked" : "") + "</span></span>" +
+          "</div>"
+        ).join("");
+
+      $("#mkActions").hidden = false;
+      const count = () => {
+        const n = $$("[data-pick]").filter((b) => b.checked).length;
+        $("#mkCount").textContent = n + " selected";
+        $("#mkQueue").disabled = !n;
+      };
+      $$("[data-pick]").forEach((b) => b.addEventListener("change", count));
+      const all = $("#mkAll");
+      all.checked = $$("[data-pick]").every((b) => b.checked || b.disabled);
+      all.addEventListener("change", () => {
+        $$("[data-pick]").forEach((b) => { if (!b.disabled) b.checked = all.checked; });
+        count();
+      });
+      count();
+    });
+
+    $("#mkQueue").addEventListener("click", async () => {
+      const picks = $$("[data-pick]").filter((b) => b.checked && !b.disabled).map((b) => mk.customers[Number(b.dataset.pick)].orderId);
+      if (!picks.length) return;
+      const btn = $("#mkQueue");
+      btn.disabled = true;
+      btn.textContent = "Building…";
+      const r = await window.Auth.api("/api/marketing?queue=1", { method: "POST", body: JSON.stringify({ orderIds: picks }) });
+      btn.disabled = false;
+      btn.textContent = "Build the queue";
+      if (!r.ok) { toast(r.data.message || "The queue could not be built."); return; }
+      toast(r.data.queued + " added to the queue" + (r.data.skipped ? ", " + r.data.skipped + " skipped" : ""));
+      await mkLoadQueue();
+      $("#mkQueueCard").scrollIntoView({ block: "start" });
+    });
+  }
+
+  mkWireOnce();
 
   /* ---------------- onboarding ---------------- */
 

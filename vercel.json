@@ -1,31 +1,79 @@
 {
   "trailingSlash": false,
-  "regions": ["bom1"],
+  "regions": [
+    "bom1"
+  ],
   "rewrites": [
-    { "source": "/api/orders", "destination": "/api/order" },
-    { "source": "/favicon.ico", "destination": "/assets/favicon.ico" },
-    { "source": "/:handle([a-z0-9][a-z0-9-]{2,31})/login", "destination": "/login.html" },
-    { "source": "/:handle([a-z0-9][a-z0-9-]{2,31})/dashboard", "destination": "/app.html" },
-    { "source": "/login", "destination": "/login.html" },
-    { "source": "/app", "destination": "/app.html" },
-    { "source": "/menu", "destination": "/menu.html" },
-
-    { "source": "/digimenu/assets/:path*", "destination": "/assets/:path*" },
-    { "source": "/digimenu", "destination": "/index.html" },
-    { "source": "/digimenu/:handle([a-z0-9][a-z0-9-]{2,31})", "destination": "/menu.html" },
-
-    { "source": "/:handle([a-z0-9][a-z0-9-]{2,31})", "destination": "/menu.html" }
+    {
+      "source": "/api/orders",
+      "destination": "/api/order"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/assets/favicon.ico"
+    },
+    {
+      "source": "/f/:token([A-Za-z0-9_-]{6,40})",
+      "destination": "/feedback.html"
+    },
+    {
+      "source": "/:handle([a-z0-9][a-z0-9-]{2,31})/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/:handle([a-z0-9][a-z0-9-]{2,31})/dashboard",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/menu",
+      "destination": "/menu.html"
+    },
+    {
+      "source": "/digimenu/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/digimenu",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/digimenu/:handle([a-z0-9][a-z0-9-]{2,31})",
+      "destination": "/menu.html"
+    },
+    {
+      "source": "/:handle([a-z0-9][a-z0-9-]{2,31})",
+      "destination": "/menu.html"
+    }
   ],
   "headers": [
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     }
   ]

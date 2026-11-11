@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>How was it?</title>
+<meta name="theme-color" content="#12161A">
+<link rel="icon" href="/assets/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #12161a; --dim: #6b7280; --line: #e6e3dc; --paper: #faf9f6;
+    --brand: #f7941d; --ok: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+    background: var(--paper); color: var(--ink);
+    font: 15px/1.55 Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    width: 100%; max-width: 420px; background: #fff; border: 1px solid var(--line);
+    border-radius: 16px; padding: 26px 22px 22px; box-shadow: 0 20px 50px -35px rgba(20,22,26,.5);
+  }
+  .who { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .who img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; border: 1px solid var(--line); }
+  .who .nm { font-family: Outfit, Inter, sans-serif; font-weight: 600; font-size: 15px; }
+  .who .sub { color: var(--dim); font-size: 12.5px; }
+  h1 { font-family: Outfit, Inter, sans-serif; font-size: 22px; line-height: 1.25; margin: 0 0 6px; letter-spacing: -.01em; }
+  p.lede { color: var(--dim); margin: 0 0 20px; font-size: 14px; }
+  .stars { display: flex; gap: 8px; margin: 0 0 18px; }
+  .star {
+    flex: 1; aspect-ratio: 1/1; border: 1px solid var(--line); background: #fff; border-radius: 12px;
+    font-size: 22px; color: #cfcbc2; cursor: pointer; display: grid; place-items: center;
+    transition: transform .12s ease, background .12s ease, color .12s ease, border-color .12s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .star:active { transform: scale(.96); }
+  .star.on { color: #fff; background: var(--brand); border-color: var(--brand); }
+  .star.on.bad { background: #dc2626; border-color: #dc2626; }
+  textarea {
+    width: 100%; min-height: 84px; resize: vertical; padding: 12px; border-radius: 10px;
+    border: 1px solid var(--line); font: inherit; color: inherit; background: #fff;
+  }
+  textarea:focus { outline: 2px solid rgba(247,148,29,.35); border-color: var(--brand); }
+  button.primary, a.primary {
+    display: block; width: 100%; text-align: center; text-decoration: none;
+    padding: 13px 16px; border-radius: 10px; border: 0; background: var(--ink); color: #fff;
+    font: 600 15px Inter, sans-serif; cursor: pointer; margin-top: 14px;
+  }
+  button.primary:disabled { opacity: .55; cursor: default; }
+  a.google { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .note { color: var(--dim); font-size: 12.5px; margin: 12px 0 0; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .field { margin-top: 14px; }
+  .hide { display: none !important; }
+  #err { color: #b91c1c; font-size: 13px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<main class="card" id="card">
+  <div class="who">
+    <img id="logo" alt="" hidden>
+    <div>
+      <div class="nm" id="restName">Your restaurant</div>
+      <div class="sub">A minute of your time</div>
+    </div>
+  </div>
+
+  <h1 id="q">How was it?</h1>
+  <p class="lede" id="lede">Tap a score. It goes straight to the owner — nobody else sees it.</p>
+
+  <div class="stars" id="stars">
+    <button class="star" type="button" data-v="1" aria-label="1 — poor">★</button>
+    <button class="star" type="button" data-v="2" aria-label="2">★</button>
+    <button class="star" type="button" data-v="3" aria-label="3">★</button>
+    <button class="star" type="button" data-v="4" aria-label="4">★</button>
+    <button class="star" type="button" data-v="5" aria-label="5 — excellent">★</button>
+  </div>
+
+  <div class="field" id="commentWrap">
+    <textarea id="comment" maxlength="1200" placeholder="Anything we should fix? (optional)"></textarea>
+  </div>
+
+  <button class="primary" type="button" id="send" disabled>Send</button>
+  <div id="err"></div>
+  <p class="note" id="note"></p>
+
+  <div id="done" class="hide">
+    <p class="lede" id="thanks"></p>
+    <a class="primary google hide" id="google" href="#" target="_blank" rel="noopener">Leave a Google review</a>
+    <p class="note">The owner reads every answer. Thank you.</p>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* /f/<token> is a rewrite to this page, so the token comes from the path;
+     ?t= stays supported for testing a link by hand */
+  var token = (function () {
+    var q = new URLSearchParams(location.search).get("t");
+    if (q) return q;
+    var seg = (location.pathname || "").split("/").filter(Boolean);
+    return seg.length === 2 && seg[0] === "f" ? seg[1] : "";
+  })();
+
+  var $ = function (s) { return document.querySelector(s); };
+  var rating = 0;
+  var card = $("#card");
+
+  if (!token) {
+    $("#q").textContent = "This link is incomplete";
+    $("#lede").textContent = "Open the link from the message again — it carries the restaurant's code.";
+    $("#stars").classList.add("hide");
+    $("#commentWrap").classList.add("hide");
+    $("#send").classList.add("hide");
+    return;
+  }
+
+  function paint() {
+    document.querySelectorAll(".star").forEach(function (b) {
+      var v = Number(b.dataset.v);
+      b.classList.toggle("on", v <= rating);
+      b.classList.toggle("bad", rating > 0 && rating <= 3);
+    });
+    $("#send").disabled = rating < 1;
+    $("#comment").placeholder = rating && rating <= 3
+      ? "What went wrong? (optional, but it helps)"
+      : "Anything we should fix? (optional)";
+  }
+
+  document.querySelectorAll(".star").forEach(function (b) {
+    b.addEventListener("click", function () {
+      rating = Number(b.dataset.v);
+      paint();
+    });
+  });
+
+  fetch("/api/marketing?feedback=1&token=" + encodeURIComponent(token))
+    .then(function (r) { return r.json().catch(function () { return null; }); })
+    .then(function (d) {
+      if (!d || !d.ok) {
+        $("#q").textContent = "This link has expired";
+        $("#lede").textContent = (d && d.message) || "Ask the restaurant for a new one.";
+        $("#stars").classList.add("hide");
+        $("#commentWrap").classList.add("hide");
+        $("#send").classList.add("hide");
+        return;
+      }
+      if (d.restaurant && d.restaurant.name) $("#restName").textContent = d.restaurant.name;
+      if (d.restaurant && d.restaurant.logo) {
+        var img = $("#logo");
+        img.src = d.restaurant.logo;
+        img.hidden = false;
+      }
+      if (d.name) $("#lede").textContent = "Thanks for ordering, " + String(d.name).split(" ")[0] + ". How was it?";
+      /* already answered: show what they said, and the Google link if it earned it */
+      if (d.rated) {
+        finish(d.rating, d.rating, "", d.google);
+      }
+    })
+    .catch(function () {
+      $("#err").textContent = "Could not load. Check the connection and try again.";
+    });
+
+  function finish(ratingValue, shownRating, thanks, google) {
+    $("#stars").classList.add("hide");
+    $("#commentWrap").classList.add("hide");
+    $("#send").classList.add("hide");
+    $("#note").classList.add("hide");
+    $("#q").classList.add("hide");
+    $("#lede").classList.add("hide");
+    $("#done").classList.remove("hide");
+    $("#thanks").innerHTML = (thanks || (shownRating >= 4
+      ? "Thank you — that means a lot."
+      : "Thank you for telling us. The owner will read this.")) +
+      ' <span class="ok">' + "★".repeat(shownRating) + "</span>";
+    if (google) {
+      var a = $("#google");
+      a.href = google;
+      a.classList.remove("hide");
+    }
+  }
+
+  $("#send").addEventListener("click", function () {
+    var btn = $("#send");
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    $("#err").textContent = "";
+
+    fetch("/api/marketing?feedback=1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: token, rating: rating, comment: $("#comment").value.trim() })
+    })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (d) {
+        if (!d || !d.ok) {
+          btn.disabled = false;
+          btn.textContent = "Send";
+          $("#err").textContent = (d && d.message) || "That did not send. Try again.";
+          return;
+        }
+        finish(rating, d.rating, d.thanks, d.google);
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = "Send";
+        $("#err").textContent = "That did not send. Check the connection.";
+      });
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>
