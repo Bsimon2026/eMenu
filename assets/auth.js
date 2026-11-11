@@ -69,7 +69,7 @@ window.Auth = (function () {
    *  The server turns the pair into the identity — the browser never builds or
    *  sees it, so a name cannot be aimed at a restaurant it was not made for. */
   async function staffSignIn(handle, username, password) {
-    const res = await fetch(API + "/api/staff-login", {
+    const res = await fetch(API + "/api/team?login=1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ handle, username, password })

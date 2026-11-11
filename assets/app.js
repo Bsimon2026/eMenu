@@ -206,7 +206,7 @@
     const host = $("#tmList");
     if (!host) return;
 
-    const r = await window.Auth.api("/api/members");
+    const r = await window.Auth.api("/api/team");
     if (!r.ok) {
       host.innerHTML = '<p class="hint">' + esc(r.data.message || "The team list could not be loaded.") + "</p>";
       return;
@@ -240,7 +240,7 @@
         for (let i = 0; i < 10; i++) password += A[b[i] % A.length];
 
         btn.disabled = true;
-        const d = await window.Auth.api("/api/members", {
+        const d = await window.Auth.api("/api/team", {
           method: "POST",
           body: JSON.stringify({ action: "password", username, password })
         });
@@ -274,7 +274,7 @@
           return;
         }
         btn.disabled = true;
-        const d = await window.Auth.api("/api/members", {
+        const d = await window.Auth.api("/api/team", {
           method: "POST",
           body: JSON.stringify({ action: "remove", username: btn.dataset.rm })
         });
@@ -299,7 +299,7 @@
       tmAdd.disabled = true;
       tmAdd.textContent = "Creating…";
 
-      const r = await window.Auth.api("/api/members", {
+      const r = await window.Auth.api("/api/team", {
         method: "POST",
         body: JSON.stringify({ action: "create", username: n.value, password: p.value, role: role.value })
       });
