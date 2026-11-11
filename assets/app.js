@@ -351,7 +351,7 @@
   async function mkLoadSettings() {
     const r = await window.Auth.api("/api/marketing?settings=1");
     if (!r.ok) {
-      $("#mkModePill").textContent = "—";
+      $("#mkModePill").textContent = "Not ready";
       $("#mkGoogle").parentNode.querySelector(".hint").textContent = r.data.message || "Marketing settings could not be loaded.";
       return;
     }
