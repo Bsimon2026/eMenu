@@ -13,15 +13,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261106a">
-<link rel="stylesheet" href="assets/site.css?v=20261106a">
+<link rel="stylesheet" href="assets/base.css?v=20261111h">
+<link rel="stylesheet" href="assets/site.css?v=20261111h">
 </head>
 <body class="auth-body">
 
 <header class="auth-top">
   <div class="wrap nav-in">
     <a class="nav-logo" href="index.html" aria-label="Indubaicity DigiMenu home">
-      <img src="assets/indubaicity-mark.png?v=20261106a" alt="Indubaicity">
+      <img src="assets/indubaicity-mark.png?v=20261111h" alt="Indubaicity">
       <span class="prod">DigiMenu</span>
     </a>
     <div class="nav-right">
@@ -124,6 +124,31 @@
         </form>
       </div>
 
+      <!-- the staff door: a name and a password, at the restaurant's own address.
+           No email, no Google, no sign-up — the owner hands both fields over. -->
+      <div id="paneStaff" hidden>
+        <h1>Staff sign in</h1>
+        <p class="lede">Your owner gives you a name and a password for this restaurant. Type them here — nothing is sent to an email.</p>
+
+        <form id="formStaff" novalidate>
+          <div class="field">
+            <label for="stName">Name</label>
+            <input class="input" id="stName" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="The name your owner set">
+            <div class="error-msg" id="stNameErr">Enter the name your owner gave you.</div>
+          </div>
+          <div class="field">
+            <label for="stPass">Password</label>
+            <input class="input" id="stPass" type="password" autocomplete="current-password" placeholder="The password your owner set">
+            <div class="error-msg" id="stPassErr">Enter your password.</div>
+          </div>
+          <button class="btn btn-brand btn-block" type="submit" style="margin-top:6px">Sign in</button>
+          <div class="auth-foot">
+            <span>This is your restaurant?</span>
+            <button class="btn-quiet" type="button" id="stOwner">Owner sign-in</button>
+          </div>
+        </form>
+      </div>
+
     </div>
 
     <p class="auth-aside">
@@ -133,12 +158,12 @@
   </div>
 </main>
 
-<script src="/api/config?v=20261106a"></script>
+<script src="/api/config?v=20261111h"></script>
 
-<script src="assets/config.js?v=20261106a"></script>
-<script src="assets/auth.js?v=20261106a"></script>
-<script src="assets/data.js?v=20261106a"></script>
-<script src="assets/phone.js?v=20261106a"></script>
+<script src="assets/config.js?v=20261111h"></script>
+<script src="assets/auth.js?v=20261111h"></script>
+<script src="assets/data.js?v=20261111h"></script>
+<script src="assets/phone.js?v=20261111h"></script>
 <script>
 (function () {
   "use strict";
@@ -149,6 +174,7 @@
   function show(mode) {
     $("#paneIn").hidden = mode !== "in";
     $("#paneUp").hidden = mode !== "up";
+    if ($("#paneStaff")) $("#paneStaff").hidden = mode !== "staff";
     $$(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === mode)));
   }
 
@@ -156,6 +182,58 @@
   $$("[data-jump]").forEach((b) => b.addEventListener("click", () => show(b.dataset.jump)));
 
   if (new URLSearchParams(location.search).get("mode") === "up") show("up");
+
+  /* ---------------- the staff door ----------------
+     Reached at /<handle>/login. The address decides which restaurant the name
+     belongs to, and the name is only ever looked up inside that restaurant, so
+     "ali" here and "ali" at another restaurant are different logins. Nothing is
+     emailed: the owner types the password when he creates the login, so he has
+     it to hand over, and nobody's reset can lock anybody else out. */
+  const staffHandle = (function () {
+    const q = (new URLSearchParams(location.search).get("h") || "").trim().toLowerCase();
+    if (/^[a-z0-9][a-z0-9-]{2,31}$/.test(q)) return q;
+    const seg = (location.pathname || "").split("/").filter(Boolean);
+    if (seg.length === 2 && /^login(\.html)?$/i.test(seg[1]) && /^[a-z0-9][a-z0-9-]{2,31}$/.test(seg[0])) {
+      return seg[0].toLowerCase();
+    }
+    return "";
+  })();
+
+  if (staffHandle) {
+    const tabs = document.querySelector(".tabs");
+    /* .tabs is display:flex, which beats the hidden attribute — hide it inline */
+    if (tabs) tabs.style.display = "none";
+    show("staff");
+    $("#stOwner").addEventListener("click", () => { location.href = "/login.html"; });
+
+    $("#formStaff").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const n = $("#stName"), p = $("#stPass");
+      let ok = true;
+      ok = mark(n, $("#stNameErr"), !n.value.trim()) && ok;
+      ok = mark(p, $("#stPassErr"), p.value.length < 1) && ok;
+      if (!ok) return;
+
+      const btn = $("#formStaff button[type=submit]");
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Signing in…";
+
+      const r = await window.Auth.staffSignIn(staffHandle, n.value.trim(), p.value);
+
+      btn.disabled = false;
+      btn.textContent = label;
+
+      if (!r.ok) {
+        p.classList.add("err");
+        $("#stPassErr").textContent = r.message;
+        $("#stPassErr").classList.add("show");
+        return;
+      }
+      location.href = "/" + staffHandle + "/dashboard";
+    });
+    return;
+  }
 
 
   // the country list must exist before anyone types, signed in or not

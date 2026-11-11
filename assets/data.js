@@ -77,9 +77,20 @@ const TAKEN_HANDLES = [
 
 const STORE_KEY = "digimenu.state.v1";
 
+/* State belongs to an account, not to a browser. The key carries the signed-in
+   user's id, because a shared shop phone or a QA browser would otherwise open
+   the *previous* account's restaurant name, handle, cached menu and QR — which
+   is exactly how a brand-new login landed on someone else's dashboard.
+   Before sign-in there is no user: the anonymous bucket only ever holds what
+   the signup form typed, and the dashboard adopts it once the session exists. */
+function storeKey() {
+  const u = window.Auth && window.Auth.user && window.Auth.user();
+  return STORE_KEY + (u && u.id ? ":" + u.id : ":anon");
+}
+
 function loadState() {
   try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    return JSON.parse(localStorage.getItem(storeKey()) || "null");
   } catch (e) {
     return null;
   }
@@ -87,7 +98,7 @@ function loadState() {
 
 function saveState(s) {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(s));
+    localStorage.setItem(storeKey(), JSON.stringify(s));
   } catch (e) {
     /* storage may be full after a large logo upload — ignore */
   }

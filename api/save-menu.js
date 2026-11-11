@@ -17,7 +17,7 @@
  * and a shelf left empty disappears. Rows without a source id are never merged.
  */
 
-const { rest, userFromToken, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./_lib/db");
 
 function money(v) {
   const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
@@ -47,11 +47,13 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "NO_MENU", message: "There is no menu to save." });
   }
 
-  const found = await rest("restaurants?owner_id=eq." + user.id + "&select=id,handle");
-  if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
-  const restaurant = (found.data || [])[0];
+  const actor = await actorRestaurant(user, "id,handle");
+  const restaurant = actor && actor.restaurant;
   if (!restaurant) {
     return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Finish the restaurant details first — the menu needs somewhere to live." });
+  }
+  if (!can(actor.role, "menu")) {
+    return res.status(403).json({ ok: false, code: "NOT_ALLOWED", message: "Your login can take orders, not change the menu." });
   }
 
   /* ----------------------------------------------- 1. flatten and validate */

@@ -9,7 +9,7 @@
  * second POST updates rather than creating a stray duplicate.
  */
 
-const { rest, userFromToken, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
 
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 const E164 = /^\+[1-9][0-9]{7,14}$/;
@@ -48,16 +48,29 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
   }
 
-  const mine = await rest("restaurants?owner_id=eq." + user.id + "&select=*");
-  if (!mine.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
-  const existing = (mine.data || [])[0] || null;
+  /* owner, or a staff login from 0008 — either way this is *their* restaurant */
+  const actor = await actorRestaurant(user, "*");
+  const existing = actor && actor.restaurant;
+  const role = actor ? actor.role : null;
 
   if (req.method === "GET") {
-    return res.status(200).json({ ok: true, restaurant: existing });
+    return res.status(200).json({ ok: true, restaurant: existing, role });
   }
 
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, code: "METHOD" });
+  }
+
+  /* publishing, the plan and the guest page's public identity are the owner's
+     decisions. A staff login that may edit dishes does not get to take the menu
+     off the internet or change who it belongs to.
+     No row yet means this is the person creating their own restaurant — the
+     signup path — and they own whatever they create. */
+  if (existing && role !== "owner") {
+    return res.status(403).json({
+      ok: false, code: "NOT_OWNER",
+      message: "Only the owner can change the restaurant's own details."
+    });
   }
 
   let body = req.body;

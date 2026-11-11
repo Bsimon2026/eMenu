@@ -6,15 +6,15 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard — DigiMenu</title>
 <meta name="theme-color" content="#12161A">
-<link rel="icon" href="assets/favicon.ico?v=20261111e" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261111e">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261111e">
+<link rel="icon" href="assets/favicon.ico?v=20261111h" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261111h">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261111h">
   <link rel="manifest" href="assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/base.css?v=20261111e">
-<link rel="stylesheet" href="assets/app.css?v=20261111e">
+<link rel="stylesheet" href="assets/base.css?v=20261111h">
+<link rel="stylesheet" href="assets/app.css?v=20261111h">
 </head>
 <body class="app-body">
 
@@ -23,7 +23,7 @@
 
   <aside class="side">
     <a class="side-logo" href="index.html" aria-label="Indubaicity">
-      <img src="assets/indubaicity-mark.png?v=20261111e" alt="Indubaicity">
+      <img src="assets/indubaicity-mark.png?v=20261111h" alt="Indubaicity">
       <span class="p">DigiMenu</span>
     </a>
 
@@ -281,7 +281,7 @@
           <div class="card-head">
             <div>
               <h2>Your sign-in</h2>
-              <p>Change the password you use for this dashboard — any time you like.</p>
+              <p id="pwLede">Change the password you use for this dashboard — any time you like.</p>
             </div>
           </div>
           <div class="card-body">
@@ -298,6 +298,41 @@
               </div>
             </div>
             <button class="btn btn-brand" type="button" id="pwSave" style="margin-top:6px">Save password</button>
+            <div class="hint" id="pwGoogleHint" hidden>You signed in with Google, so this account has no password yet. Set one above and the same email will also sign in with it — the way you let a manager or the kitchen in.</div>
+          </div>
+        </div>
+
+        <!-- team logins: a name and a password each, under this restaurant's own
+             address. No email, nothing to verify — the owner hands both over. -->
+        <div class="card" id="teamCard">
+          <div class="card-head">
+            <div>
+              <h2>Team logins</h2>
+              <p>One name and one password per person. You type both, you hand them over, and they sign in at your own address — nothing is emailed and nothing waits on confirmation.</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="grid-2">
+              <div class="field">
+                <label for="tmName">Name</label>
+                <input class="input" id="tmName" autocapitalize="none" spellcheck="false" placeholder="ali" autocomplete="off">
+                <div class="error-msg" id="tmNameErr">Use 2–24 characters: letters, numbers, dot, dash or underscore.</div>
+              </div>
+              <div class="field">
+                <label for="tmPass">Password</label>
+                <input class="input" id="tmPass" autocomplete="new-password" placeholder="At least 6 characters">
+                <div class="error-msg" id="tmPassErr">Use at least 6 characters.</div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="tmRole">What can they do?</label>
+              <select class="input" id="tmRole">
+                <option value="orders">Orders only — read orders, mark dishes sold out</option>
+                <option value="menu">Menu and orders — edit dishes, prices and photos</option>
+              </select>
+            </div>
+            <button class="btn btn-brand" type="button" id="tmAdd" style="margin-top:6px">Create this login</button>
+            <div id="tmList"></div>
           </div>
         </div>
 
@@ -590,14 +625,14 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="/api/config?v=20261111e"></script>
+<script src="/api/config?v=20261111h"></script>
 
-<script src="assets/config.js?v=20261111e"></script>
-<script src="assets/auth.js?v=20261111e"></script>
-<script src="assets/data.js?v=20261111e"></script>
-<script src="assets/phone.js?v=20261111e"></script>
-<script src="assets/vendor/xlsx.full.min.js?v=20261111e"></script>
-<script src="assets/vendor/qrcode-generator.js?v=20261111e"></script>
-<script src="assets/app.js?v=20261111e"></script>
+<script src="assets/config.js?v=20261111h"></script>
+<script src="assets/auth.js?v=20261111h"></script>
+<script src="assets/data.js?v=20261111h"></script>
+<script src="assets/phone.js?v=20261111h"></script>
+<script src="assets/vendor/xlsx.full.min.js?v=20261111h"></script>
+<script src="assets/vendor/qrcode-generator.js?v=20261111h"></script>
+<script src="assets/app.js?v=20261111h"></script>
 </body>
 </html>

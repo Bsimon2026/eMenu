@@ -868,3 +868,33 @@ body.app-body { background: var(--canvas); }
 .order-row .ophone { font-size: 12.5px; }
 .order-row .ophone a { color: var(--brand-text); text-decoration: none; }
 .order-row .ophone a:hover { text-decoration: underline; }
+
+/* ---------- who is looking ----------
+   The server refuses what a role cannot do; the page should not offer it in the
+   first place. data-role is set from /api/restaurant on every dashboard load. */
+#teamCard { display: none; }
+body[data-role="owner"] #teamCard { display: block; }
+
+body[data-role="menu"] #passwordCard,
+body[data-role="orders"] #passwordCard,
+body[data-role="menu"] #publishBtn,
+body[data-role="menu"] #unpublishBtn,
+body[data-role="orders"] #publishBtn,
+body[data-role="orders"] #unpublishBtn { display: none; }
+
+/* orders-only: the kitchen's sold-out switch is the one thing it may change */
+body[data-role="orders"] [data-view="import"],
+body[data-role="orders"] [data-view="qr"],
+body[data-role="orders"] [data-view="docs"],
+body[data-role="orders"] [data-add],
+body[data-role="orders"] [data-existing],
+body[data-role="orders"] [data-edit],
+body[data-role="orders"] [data-del],
+body[data-role="orders"] [data-catdel],
+body[data-role="orders"] #addCat,
+body[data-role="orders"] #newCatName { display: none !important; }
+
+.team-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
+.team-row:first-of-type { border-top: 0; }
+.team-row .who { font-weight: 600; }
+.team-row .meta { color: var(--dim, #6b7280); font-size: 13px; }

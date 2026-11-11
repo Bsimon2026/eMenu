@@ -10,7 +10,7 @@
  * the path is built here from the authenticated user's restaurant.
  */
 
-const { rest, userFromToken, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./_lib/db");
 
 const MAX_BYTES = 2_500_000;            /* base64 inflates ~33%, Vercel caps the body */
 const KINDS = { logo: "logo", cover: "cover", licence: "licence" };
@@ -37,10 +37,10 @@ module.exports = async function handler(req, res) {
    * Anything in this restaurant's prefix that is not one of the three URLs it
    * currently points at is unreachable, so it can go. Dry run unless ?go=1. */
   if (req.method === "GET" && req.query && req.query.action === "sweep") {
-    const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id,handle,logo_url,cover_url,licence_url");
-    if (!own.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
-    const r = (own.data || [])[0];
+    const sweepActor = await actorRestaurant(user, "id,handle,logo_url,cover_url,licence_url");
+    const r = sweepActor && sweepActor.restaurant;
     if (!r) return res.status(409).json({ ok: false, code: "NO_RESTAURANT" });
+    if (!can(sweepActor.role, "menu")) return res.status(403).json({ ok: false, code: "NOT_ALLOWED" });
 
     const base = process.env.SUPABASE_URL.replace(/\/+$/, "");
     const keep = [r.logo_url, r.cover_url, r.licence_url]
@@ -122,11 +122,13 @@ module.exports = async function handler(req, res) {
   const COLUMN = { logo: "logo_url", cover: "cover_url", licence: "licence_url" };
   const col = COLUMN[kind];
 
-  const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id,handle," + col);
-  if (!own.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
-  const restaurant = (own.data || [])[0];
+  const actorUpload = await actorRestaurant(user, "id,handle," + col);
+  const restaurant = actorUpload && actorUpload.restaurant;
   if (!restaurant) {
     return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Finish the restaurant details first." });
+  }
+  if (!can(actorUpload.role, "menu")) {
+    return res.status(403).json({ ok: false, code: "NOT_ALLOWED", message: "Your login can take orders, not change the menu." });
   }
   const previousUrl = restaurant[col] || null;
 

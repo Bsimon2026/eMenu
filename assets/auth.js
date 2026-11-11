@@ -65,6 +65,25 @@ window.Auth = (function () {
     return { ok: true, session: read() };
   }
 
+  /** Staff door: a NAME and a PASSWORD, typed at the restaurant's own address.
+   *  The server turns the pair into the identity — the browser never builds or
+   *  sees it, so a name cannot be aimed at a restaurant it was not made for. */
+  async function staffSignIn(handle, username, password) {
+    const res = await fetch(API + "/api/staff-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ handle, username, password })
+    });
+    let data = null;
+    const text = await res.text();
+    if (text) { try { data = JSON.parse(text); } catch (e) { data = { message: text }; } }
+    if (!res.ok || !data || !data.ok) {
+      return { ok: false, message: (data && data.message) || "That did not work. Try again." };
+    }
+    write(stamp(data.session));
+    return { ok: true, session: read(), role: data.role, restaurant: data.restaurant };
+  }
+
   async function signUp(email, password, meta) {
     const r = await post("/auth/v1/signup", { email, password, data: meta || {} });
     if (!r.ok) {
@@ -236,6 +255,6 @@ window.Auth = (function () {
     return { ok: true, session: read(), isNew: Boolean(r.data.user && r.data.user.created_at) };
   }
 
-  return { signIn, signUp, signOut, requireSession, session, user, token, refresh, api, apiBase: API,
+  return { signIn, staffSignIn, signUp, signOut, requireSession, session, user, token, refresh, api, apiBase: API,
     changePassword, googleStart, googleFinish, recover, setPassword, tokensFromHash, adopt };
 })();

@@ -10,7 +10,7 @@
  * whatever the anon-key grants happen to allow.
  */
 
-const { rest, userFromToken, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
 
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 
@@ -109,12 +109,8 @@ module.exports = async function handler(req, res) {
       return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
     }
 
-    const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id,name,handle,status");
-    if (!own.ok) {
-      return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
-    }
-
-    const mineRest = (own.data || [])[0];
+    const actor = await actorRestaurant(user, "id,name,handle,status");
+    const mineRest = actor && actor.restaurant;
     if (!mineRest) {
       return res.status(200).json({ ok: true, restaurant: null, categories: [], itemCount: 0 });
     }
@@ -127,6 +123,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       restaurant: mineRest,
+      role: actor.role,
       categories: builtOwn.categories,
       itemCount: builtOwn.itemCount
     });

@@ -8,8 +8,14 @@
   "use strict";
 
   /* The dashboard is the signed-in surface: with no session there is nothing
-     here to show. Every write is re-checked server-side against the same token. */
-  if (!window.Auth || !window.Auth.session()) {
+     here to show. Every write is re-checked server-side against the same token.
+     ?demo=1 is the one exception: the landing page embeds this page as its
+     product screenshot, and without it the frame renders the sign-in card — a
+     marketing picture that is really a second login page. Demo renders sample
+     data, holds no session and writes nothing. */
+  const DEMO = /(^|[?&])demo=1(&|$)/.test(location.search);
+
+  if (!DEMO && (!window.Auth || !window.Auth.session())) {
     location.replace("login.html");
     return;
   }
@@ -28,6 +34,9 @@
   const PUBLIC_BASE = (function () {
     const cfg = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "";
     if (cfg) return cfg.replace(/\/?$/, "/");
+    /* the landing page's screenshot prints the domain the marketing claims,
+       not whatever host the preview happens to be served from */
+    if (DEMO) return "https://digimenu.indubaicity.com/";
     /* no pinned domain: print the address the page is actually served from,
        keeping the /digimenu prefix if this copy lives in that subfolder */
     return location.origin + (/^\/digimenu/.test(location.pathname) ? "/digimenu/" : "/");
@@ -57,20 +66,37 @@
     };
   }
 
-  let state = loadState();
-  if (!state) { state = seed(); saveState(state); }
+  let state = DEMO ? demoState() : loadState();
+  /* a first visit must not open a sample restaurant — seed() is the demo
+     tenant, and it is only ever right inside the landscape preview */
+  if (!state) {
+    state = DEMO ? seed() : { account: null, restaurant: null, docs: { logo: null, license: null },
+      handle: "", accent: "#f0485f", menuImported: false, menu: null, onboarded: false };
+  }
   if (!state.docs) state.docs = { logo: null, license: null };
-  if (!state.restaurant) state.restaurant = seed().restaurant;
+  if (!state.restaurant) {
+    state.restaurant = { name: "", ownerName: "", purposes: ["Dine In", "Take Away"], whatsapp: "", orderEmail: "", mapsUrl: "" };
+  }
   if (!state.restaurant.purposes) state.restaurant.purposes = ["Dine In", "Take Away"];
+
+  /* a demo frame must look finished, and must never touch the visitor's storage */
+  function demoState() {
+    const s = seed();
+    s.docs = { logo: "demo", license: "demo" };
+    s.restaurant.mapsUrl = "https://maps.google.com/?q=Spice+Route";
+    s.restaurant.orderEmail = s.account.email;
+    s.status = "published";
+    return s;
+  }
 
   function menuSource() {
     if (state.menu && state.menu.categories && state.menu.categories.length) return state.menu;
-    /* a real restaurant with no menu yet must not be shown the sample dishes */
-    if (state.restaurantId) return { categories: [] };
-    return DEMO_MENU;
+    /* the sample dishes are the landing page's picture; a real account with no
+       menu gets an empty editor and the import button, not someone's demo food */
+    return DEMO ? DEMO_MENU : { categories: [] };
   }
 
-  function save() { saveState(state); }
+  function save() { if (!DEMO) saveState(state); }
 
   /* ---------------- toast ---------------- */
 
@@ -152,7 +178,7 @@
     location.hash = name === "overview" ? "" : name;
     if (name === "menu") renderMenuEditor();
     if (name === "orders") renderOrders();
-    if (name === "docs") { renderDocs(); renderProfile(); }
+    if (name === "docs") { renderDocs(); renderProfile(); renderTeam(); }
     if (name === "qr") renderQrPane();
     if (name === "overview") renderOverview();
   }
@@ -165,9 +191,138 @@
   );
 
   $("#signOut").addEventListener("click", () => {
+    const staff = state.role && state.role !== "owner";
+    const handle = state.handle;
     window.Auth.signOut();
-    location.href = "login.html";
+    location.href = staff && handle ? "/" + handle + "/login" : "login.html";
   });
+
+  /* ---------------- team logins (owner only) ----------------
+     A name and a password per person, created here and handed over by the owner.
+     The staff door is this restaurant's own address, so a name is scoped to one
+     menu: the server builds the identity from (handle + name). */
+
+  async function renderTeam() {
+    const host = $("#tmList");
+    if (!host) return;
+
+    const r = await window.Auth.api("/api/members");
+    if (!r.ok) {
+      host.innerHTML = '<p class="hint">' + esc(r.data.message || "The team list could not be loaded.") + "</p>";
+      return;
+    }
+
+    const handle = (r.data && r.data.handle) || state.handle || "";
+    const list = (r.data && r.data.members) || [];
+    const where = (location.host || "digimenu.indubaicity.com") + "/" + handle + "/login";
+
+    host.innerHTML =
+      '<p class="hint" style="margin-top:14px">Staff sign in at <b>' + esc(where) + "</b> with the name and password you set. Nothing is emailed — you hand it over, and a new password is set the same way.</p>" +
+      (list.length
+        ? list.map((m) =>
+            '<div class="team-row"><span><span class="who">' + esc(m.username) + "</span> " +
+            '<span class="meta">' + (m.role === "menu" ? "Menu and orders" : "Orders only") +
+            (m.last_sign_in_at ? " · last signed in " + esc(new Date(m.last_sign_in_at).toLocaleDateString()) : " · never signed in") +
+            "</span></span>" +
+            '<button class="btn btn-outline btn-sm" type="button" data-np="' + esc(m.username) + '">New password</button>' +
+            '<button class="btn btn-outline btn-sm" type="button" data-rm="' + esc(m.username) + '">Remove</button></div>'
+          ).join("")
+        : '<p class="hint">No staff logins yet.</p>');
+
+    /* a forgotten password is not a reset link — the owner makes a new one here
+       and reads it out, which is the same act as the first time */
+    $$("[data-np]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        const username = btn.dataset.np;
+        const A = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        const b = crypto.getRandomValues(new Uint8Array(10));
+        let password = "";
+        for (let i = 0; i < 10; i++) password += A[b[i] % A.length];
+
+        btn.disabled = true;
+        const d = await window.Auth.api("/api/members", {
+          method: "POST",
+          body: JSON.stringify({ action: "password", username, password })
+        });
+        btn.disabled = false;
+        if (!d.ok) { toast(d.data.message || "Could not set a new password."); return; }
+
+        const row = btn.closest(".team-row");
+        let line = row && row.querySelector(".newpw");
+        if (line) {
+          line.innerHTML = "New password: <b>" + esc(password) + "</b> — write it down now.";
+        } else if (row) {
+          line = document.createElement("span");
+          line.className = "meta newpw";
+          line.innerHTML = "New password: <b>" + esc(password) + "</b> — write it down now.";
+          row.appendChild(line);
+        }
+        toast("New password set. The old one stops working immediately.");
+      })
+    );
+
+    $$("[data-rm]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        /* removing a login kills a password that is in somebody's pocket. Two
+           presses, then it is a decision. */
+        if (btn.dataset.armed !== "1") {
+          btn.dataset.armed = "1";
+          btn.textContent = "Sure?";
+          setTimeout(() => {
+            if (btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = "Remove"; }
+          }, 4000);
+          return;
+        }
+        btn.disabled = true;
+        const d = await window.Auth.api("/api/members", {
+          method: "POST",
+          body: JSON.stringify({ action: "remove", username: btn.dataset.rm })
+        });
+        if (!d.ok) { btn.disabled = false; toast(d.data.message || "That login was not removed."); return; }
+        toast("Login removed — that password stops working now.");
+        renderTeam();
+      })
+    );
+  }
+
+  const tmAdd = $("#tmAdd");
+  if (tmAdd) {
+    tmAdd.addEventListener("click", async () => {
+      const n = $("#tmName"), p = $("#tmPass"), role = $("#tmRole");
+      let ok = true;
+      n.value = n.value.trim().toLowerCase();
+      ok = markErr(n, $("#tmNameErr"), !/^[a-z0-9][a-z0-9._-]{1,23}$/.test(n.value)) && ok;
+      ok = markErr(p, $("#tmPassErr"), p.value.length < 6) && ok;
+      if (!ok) return;
+
+      const label = tmAdd.textContent;
+      tmAdd.disabled = true;
+      tmAdd.textContent = "Creating…";
+
+      const r = await window.Auth.api("/api/members", {
+        method: "POST",
+        body: JSON.stringify({ action: "create", username: n.value, password: p.value, role: role.value })
+      });
+
+      tmAdd.disabled = false;
+      tmAdd.textContent = label;
+
+      if (!r.ok) {
+        n.classList.add("err");
+        $("#tmNameErr").textContent = r.data.message || "That login could not be created.";
+        $("#tmNameErr").classList.add("show");
+        return;
+      }
+
+      n.value = ""; p.value = "";
+      $("#tmNameErr").classList.remove("show");
+      $("#tmPassErr").classList.remove("show");
+      toast("Created. Hand over the name and password you just set.");
+      renderTeam();
+    });
+  }
+
+
 
   /* ---------------- onboarding ---------------- */
 
@@ -544,7 +699,26 @@
       publishBtn.dataset.wired = "1";
       publishBtn.addEventListener("click", () => setStatus("published"));
       const un = $("#unpublishBtn");
-      if (un) un.addEventListener("click", () => setStatus("trial"));
+      if (un && !un.dataset.wired) {
+        un.dataset.wired = "1";
+        un.addEventListener("click", () => {
+          /* One press takes the guest QR offline for everyone who has the code
+             printed on the table. Two presses, five seconds apart, and it is a
+             decision instead of a mis-click. */
+          if (un.dataset.armed === "1") {
+            un.dataset.armed = "";
+            un.textContent = "Unpublish";
+            setStatus("trial");
+            return;
+          }
+          un.dataset.armed = "1";
+          un.textContent = "Take it offline?";
+          toast("Press again to take " + publicLink(state.handle) + " offline.");
+          setTimeout(() => {
+            if (un.dataset.armed === "1") { un.dataset.armed = ""; un.textContent = "Unpublish"; }
+          }, 5000);
+        });
+      }
     }
 
     $("#linkOverview").textContent = publicLink(state.handle);
@@ -1662,6 +1836,14 @@
   const obParam = new URLSearchParams(location.search).get("onboard");
 
   (async function boot() {
+    /* the landing page's picture of the product: sample data, no API, no writes */
+    if (DEMO) {
+      $("#shell").style.display = "";
+      renderOverview();
+      showView("overview");
+      return;
+    }
+
     /* sample data must never leak into a real account */
     if (!state.restaurantId) {
       const u = window.Auth.user() || {};
@@ -1675,13 +1857,30 @@
     let saved = null;
     try {
       const r = await window.Auth.api("/api/restaurant");
-      if (r.ok) saved = r.data.restaurant;
+      if (r.ok) {
+        saved = r.data.restaurant;
+        /* owner, or a staff login from 0008 — the server decides, and the page
+           only makes it visible: what is hidden here is refused there anyway */
+        state.role = r.data.role || "owner";
+      }
     } catch (e) {
       /* api() already sent us to the sign-in page on 401 */
     }
 
+    document.body.dataset.role = state.role || "owner";
+
     if (saved) {
       applyRestaurant(saved);
+
+      /* the address is the restaurant. Someone signed in as one restaurant who
+         opens another restaurant's dashboard is sent to their own, so a copied
+         link never shows a menu they were not given. */
+      const seg = (location.pathname || "").split("/").filter(Boolean);
+      const atHandle = seg.length === 2 && /^dashboard$/i.test(seg[1]) ? seg[0].toLowerCase() : "";
+      if (atHandle && saved.handle && atHandle !== String(saved.handle).toLowerCase()) {
+        location.replace("/" + saved.handle + "/dashboard");
+        return;
+      }
 
       /* the menu lives in Postgres; pull it back so the editor shows what the
          guest page shows, trial or not */
@@ -1737,6 +1936,18 @@
     /* No forced prompt: the emailed password signs them in and works like any
        other. "Your sign-in" sits in Documents for whenever they want to change it. */
 
+    /* A Google-only account has no password to change — say "set" and mean it:
+       it is the one way an owner can hand a login to a manager without an
+       invite system. Detected from the providers Supabase puts on the token. */
+    const me = window.Auth.user() || {};
+    const providers = (me.app_metadata && me.app_metadata.providers) || [];
+    const googleOnly = providers.length > 0 && providers.indexOf("email") === -1;
+    if (googleOnly) {
+      if ($("#pwLede")) $("#pwLede").textContent = "You sign in with Google. This account has no password yet — set one and the same email will also work with it.";
+      if ($("#pwGoogleHint")) $("#pwGoogleHint").hidden = false;
+      if ($("#pwSave")) $("#pwSave").textContent = "Set password";
+    }
+
     const pwSave = $("#pwSave");
     if (pwSave) {
       pwSave.addEventListener("click", async () => {
@@ -1760,8 +1971,10 @@
         a.value = ""; b.value = "";
         $("#newPassErr").classList.remove("show");
         $("#newPass2Err").classList.remove("show");
-        $("#tempPwNote").hidden = true;
-        toast("Password changed — use the new one next time you sign in.");
+        if ($("#tempPwNote")) $("#tempPwNote").hidden = true;
+        toast(googleOnly
+          ? "Password set — this email now signs in with it as well as Google."
+          : "Password changed — use the new one next time you sign in.");
       });
     }
 

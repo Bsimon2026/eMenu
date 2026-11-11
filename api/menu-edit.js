@@ -16,7 +16,7 @@
  * be able to edit another restaurant's menu.
  */
 
-const { rest, userFromToken, bearer, cors, configured } = require("./_lib/db");
+const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./_lib/db");
 
 function money(v) {
   const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
@@ -43,13 +43,27 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "BAD_BODY", message: "Send { action, … }." });
   }
 
-  const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id");
-  if (!own.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
-  const restaurant = (own.data || [])[0];
+  const actor = await actorRestaurant(user, "id");
+  const restaurant = actor && actor.restaurant;
   if (!restaurant) {
     return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Finish the restaurant details first." });
   }
   const rid = restaurant.id;
+
+  /* The kitchen needs one thing from this endpoint mid-service: the sold-out
+     switch. A login with orders-only access may do exactly that and nothing
+     else — no renames, no price changes, no deletions. */
+  const ordersOnly = !can(actor.role, "menu");
+  if (ordersOnly) {
+    const keys = Object.keys(body).filter((k) => k !== "action" && k !== "id" && k !== "soldOut");
+    const isSoldOut = body.action === "updateItem" && body.soldOut !== undefined && keys.length === 0;
+    if (!isSoldOut) {
+      return res.status(403).json({
+        ok: false, code: "NOT_ALLOWED",
+        message: "Your login can change what is sold out, not the menu itself."
+      });
+    }
+  }
 
   const ownsItem = async (id) => {
     if (!id) return null;

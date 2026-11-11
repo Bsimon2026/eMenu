@@ -6,7 +6,7 @@
  * another's.
  */
 
-const { rest, userFromToken, bearer, cors, configured } = require("./db");
+const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./db");
 
 module.exports = async function listOrders(req, res) {
   cors(res);
@@ -19,9 +19,8 @@ module.exports = async function listOrders(req, res) {
   const user = await userFromToken(bearer(req));
   if (!user) return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
 
-  const own = await rest("restaurants?owner_id=eq." + user.id + "&select=id,handle,currency");
-  if (!own.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
-  const restaurant = (own.data || [])[0];
+  const actor = await actorRestaurant(user, "id,handle,currency");
+  const restaurant = actor && actor.restaurant;
   if (!restaurant) return res.status(200).json({ ok: true, orders: [], currency: "AED" });
 
   const list = await rest(
