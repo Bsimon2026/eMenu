@@ -23,7 +23,7 @@
 
   --brand: #f0485f;
   --brand-deep: #a5273a;
-  --brand-ink: #171512;
+  --brand-ink: #ffffff;
 
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -145,7 +145,7 @@
 .mbtn:active { transform: translateY(1px); }
 
 .mbtn-brand { background: var(--brand); color: var(--brand-ink); font-weight: 600; }
-.mbtn-brand:hover { background: #ffa733; }
+.mbtn-brand:hover { background: var(--brand-deep); }
 
 .mbtn-ghost { border-color: var(--night-line-2); color: var(--night-text); background: transparent; }
 .mbtn-ghost:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.3); }
@@ -1051,4 +1051,85 @@ html { scrollbar-color: #3a3d42 var(--night); }
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 26px;
   }
+}
+
+
+/* ---------------- the QR code: what the guest actually touches ---------------- */
+.qr-band {
+  padding: 96px 0 100px;
+  background:
+    radial-gradient(90% 120% at 88% 8%, rgba(240, 72, 95, 0.07) 0%, rgba(240, 72, 95, 0) 56%),
+    #fffaf7;
+  border-top: 1px solid #f2e7e2;
+  border-bottom: 1px solid #f2e7e2;
+}
+.qr-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+  gap: 72px;
+  align-items: center;
+}
+.qr-lead {
+  margin: 18px 0 0;
+  font-size: 16px;
+  line-height: 1.66;
+  color: #5d5a52;
+  max-width: 52ch;
+}
+.qr-list {
+  list-style: none;
+  margin: 30px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+}
+.qr-list li { display: flex; gap: 14px; align-items: flex-start; }
+.qr-list svg { width: 22px; height: 22px; flex: none; color: var(--brand); margin-top: 2px; }
+.qr-list b {
+  display: block;
+  font-family: var(--display);
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--day-text);
+}
+.qr-list span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #6b665c;
+  max-width: 46ch;
+}
+.qr-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
+
+.qr-card { display: grid; gap: 16px; justify-items: center; }
+.qr-frame {
+  background: #fff;
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 44px 70px -54px rgba(40, 20, 24, 0.65), 0 0 0 1px rgba(240, 72, 95, 0.12);
+  transform: rotate(-1.2deg);
+}
+.qr-frame img { display: block; width: 100%; max-width: 300px; height: auto; }
+.qr-cap { text-align: center; }
+.qr-cap b { display: block; font-family: var(--display); font-size: 14px; color: var(--day-text); }
+.qr-cap span { display: block; margin-top: 4px; font-size: 12.5px; color: #7d786c; }
+
+@media (max-width: 900px) {
+  .qr-band { padding: 72px 0 76px; }
+  .qr-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .qr-card { order: -1; }
+  .qr-frame { transform: none; }
+  .qr-frame img { max-width: 220px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .qr-frame { transition: transform 0.35s ease; }
+  .qr-frame:hover { transform: rotate(0deg) scale(1.01); }
+}
+
+/* in-page links must not land a heading underneath the sticky nav */
+section[id], .chapter[id], [id="qr"], [id="pricing"], [id="how"], [id="product"] {
+  scroll-margin-top: 84px;
 }

@@ -50,7 +50,7 @@
       },
       docs: { logo: null, license: null },
       handle: "spice-route",
-      accent: "#f7941d",
+      accent: "#f0485f",
       menuImported: true,
       menu: null,
       onboarded: true
@@ -1652,7 +1652,7 @@
       restaurant: { name: "", ownerName: "", purposes: ["Dine In", "Take Away"], whatsapp: "", orderEmail: "", mapsUrl: "" },
       docs: { logo: null, license: null },
       handle: "",
-      accent: "#f7941d",
+      accent: "#f0485f",
       menuImported: false,
       menu: null,
       onboarded: false
@@ -1666,7 +1666,7 @@
     if (!state.restaurantId) {
       const u = window.Auth.user() || {};
       const meta = u.user_metadata || {};
-      const acct = state.account || (u.email ? { name: meta.name || "", email: u.email, mobile_e164: meta.mobile_e164 || "" } : null);
+      const acct = state.account || (u.email ? { name: meta.name || meta.full_name || "", email: u.email, mobile_e164: meta.mobile_e164 || "" } : null);
       state = blankState(acct);
       if (acct && acct.name) state.restaurant.ownerName = acct.name;
       saveState(state);

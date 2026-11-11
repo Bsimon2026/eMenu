@@ -3,7 +3,7 @@
 const DEMO_MENU = {
   restaurant: "Spice Route",
   handle: "spice-route",
-  city: "Abu Dhabi",
+  city: "Dubai",
   whatsapp: "971525757079",
   accent: "#7c2231",
   categories: [

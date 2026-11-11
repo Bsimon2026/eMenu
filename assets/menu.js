@@ -36,7 +36,7 @@
   let restaurant = {};
   let docs = { logo: null };
   let name = "";
-  let accent = "#f7941d";
+  let accent = "#f0485f";
   let handle = urlHandle || "";
   let publicLink = "";
   let whatsapp = "";
@@ -610,7 +610,7 @@
     restaurant = { name: r.name, city: r.city, whatsapp: r.whatsapp, purposes: r.purposes };
     docs = { logo: r.logoUrl || null };
     name = r.name || "Menu";
-    accent = r.accent || "#f7941d";
+    accent = r.accent || "#f0485f";
     handle = r.handle || wanted;
     publicLink = PUBLIC_BASE.replace(/^https?:\/\//i, "") + handle;
     whatsapp = String(r.whatsapp || "").replace(/\D/g, "");

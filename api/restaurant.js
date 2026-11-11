@@ -88,7 +88,7 @@ module.exports = async function handler(req, res) {
     whatsapp_e164: whatsapp,
     order_email: orderEmail,
     purposes,
-    city: body.city !== undefined ? String(body.city).slice(0, 60) : (existing?.city ?? "Abu Dhabi"),
+    city: body.city !== undefined ? String(body.city).slice(0, 60) : (existing?.city ?? "Dubai"),
     accent: body.accent !== undefined ? String(body.accent).slice(0, 20) : (existing?.accent ?? "#f7941d"),
     updated_at: new Date().toISOString()
   };

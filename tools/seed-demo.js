@@ -181,7 +181,7 @@ async function ensureRestaurant(token, userId) {
       whatsapp_e164: DEMO.whatsapp,
       order_email: DEMO.orderEmail,
       status: "trial",
-      city: "Abu Dhabi"
+      city: "Dubai"
     }
   });
   if (created.status >= 300) throw new Error("restaurant insert: " + created.status + " " + created.text.slice(0, 240));

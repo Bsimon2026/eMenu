@@ -1,11 +1,19 @@
 {
-  "name": "DigiMenu by Ogle.live",
+  "name": "DigiMenu by Indubaicity",
   "short_name": "DigiMenu",
   "icons": [
-    { "src": "favicon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "favicon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ],
-  "theme_color": "#f7941d",
+  "theme_color": "#F0485F",
   "background_color": "#ffffff",
   "display": "browser"
 }
