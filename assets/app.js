@@ -2682,10 +2682,27 @@
     $("#mapsUrl").value = state.restaurant.mapsUrl || "";
   }
 
+  /* This card has no save button, and the field used to write only to this
+     browser's storage — so the link looked saved and came back blank on the
+     next load, when the restaurant was read from the server again. Persist it
+     on change (blur or Enter), not on every keystroke. */
   $("#mapsUrl").addEventListener("input", (e) => {
     state.restaurant.mapsUrl = e.target.value.trim();
     save();
     renderOverview();
+  });
+
+  $("#mapsUrl").addEventListener("change", async (e) => {
+    const v = e.target.value.trim();
+    state.restaurant.mapsUrl = v;
+    const r = await window.Auth.api("/api/restaurant", {
+      method: "POST", body: JSON.stringify({ maps_url: v || null })
+    });
+    if (!r.ok) { toast(r.data.message || "That link was not saved."); return; }
+    if (r.data.restaurant) applyRestaurant(r.data.restaurant);
+    renderDocs();
+    renderOverview();
+    toast(v ? "Maps link saved" : "Maps link removed");
   });
 
 
