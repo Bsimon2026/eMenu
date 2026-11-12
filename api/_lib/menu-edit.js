@@ -540,6 +540,19 @@ module.exports = async function handler(req, res) {
           if (!w.ok) return res.status(503).json({ ok: false, code: "NO_I18N", message: "Arabic is not switched on yet." });
           out.push((w.data || []).length);
         }
+
+        /* the guest page only asks for Arabic when the restaurant advertises
+           it, so publishing is also the moment it is switched on — otherwise
+           the owner publishes a menu and nothing changes for the guest */
+        const cur = await rest("restaurants?id=eq." + rid + "&select=locales");
+        const have = (cur.ok && (cur.data || [])[0] && (cur.data || [])[0].locales) || ["en"];
+        if (have.indexOf(locale) < 0 && (out[0] + out[1]) > 0) {
+          await rest("restaurants?id=eq." + rid, {
+            method: "PATCH", prefer: "return=minimal",
+            body: { locales: have.concat([locale]) }
+          });
+        }
+
         return res.status(200).json({ ok: true, published: out[0] + out[1] });
       }
 

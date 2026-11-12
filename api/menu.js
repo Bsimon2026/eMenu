@@ -157,7 +157,7 @@ async function menuHandler(req, res) {
   }
 
   const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
-  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends";
+  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends,locales";
   const query = (cols) =>
     "restaurants?" + lookup + "&status=eq.published&select=" + cols;
 
