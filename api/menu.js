@@ -249,9 +249,9 @@ async function menuHandler(req, res) {
         tiktok: restaurant.tiktok || null,
         website: restaurant.website || null
       },
-      coverUrl: restaurant.cover_url || null
+      coverUrl: restaurant.cover_url || null,
+      locales: Array.isArray(restaurant.locales) ? restaurant.locales : ["en"]
     },
-    locales: Array.isArray(restaurant.locales) ? restaurant.locales : ["en"],
     categories: withArabic(built.categories, ar),
     itemCount: built.itemCount
   });
