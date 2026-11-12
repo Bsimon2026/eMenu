@@ -29,14 +29,15 @@ const {
 
 const ALL = ["view", "export", "pay_view", "pay_entry", "admins"];
 
-/* what a plan costs, and what the marketing add-on costs: $149 to set up,
-   $8.50 a month, recorded as its own lines so it can be seen and stopped
-   without touching the menu subscription */
+/* AED. "qr" is sold by the year only; "pro" is ordering with no order cap.
+   The website add-on is one yearly line, so it can be seen and stopped
+   without touching the menu subscription. */
 const priceOf = (plan, billing) =>
-  billing === "yearly" ? (plan === "order" ? 190 : 20) : (plan === "order" ? 19 : 2);
-const MKT_SETUP = 149;
-const MKT_MONTHLY = 8.5;
-const PLANS = ["qr", "order"];
+  plan === "pro" ? (billing === "yearly" ? 1990 : 249)
+    : plan === "order" ? (billing === "yearly" ? 999 : 99)
+      : 99;
+const ADDON_YEARLY = 299;
+const PLANS = ["qr", "order", "pro"];
 const BILLING = ["monthly", "yearly"];
 
 /* ---------------------------------------------------------------- helpers */
@@ -395,12 +396,12 @@ module.exports = async function handler(req, res) {
       const billing = BILLING.includes(body.billing) ? body.billing : "monthly";
       const plan = PLANS.includes(body.plan) ? body.plan : (r0.plan || "qr");
 
-      /* the marketing add-on is sold as $149 to set up plus $8.50 a month. The
-         setup fee is only ever charged once per customer. */
+      /* the website add-on is one yearly line — AED 299. There is no setup fee
+         any more, so nothing is charged once per customer. */
       const wantMarketing = body.marketing === true;
       const firstMarketing = wantMarketing && !r0.addon_marketing;
-      const setup = firstMarketing ? MKT_SETUP : 0;
-      const addonFee = wantMarketing ? MKT_MONTHLY : 0;
+      const setup = 0; /* the one-time setup is gone: the website is AED 299 a year */
+      const addonFee = wantMarketing ? ADDON_YEARLY : 0;
       const list = priceOf(plan, billing) + setup + addonFee;
 
       /* what was actually taken. Blank means "the list price"; anything else is
@@ -428,7 +429,7 @@ module.exports = async function handler(req, res) {
          the difference so the lines always add up to the money received. */
       const line = (o) => Object.assign({
         restaurant_id: r0.id,
-        currency: "USD",
+        currency: "AED",
         plan: null,
         billing: null,
         kind: "subscription",
@@ -530,7 +531,12 @@ module.exports = async function handler(req, res) {
       restaurant: { handle: r0.handle, name: r0.name, paid_through: r0.paid_through, trial_ends: r0.trial_ends, addon_marketing: Boolean(r0.addon_marketing), plan: r0.plan, billing: r0.billing },
       payments: rows,
       total: Math.round(rows.reduce((a, x) => a + Number(x.amount || 0), 0) * 100) / 100,
-      prices: { qr: { monthly: 2, yearly: 20 }, order: { monthly: 19, yearly: 190 }, marketing: { setup: MKT_SETUP, monthly: MKT_MONTHLY } }
+      prices: {
+        qr: { yearly: 99 },
+        order: { monthly: 99, yearly: 999 },
+        pro: { monthly: 249, yearly: 1990 },
+        marketing: { yearly: ADDON_YEARLY }
+      }
     });
   }
 

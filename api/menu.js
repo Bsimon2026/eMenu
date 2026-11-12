@@ -183,9 +183,11 @@ async function menuHandler(req, res) {
     return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
   }
 
-  /* Is this restaurant entitled to take orders? The $2 plan is a menu, not a till.
+  /* Is this restaurant entitled to take orders? The menu plan is a menu, not a till.
      The columns arrive with 0007 — when they are present we already have them from
      the query above; when they are not, ask once and keep the old behaviour. */
+  /* which plans include ordering: "order", and "pro" which has no order cap */
+  const ORDERING_PLANS = ["order", "pro"];
   let ordering = true;
   let planSeen = null;
   const hasGateCols = Object.prototype.hasOwnProperty.call(restaurant, "paid_through");
@@ -196,14 +198,14 @@ async function menuHandler(req, res) {
     const onTrial = Boolean(restaurant.trial_ends && restaurant.trial_ends >= today);
     /* the seven free days include ordering, so a new restaurant sees the whole
        product before anybody pays for it */
-    ordering = onTrial || (planSeen === "order" && paid);
+    ordering = onTrial || (ORDERING_PLANS.indexOf(planSeen) >= 0 && paid);
   } else {
     const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
     if (gate.ok && (gate.data || [])[0]) {
       const g = gate.data[0];
       planSeen = g.plan || "qr";
       const today = new Date().toISOString().slice(0, 10);
-      ordering = planSeen === "order" && Boolean(g.paid_through && g.paid_through >= today);
+      ordering = ORDERING_PLANS.indexOf(planSeen) >= 0 && Boolean(g.paid_through && g.paid_through >= today);
     }
   }
 

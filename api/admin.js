@@ -12,7 +12,12 @@
 
 const { rest, cors, configured } = require("./_lib/db");
 
-const PLANS = ["qr", "order"];
+const PLANS = ["qr", "order", "pro"];
+/* AED. "qr" is year-only; "pro" is ordering with no order cap. */
+const priceOfPlan = (plan, billing) =>
+  plan === "pro" ? (billing === "yearly" ? 1990 : 249)
+    : plan === "order" ? (billing === "yearly" ? 999 : 99)
+      : 99;
 const BILLING = ["monthly", "yearly"];
 
 function authorised(req) {
@@ -227,7 +232,7 @@ module.exports = async function handler(req, res) {
         trialDaysLeft: onTrial ? daysLeft : 0,
         /* a restaurant is live on a payment or inside its free week */
         active: paid || onTrial,
-        price: x.plan === "order" ? (x.billing === "yearly" ? 190 : 19) : (x.billing === "yearly" ? 20 : 2)
+        price: priceOfPlan(x.plan, x.billing === "yearly" ? "yearly" : "monthly")
       };
     });
     return res.status(200).json({ ok: true, restaurants: rows, today });
@@ -265,9 +270,9 @@ module.exports = async function handler(req, res) {
   } else if (action === "record-payment") {
     if (BILLING.includes(body.billing)) patch.billing = body.billing;
     patch.paid_through = extend(body.from || r0.paid_through, patch.billing || r0.billing || "monthly");
-    patch.paid_amount = Number(body.amount) || (patch.billing === "yearly"
-      ? (r0.plan === "order" || body.plan === "order" ? 190 : 20)
-      : (r0.plan === "order" || body.plan === "order" ? 19 : 2));
+    patch.paid_amount = Number(body.amount) || priceOfPlan(
+      PLANS.includes(body.plan) ? body.plan : (r0.plan || "qr"),
+      patch.billing === "yearly" ? "yearly" : "monthly");
     patch.pay_ref = body.payRef ? String(body.payRef).slice(0, 120) : null;
     patch.pay_method = "manual";
     patch.activated_at = new Date().toISOString();
