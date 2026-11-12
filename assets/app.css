@@ -1197,7 +1197,8 @@ body[data-role="orders"] #newCatName { display: none !important; }
   color: var(--ink-2);
 }
 .bulk-pick-head b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
-.bulk-pick-tools { display: flex; gap: 4px; }
+.bulk-pick-tools { display: flex; gap: 14px; align-items: center; }
+.bulk-pick-tools .btn-quiet { padding: 2px 2px; }
 
 .bulk-list { max-height: 320px; overflow-y: auto; }
 .bulk-cat {
