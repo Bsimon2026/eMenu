@@ -1150,7 +1150,7 @@
       .toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  function orderRowHtml(o) {
+  function orderLedgerRowHtml(o) {
     const d = new Date(o.ts);
     const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     const day = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
@@ -1237,7 +1237,7 @@
         : '<div class="empty"><b>No ' + esc(ORDER_TAB) + ' orders yet</b>They will appear here. The other tabs keep theirs.</div>';
       return;
     }
-    host.innerHTML = shown.map(orderRowHtml).join("");
+    host.innerHTML = shown.map(orderLedgerRowHtml).join("");
   }
 
   /* one listener for the tab strip and the state buttons — the list is redrawn
