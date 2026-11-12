@@ -1064,7 +1064,10 @@
   async function loadOrders(force) {
     if (!force && ordersCache && Date.now() - ordersFetchedAt < 20000) return ordersCache;
     let r;
-    try { r = await window.Auth.api("/api/orders"); } catch (e) { ordersError = "Could not reach the server."; return null; }
+    /* no-store: a list of live orders must never come back from the browser's
+       cache — marking one done and watching it stay Pending is exactly what a
+       cached GET does */
+    try { r = await window.Auth.api("/api/orders", { cache: "no-store" }); } catch (e) { ordersError = "Could not reach the server."; return null; }
     if (!r.ok) { ordersError = (r.data && r.data.message) || "Try again in a moment."; return null; }
     ordersError = "";
     if (r.data.currency) state.currency = r.data.currency;
