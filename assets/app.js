@@ -1330,8 +1330,11 @@
             <span class="row-tools">
               <button class="btn-quiet" type="button" data-edit="${it.id}" title="Edit">Edit</button>
               <button class="btn-quiet danger" type="button" data-del="${it.id}" title="Delete">Delete</button>
-              <button class="switch" type="button" role="switch" aria-checked="${!it.soldOut}"
-                      aria-label="Available: ${esc(it.name)}" data-toggle="${it.id}"></button>
+              <button class="avail ${it.soldOut ? "is-off" : ""}" type="button" data-toggle="${it.id}"
+                      aria-pressed="${it.soldOut}"
+                      aria-label="${it.soldOut ? "Sold out" : "Available"}: ${esc(it.name)}"
+                      title="${it.soldOut ? "Put it back on the menu" : "Hide it from ordering"}"
+                      ><span class="d"></span>${it.soldOut ? "Sold out" : "Available"}</button>
             </span>
           </div>`).join("")}
       </div>`).join("") : empty) + `
@@ -1347,8 +1350,9 @@
         const item = findItemEverywhere(id);
         if (!item) return;
         const next = !item.soldOut;
-        btn.setAttribute("aria-checked", String(!next));
-        btn.closest(".mrow").classList.toggle("is-sold", next);
+        btn.setAttribute("aria-pressed", String(next));
+        btn.classList.toggle("is-off", next);
+        btn.innerHTML = '<span class="d"></span>' + (next ? "Sold out" : "Available");
         item.soldOut = next;
         save();
         const saved = await menuEdit({ action: "updateItem", id, soldOut: next });
@@ -1551,39 +1555,100 @@
   }
 
   /* ---------------- bulk price change ----------------
-     Every dish, one percentage. It works by handing the merge the same rows
-     with new prices — category + name match, price updates, nothing is created
-     and nothing is deleted. The same safety as an import, because it IS an
-     import. */
+     This used to change every dish, which is the one thing an operator rarely
+     wants. Now the selection is explicit: all of it by default, one category,
+     or single dishes. Underneath it is still the same merge — category + name
+     match, the price is updated, nothing is created and nothing is deleted. */
 
   const bulkItems = () => {
     const out = [];
     ((state.menu && state.menu.categories) || []).forEach((c) => {
-      (c.items || []).forEach((it) => out.push({ cat: c.name, item: it }));
+      (c.items || []).forEach((it) => out.push({ catId: c.id, cat: c.name, item: it }));
     });
     return out;
   };
 
-  function bulkPlan() {
+  let bulkSel = null;   /* item ids that will change; null until the panel opens */
+
+  function bulkPct() {
     const dir = Number($("#bulkDir").value) || 1;
     const raw = Number($("#bulkPct").value);
-    const pct = dir * (Number.isFinite(raw) ? Math.max(0, Math.min(90, raw)) : 0);
+    return dir * (Number.isFinite(raw) ? Math.max(0, Math.min(90, raw)) : 0);
+  }
+
+  function bulkNew(was) {
+    const pct = bulkPct();
     const mode = $("#bulkRound").value;
-    return bulkItems().map((x) => {
-      const was = Number(x.item.price) || 0;
-      const now = Math.max(0, roundPrice(was * (1 + pct / 100), mode));
-      return { cat: x.cat, name: x.item.name, was, now };
+    return Math.max(0, roundPrice((Number(was) || 0) * (1 + pct / 100), mode));
+  }
+
+  function bulkPlan() {
+    return bulkItems()
+      .filter((x) => bulkSel && bulkSel.has(x.item.id))
+      .map((x) => {
+        const was = Number(x.item.price) || 0;
+        return { cat: x.cat, name: x.item.name, was, now: bulkNew(was) };
+      });
+  }
+
+  function bulkPaintList() {
+    const host = $("#bulkList");
+    const cats = (state.menu && state.menu.categories) || [];
+    if (!cats.length) { host.innerHTML = '<div class="hint" style="padding:12px">There is no menu to change yet.</div>'; return; }
+
+    host.innerHTML = cats.map((c) => {
+      const items = c.items || [];
+      const on = items.filter((i) => bulkSel.has(i.id)).length;
+      return '<div class="bulk-catblock">' +
+        '<label class="bulk-cat">' +
+          '<input type="checkbox" data-bcat="' + esc(c.id) + '"' + (items.length && on === items.length ? " checked" : "") + '>' +
+          '<span>' + esc(c.name) + '</span>' +
+          '<span class="n">' + on + '/' + items.length + '</span>' +
+        '</label>' +
+        items.map((it) => {
+          const sel = bulkSel.has(it.id);
+          const was = Number(it.price) || 0;
+          const now = bulkNew(was);
+          const dirCls = now > was + 0.004 ? "up" : now < was - 0.004 ? "down" : "";
+          return '<label class="bulk-item' + (sel ? "" : " off") + '">' +
+            '<input type="checkbox" data-bitem="' + esc(it.id) + '"' + (sel ? " checked" : "") + '>' +
+            '<span class="nm">' + esc(it.name) + (it.soldOut ? ' <span class="was">sold out</span>' : "") + '</span>' +
+            '<span class="was">' + priceLabel(was) + '</span>' +
+            '<span class="now ' + dirCls + '">' + priceLabel(now) + '</span>' +
+          '</label>';
+        }).join("") +
+      '</div>';
+    }).join("");
+
+    /* a category with some of its dishes picked shows a dash, not a tick */
+    Array.from(host.querySelectorAll("[data-bcat]")).forEach((box) => {
+      const cat = cats.filter((c) => c.id === box.dataset.bcat)[0];
+      if (!cat) return;
+      const items = cat.items || [];
+      const on = items.filter((i) => bulkSel.has(i.id)).length;
+      box.indeterminate = on > 0 && on < items.length;
     });
   }
 
   function bulkPaint() {
+    bulkPaintList();
     const plan = bulkPlan();
-    const out = $("#bulkPreview");
-    if (!plan.length) { out.textContent = "There is no menu to change yet."; return; }
     const changed = plan.filter((p) => Math.abs(p.was - p.now) > 0.004);
-    const sample = plan.slice(0, 4).map((p) => p.name + " " + p.was.toFixed(2) + " → " + p.now.toFixed(2));
-    out.innerHTML = "<b>" + changed.length + " of " + plan.length + " dishes change.</b> " +
-      esc(sample.join(" · ")) + (plan.length > 4 ? " …" : "");
+    const out = $("#bulkPreview");
+
+    if (!plan.length) {
+      out.innerHTML = "Nothing is selected — tick the dishes this should apply to.";
+    } else {
+      const sample = changed.slice(0, 3).map((p) => p.name + " " + p.was.toFixed(2) + " → " + p.now.toFixed(2));
+      out.innerHTML = "<b>" + changed.length + " of " + plan.length + " selected dishes change.</b> " +
+        (sample.length ? esc(sample.join(" · ")) + (changed.length > 3 ? " …" : "") : "");
+    }
+
+    $("#bulkSelCount").textContent = plan.length;
+    const go = $("#bulkGo");
+    if (go && !go.dataset.armed) {
+      go.textContent = changed.length ? "Apply to " + changed.length + (changed.length === 1 ? " dish" : " dishes") : "Apply";
+    }
   }
 
   (function wireBulkPrice() {
@@ -1591,45 +1656,75 @@
     if (!btn || btn.dataset.wired) return;
     btn.dataset.wired = "1";
 
-    const show = (on) => {
+    const open = (on) => {
       $("#bulkPricePanel").hidden = !on;
-      if (on) bulkPaint();
+      if (!on) return;
+      /* every dish is ticked the first time, and again each time it is opened:
+         the default is the whole menu, the choice is to narrow it */
+      bulkSel = new Set(bulkItems().map((x) => x.item.id));
+      const go = $("#bulkGo");
+      go.dataset.armed = "";
+      bulkPaint();
     };
 
-    btn.addEventListener("click", () => show($("#bulkPricePanel").hidden));
-    $("#bulkCancel").addEventListener("click", () => show(false));
-    ["bulkPct", "bulkDir", "bulkRound"].forEach((id) =>
-      $("#" + id).addEventListener("input", bulkPaint)
-    );
-    $("#bulkRound").addEventListener("change", bulkPaint);
-    $("#bulkDir").addEventListener("change", bulkPaint);
+    btn.addEventListener("click", () => open($("#bulkPricePanel").hidden));
+    $("#bulkCancel").addEventListener("click", () => open(false));
+
+    ["bulkPct", "bulkDir", "bulkRound"].forEach((id) => {
+      $("#" + id).addEventListener("input", bulkPaint);
+      $("#" + id).addEventListener("change", bulkPaint);
+    });
+
+    $("#bulkAll").addEventListener("click", () => {
+      bulkSel = new Set(bulkItems().map((x) => x.item.id));
+      bulkPaint();
+    });
+    $("#bulkNone").addEventListener("click", () => {
+      bulkSel = new Set();
+      bulkPaint();
+    });
+
+    /* one listener for the whole tree: category ticks cascade, item ticks
+       update their category, and both repaint the prices */
+    $("#bulkList").addEventListener("change", (e) => {
+      const t = e.target;
+      if (t.dataset && t.dataset.bcat !== undefined) {
+        const cat = ((state.menu && state.menu.categories) || []).filter((c) => c.id === t.dataset.bcat)[0];
+        if (!cat) return;
+        (cat.items || []).forEach((i) => { if (t.checked) bulkSel.add(i.id); else bulkSel.delete(i.id); });
+        bulkPaint();
+      } else if (t.dataset && t.dataset.bitem !== undefined) {
+        if (t.checked) bulkSel.add(t.dataset.bitem); else bulkSel.delete(t.dataset.bitem);
+        bulkPaint();
+      }
+    });
 
     $("#bulkGo").addEventListener("click", async () => {
+      const go = $("#bulkGo");
       const plan = bulkPlan().filter((p) => Math.abs(p.was - p.now) > 0.004);
-      if (!plan.length) { toast("Nothing to change."); return; }
-      if (btn.dataset.armed !== "1") {
-        btn.dataset.armed = "1";
-        $("#bulkGo").textContent = "Sure? " + plan.length + " prices change";
+      if (!plan.length) { toast(bulkSel.size ? "Those prices are already there." : "Nothing is selected."); return; }
+
+      if (go.dataset.armed !== "1") {
+        go.dataset.armed = "1";
+        go.textContent = "Sure? " + plan.length + (plan.length === 1 ? " price changes" : " prices change");
         setTimeout(() => {
-          if (btn.dataset.armed === "1") { btn.dataset.armed = ""; $("#bulkGo").textContent = "Apply to the whole menu"; }
+          if (go.dataset.armed === "1") { go.dataset.armed = ""; bulkPaint(); }
         }, 5000);
         return;
       }
-      btn.dataset.armed = "";
-      $("#bulkGo").textContent = "Applying…";
-      $("#bulkGo").disabled = true;
+      go.dataset.armed = "";
+      go.textContent = "Applying…";
+      go.disabled = true;
 
       const rows = plan.map((p) => ({ category: p.cat, name: p.name, price: p.now }));
       const r = await window.Auth.api("/api/menu?op=edit", {
         method: "POST", body: JSON.stringify({ action: "importRows", rows })
       });
 
-      $("#bulkGo").disabled = false;
-      $("#bulkGo").textContent = "Apply to the whole menu";
-
-      if (!r.ok) { toast(r.data.message || "The prices were not changed."); return; }
-      toast(plan.length + " prices changed");
-      show(false);
+      go.disabled = false;
+      if (!r.ok) { go.textContent = "Apply"; toast(r.data.message || "The prices were not changed."); return; }
+      toast(plan.length + (plan.length === 1 ? " price changed" : " prices changed"));
+      $("#bulkPricePanel").hidden = true;
       await reloadOwnMenu();
       renderMenuEditor();
     });
