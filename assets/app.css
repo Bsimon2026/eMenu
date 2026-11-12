@@ -1389,3 +1389,43 @@ body[data-role="orders"] #newCatName { display: none !important; }
   .fb-row { grid-template-columns: auto minmax(0, 1fr); }
   .fb-act { grid-column: 2; justify-content: flex-start; }
 }
+
+/* the price is an input: a dish's amount is a fact you change, not a label */
+.mrow .pr { text-align: right; }
+.price-in {
+  width: 84px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--r-sm);
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink-2);
+  transition: border-color 130ms ease-out, background-color 130ms ease-out;
+}
+.price-in:hover { border-color: var(--line-2); background: #fff; }
+.price-in:focus {
+  outline: none;
+  background: #fff;
+  border-color: var(--ink-4);
+  box-shadow: var(--focus);
+  color: var(--ink);
+}
+.price-in[disabled] { opacity: .55; }
+
+.bulk-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 11px 13px;
+  border: 1px solid #f0d9b5;
+  background: var(--warn-bg);
+  border-radius: var(--r);
+  font-size: 13px;
+  color: var(--warn);
+}
+.bulk-confirm span { flex: 1 1 220px; }

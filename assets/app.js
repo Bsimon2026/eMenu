@@ -1419,7 +1419,12 @@
       : "Nothing yet";
     if (avg) avg.textContent = d.count ? (Math.round((d.average || 0) * 10) / 10).toFixed(1) : "\u2014";
 
-    if (bars) {
+    /* with nothing to chart, five dead bars and five dead filters are noise —
+       hide them inline, because [hidden] loses to display:flex here */
+    const scoreBlock = document.querySelector(".fb-score");
+    if (scoreBlock) scoreBlock.style.display = d.count ? "" : "none";
+
+    if (bars && d.count) {
       const max = Math.max(1, ...(d.spread || [0]));
       bars.innerHTML = [5, 4, 3, 2, 1].map(function (n, i) {
         const c = (d.spread || [])[i] || 0;
@@ -1431,7 +1436,7 @@
 
     if (tabs) {
       const counts = [5, 4, 3, 2, 1].map((n) => d.list.filter((x) => x.rating === n).length);
-      tabs.innerHTML = [["all", "All", d.list.length]]
+      tabs.innerHTML = !d.list.length ? "" : [["all", "All", d.list.length]]
         .concat([5, 4, 3, 2, 1].map((n, i) => [String(n), n + " \u2605", counts[i]]))
         .map(function (t) {
           return '<button type="button" role="tab" data-frate="' + t[0] + '" aria-selected="' +
@@ -1594,7 +1599,9 @@
               </div>
               <div class="ds">${esc(it.desc || "")}</div>
             </div>
-            <div class="pr">${priceLabel(it.price)}</div>
+            <div class="pr"><input class="price-in" type="text" inputmode="decimal"
+              data-price="${it.id}" value="${(Number(it.price) || 0).toFixed(2)}"
+              aria-label="Price for ${esc(it.name)}"></div>
             <span class="row-tools">
               <button class="btn-quiet" type="button" data-edit="${it.id}" title="Edit">Edit</button>
               <button class="btn-quiet danger" type="button" data-del="${it.id}" title="Delete">Delete</button>
@@ -1631,6 +1638,47 @@
         renderOverview();
       })
     );
+
+    /* ---- one price, changed in place ---- */
+    $$("[data-price]").forEach((inp) => {
+      let was = inp.value;
+      const reset = () => {
+        const it = findItemEverywhere(inp.dataset.price);
+        if (it) inp.value = (Number(it.price) || 0).toFixed(2);
+      };
+
+      inp.addEventListener("focus", () => { was = inp.value; inp.select(); });
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+        if (e.key === "Escape") { inp.value = was; inp.blur(); }
+      });
+
+      inp.addEventListener("change", async () => {
+        const id = inp.dataset.price;
+        const item = findItemEverywhere(id);
+        if (!item) { reset(); return; }
+
+        const before = Number(item.price) || 0;
+        const typed = Number(String(inp.value).replace(/[^0-9.]/g, ""));
+        if (!Number.isFinite(typed) || typed < 0) {
+          inp.value = before.toFixed(2);
+          toast("That price is not a number.");
+          return;
+        }
+        if (Math.abs(typed - before) < 0.004) { inp.value = before.toFixed(2); return; }
+
+        inp.disabled = true;
+        const saved = await menuEdit({ action: "updateItem", id, price: typed });
+        inp.disabled = false;
+        if (!saved) { inp.value = before.toFixed(2); return; }
+
+        item.price = Number(saved.item && saved.item.price != null ? saved.item.price : typed);
+        save();
+        inp.value = item.price.toFixed(2);
+        toast(item.name + " is now " + priceLabel(item.price));
+        renderOverview();
+      });
+    });
 
     /* ---- delete dish ---- */
     $$("[data-del]").forEach((btn) =>
@@ -1979,32 +2027,57 @@
     });
 
     const goEl = $("#bulkGo");
+    const boxEl = $("#bulkConfirm");
     if (!goEl) return;
-    goEl.addEventListener("click", async () => {
-      const go = goEl;
+
+    /* The Apply button used to arm itself on the first press — the label
+       changed and nothing else did, which is indistinguishable from a dead
+       button. The confirmation is now its own bar with its own verbs. */
+    goEl.addEventListener("click", () => {
       const plan = bulkPlan().filter((p) => Math.abs(p.was - p.now) > 0.004);
       if (!plan.length) { toast(bulkSel.size ? "Those prices are already there." : "Nothing is selected."); return; }
+      if (!boxEl) return;
 
-      if (go.dataset.armed !== "1") {
-        go.dataset.armed = "1";
-        go.textContent = "Sure? " + plan.length + (plan.length === 1 ? " price changes" : " prices change");
-        setTimeout(() => {
-          if (go.dataset.armed === "1") { go.dataset.armed = ""; bulkPaint(); }
-        }, 5000);
-        return;
-      }
-      go.dataset.armed = "";
-      go.textContent = "Applying…";
-      go.disabled = true;
+      $("#bulkConfirmText").textContent = "This rewrites " + plan.length +
+        (plan.length === 1 ? " price" : " prices") + ". The old ones are not kept.";
+      boxEl.hidden = false;
+      goEl.disabled = true;
+    });
+
+    const confirmNo = $("#bulkConfirmNo");
+    if (confirmNo) confirmNo.addEventListener("click", () => {
+      if (boxEl) boxEl.hidden = true;
+      goEl.disabled = false;
+    });
+
+    const confirmGo = $("#bulkConfirmGo");
+    if (!confirmGo) return;
+
+    confirmGo.addEventListener("click", async () => {
+      const plan = bulkPlan().filter((p) => Math.abs(p.was - p.now) > 0.004);
+      if (!plan.length) return;
+
+      confirmGo.disabled = true;
+      $("#bulkConfirmText").textContent = "Changing " + plan.length + "…";
 
       const rows = plan.map((p) => ({ category: p.cat, name: p.name, price: p.now }));
       const r = await window.Auth.api("/api/menu?op=edit", {
         method: "POST", body: JSON.stringify({ action: "importRows", rows })
       });
 
-      go.disabled = false;
-      if (!r.ok) { go.textContent = "Apply"; toast(r.data.message || "The prices were not changed."); return; }
-      toast(plan.length + (plan.length === 1 ? " price changed" : " prices changed"));
+      confirmGo.disabled = false;
+      if (boxEl) boxEl.hidden = true;
+      goEl.disabled = false;
+
+      if (!r.ok) { toast((r.data && r.data.message) || "The prices were not changed."); return; }
+
+      /* report what the server says it wrote, not what was planned: a silent
+         zero out of forty-four is exactly the case worth shouting about */
+      const done = Number(r.data.updatedItems || 0);
+      toast(done
+        ? done + (done === 1 ? " price changed" : " prices changed")
+        : "Nothing changed — those prices were already there.");
+
       $("#bulkPricePanel").hidden = true;
       await reloadOwnMenu();
       renderMenuEditor();
@@ -2397,7 +2470,7 @@
 
   async function reloadOwnMenu() {
     try {
-      const m = await window.Auth.api("/api/menu?mine=1");
+      const m = await window.Auth.api("/api/menu?mine=1", { cache: "no-store" });
       if (m.ok && m.data.categories) {
         state.menu = {
           categories: m.data.categories.map((c) => ({
@@ -2651,7 +2724,7 @@
 
   async function reloadOwnMenu() {
     try {
-      const m = await window.Auth.api("/api/menu?mine=1");
+      const m = await window.Auth.api("/api/menu?mine=1", { cache: "no-store" });
       if (!m.ok || !m.data.categories) return false;
       state.menu = {
         categories: m.data.categories.map((c) => ({
@@ -2995,7 +3068,7 @@
       /* the menu lives in Postgres; pull it back so the editor shows what the
          guest page shows, trial or not */
       try {
-        const m = await window.Auth.api("/api/menu?mine=1");
+        const m = await window.Auth.api("/api/menu?mine=1", { cache: "no-store" });
         if (m.ok && m.data.categories && m.data.categories.length) {
           state.menu = {
             categories: m.data.categories.map((c, i) => ({
