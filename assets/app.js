@@ -24,7 +24,6 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
   const KEY = "digimenu.state.v1";
-  const ORDERS_KEY = "digimenu.orders.v1";
   const STEPS = ["Your restaurant", "Documents", "Menu link"];
   const TAKEN = ["karak-house", "al-noor", "tandoori-nights", "biryani-point", "the-grill", "shishawi", "table9", "salt-pepper", "khan-mandi"];
 
@@ -1001,61 +1000,20 @@
     renderRecentOrders();
   }
 
-  function orders() {
-    try { return JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]"); } catch (e) { return []; }
-  }
-
-  function renderRecentOrders() {
-    const list = orders().slice(0, 3);
-    const host = $("#recentOrders");
-    if (!list.length) {
-      host.innerHTML = `<div class="empty"><b>No orders yet</b>When a guest sends an order it arrives in your WhatsApp, and a copy appears here.</div>`;
-      return;
-    }
-    host.innerHTML = list.map(orderRowHtml).join("");
-  }
-
-  function orderRowHtml(o) {
-    const d = new Date(o.ts);
-    const when = d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-    const place = o.mode === "Dine In" ? "Table " + o.table : o.mode === "Take Away" ? o.pickup : "Delivery";
-    const cur = state.currency || "AED";
-    const money = (n) => cur + " " + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    /* what was actually ordered, not just how many things: a count is not a
-       record of an order, and the kitchen needs the dish names */
-    const lines = (o.items || []).map((i) =>
-      `<span class="oline">` +
-        `<span class="oqty">${i.qty}×</span>` +
-        `<span class="oname">${esc(i.name)}</span>` +
-        `<span class="oamt">${money((Number(i.price) || 0) * (Number(i.qty) || 0))}</span>` +
-      `</span>`
-    ).join("");
-
-    return `<div class="order-row">
-      <span class="ot">${when}</span>
-      <span>${esc(o.guest || "Guest")} · ${o.count} item${o.count === 1 ? "" : "s"}</span>
-      <span class="ophone">${o.phone ? `<a href="tel:${esc(o.phone.replace(/[^\d+]/g, ""))}">${esc(o.phone)}</a>` : '<span class="ot">no number</span>'}</span>
-      <span class="omode"><span class="pill">${esc(o.mode)}</span> <span class="ot">${esc(place)}</span></span>
-      <span class="otot">${money(o.total)}</span>
-    </div>` + (lines ? `<div class="order-lines">${lines}</div>` : "");
-  }
-
   /* Orders live in the database: a guest orders from their own phone, so a
-     copy in this browser's storage would never be seen by the restaurant. */
-  async function renderOrders() {
-    const host = $("#ordersList");
-    host.innerHTML = '<div class="empty">Loading orders…</div>';
+     copy in this browser's storage would never be seen by the restaurant. One
+     fetch now feeds both the overview card and the Orders tab — two sources is
+     how the tab showed orders the overview swore did not exist. */
+  let ordersCache = null, ordersFetchedAt = 0, ordersError = "";
 
-    const r = await window.Auth.api("/api/orders");
-    if (!r.ok) {
-      host.innerHTML = '<div class="empty"><b>Could not load orders</b>' +
-        esc(r.data.message || "Try again in a moment.") + '</div>';
-      return;
-    }
-
+  async function loadOrders(force) {
+    if (!force && ordersCache && Date.now() - ordersFetchedAt < 20000) return ordersCache;
+    let r;
+    try { r = await window.Auth.api("/api/orders"); } catch (e) { ordersError = "Could not reach the server."; return null; }
+    if (!r.ok) { ordersError = (r.data && r.data.message) || "Try again in a moment."; return null; }
+    ordersError = "";
     if (r.data.currency) state.currency = r.data.currency;
-    const list = (r.data.orders || []).map((o) => ({
+    ordersCache = (r.data.orders || []).map((o) => ({
       ts: o.createdAt,
       mode: o.mode,
       guest: o.guest,
@@ -1068,6 +1026,36 @@
       items: o.items || [],
       status: o.status
     }));
+    ordersFetchedAt = Date.now();
+    return ordersCache;
+  }
+
+  async function renderRecentOrders() {
+    const host = $("#recentOrders");
+    const all = await loadOrders();
+    if (!all) {
+      host.innerHTML = `<div class="empty"><b>Could not load orders</b>${esc(ordersError)}</div>`;
+      return;
+    }
+    const list = all.slice(0, 3);
+    if (!list.length) {
+      host.innerHTML = `<div class="empty"><b>No orders yet</b>When a guest sends an order it arrives in your WhatsApp, and a copy appears here.</div>`;
+      return;
+    }
+    host.innerHTML = list.map(orderRowHtml).join("");
+  }
+
+  /* Orders live in the database: a guest orders from their own phone, so a
+     copy in this browser's storage would never be seen by the restaurant. */
+  async function renderOrders() {
+    const host = $("#ordersList");
+    host.innerHTML = '<div class="empty">Loading orders…</div>';
+
+    const list = await loadOrders(true);
+    if (!list) {
+      host.innerHTML = '<div class="empty"><b>Could not load orders</b>' + esc(ordersError) + '</div>';
+      return;
+    }
 
     if (!list.length) {
       host.innerHTML = `<div class="empty"><b>No orders yet</b>When a guest sends an order it appears here with their name and mobile number, even if the WhatsApp message never arrives.</div>`;
