@@ -904,3 +904,59 @@ html[dir="rtl"] .item .diet { margin-left: 0; margin-right: 7px; }
 html[dir="rtl"] .add { direction: rtl; }
 html[dir="rtl"] .nm, html[dir="rtl"] .ds { direction: rtl; text-align: right; }
 html[dir="rtl"] .lang-switch { margin-inline-start: auto; }
+
+/* ---------------- categories: wrap on a screen, pick on a phone ----------------
+   The rail was a horizontal scroller. With fifteen categories that is a lot of
+   sideways dragging on a phone, and on a laptop it left a chip permanently cut
+   off at the right edge with a fade pretending that was deliberate. Wide
+   screens now wrap the chips into rows — nothing to scroll. Phones get a
+   picker instead: one tap, the whole list, no dragging. */
+
+.cat-pick { display: none; }
+
+@media (min-width: 861px) {
+  .rail {
+    flex-wrap: wrap;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .rail::after { display: none; }
+}
+
+@media (max-width: 860px) {
+  .rail { display: none; }
+  .cat-pick {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 -18px 2px;
+    padding: 10px 18px;
+    background: var(--canvas);
+    border-bottom: 1px solid var(--line);
+  }
+  .cat-pick > span {
+    font-size: 12px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    white-space: nowrap;
+  }
+  .cat-pick select {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line-2);
+    background: #fff;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .cat-pick select:focus-visible { outline: none; box-shadow: var(--focus); }
+}

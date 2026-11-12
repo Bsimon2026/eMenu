@@ -130,6 +130,14 @@
     '<a href="#c-' + c.id + '" data-cat="' + c.id + '"' + (c.featured ? ' class="feat"' : "") + ">" +
     (c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : "") + esc(nm(c)) + "</a>").join("");
 
+  /* On a phone the chips are replaced by this picker: fifteen categories in a
+     single scrolling row means dragging sideways past most of the menu. */
+  const catSel = $("#catSelect");
+  if (catSel) {
+    catSel.innerHTML = cats.map((c) =>
+      '<option value="' + esc(c.id) + '">' + esc(nm(c)) + "</option>").join("");
+  }
+
   $("#sections").innerHTML = cats.map((c) => {
     const available = c.items.filter((i) => !i.soldOut).length;
     return `
@@ -450,6 +458,15 @@
     closeSheet();
   });
 
+  /* ---------- category picker (phones) ---------- */
+  const catPick = $("#catSelect");
+  if (catPick) {
+    catPick.addEventListener("change", function () {
+      const sec = document.getElementById("c-" + catPick.value);
+      if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   /* ---------- rail active state ---------- */
 
   const links = $$("#rail a");
@@ -460,6 +477,8 @@
           if (en.isIntersecting) {
             const id = en.target.id.replace("c-", "");
             links.forEach((a) => a.classList.toggle("on", a.dataset.cat === id));
+            const sel = $("#catSelect");
+            if (sel && sel.value !== id) sel.value = id;
           }
         });
       },
