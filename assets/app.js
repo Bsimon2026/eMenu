@@ -1911,9 +1911,10 @@
   const arTrans = $("#arTranslateBtn");
   if (arTrans) arTrans.addEventListener("click", async () => {
     arTrans.disabled = true;
-    const out = await arCall("translateMenu", (d) =>
-      "Drafted " + d.items + " dish" + (d.items === 1 ? "" : "es") + " and " + d.categories +
-      " categor" + (d.categories === 1 ? "y" : "ies") + " in Arabic — open a dish to check it.");
+    const out = await arCall("translateMenu", (d) => (d.items + d.categories)
+      ? "Drafted " + d.items + " dish" + (d.items === 1 ? "" : "es") + " and " + d.categories +
+        " categor" + (d.categories === 1 ? "y" : "ies") + " in Arabic — open a dish to check it."
+      : "Every dish already has Arabic. Nothing was replaced.");
     arTrans.disabled = false;
     if (!out.ok) { toast(out.message); return; }
     await reloadOwnMenu();

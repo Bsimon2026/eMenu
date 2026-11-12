@@ -454,8 +454,20 @@ module.exports = async function handler(req, res) {
         const ct = await rest("menu_categories?restaurant_id=eq." + rid + "&select=id,name&limit=100");
         if (!it.ok || !ct.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
 
-        const items = (it.data || []).filter((x) => x.name);
-        const cats = (ct.data || []).filter((x) => x.name);
+        /* Anything that already has a row is left alone. Pressing Translate a
+           second time used to upsert over every row — which silently reset
+           published Arabic back to draft and threw away the owner's edits. The
+           button now fills gaps and nothing else. */
+        const haveItems = await rest("menu_item_translations?restaurant_id=eq." + rid + "&locale=eq." + locale + "&select=item_id");
+        const haveCats = await rest("menu_category_translations?restaurant_id=eq." + rid + "&locale=eq." + locale + "&select=category_id");
+        if (!haveItems.ok || !haveCats.ok) {
+          return res.status(503).json({ ok: false, code: "NO_I18N", message: "Arabic is not switched on yet." });
+        }
+        const known = new Set((haveItems.data || []).map((x) => x.item_id));
+        const knownCats = new Set((haveCats.data || []).map((x) => x.category_id));
+
+        const items = (it.data || []).filter((x) => x.name && !known.has(x.id));
+        const cats = (ct.data || []).filter((x) => x.name && !knownCats.has(x.id));
 
         let drafted = 0;
         for (const chunk of i18n.batches(items, 20)) {
@@ -494,7 +506,7 @@ module.exports = async function handler(req, res) {
           catDrafted += rows.length;
         }
 
-        return res.status(200).json({ ok: true, items: drafted, categories: catDrafted });
+        return res.status(200).json({ ok: true, items: drafted, categories: catDrafted, already: known.size + knownCats.size });
       }
 
       case "setTranslation": {
