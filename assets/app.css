@@ -1012,6 +1012,7 @@ body[data-role="orders"] #newCatName { display: none !important; }
 /* tabs are views of the same ledger, so they read as sections: an underline,
    not a floating pill */
 .seg { display: flex; gap: 2px; margin-bottom: -1px; }
+.seg button { flex: 0 0 auto; white-space: nowrap; }
 .seg button {
   position: relative;
   border: 0;
