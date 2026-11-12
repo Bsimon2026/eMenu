@@ -1019,13 +1019,26 @@
     const d = new Date(o.ts);
     const when = d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
     const place = o.mode === "Dine In" ? "Table " + o.table : o.mode === "Take Away" ? o.pickup : "Delivery";
+    const cur = state.currency || "AED";
+    const money = (n) => cur + " " + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    /* what was actually ordered, not just how many things: a count is not a
+       record of an order, and the kitchen needs the dish names */
+    const lines = (o.items || []).map((i) =>
+      `<span class="oline">` +
+        `<span class="oqty">${i.qty}×</span>` +
+        `<span class="oname">${esc(i.name)}</span>` +
+        `<span class="oamt">${money((Number(i.price) || 0) * (Number(i.qty) || 0))}</span>` +
+      `</span>`
+    ).join("");
+
     return `<div class="order-row">
       <span class="ot">${when}</span>
-      <span>${o.guest} · ${o.count} item${o.count === 1 ? "" : "s"}</span>
+      <span>${esc(o.guest || "Guest")} · ${o.count} item${o.count === 1 ? "" : "s"}</span>
       <span class="ophone">${o.phone ? `<a href="tel:${esc(o.phone.replace(/[^\d+]/g, ""))}">${esc(o.phone)}</a>` : '<span class="ot">no number</span>'}</span>
-      <span class="omode"><span class="pill">${o.mode}</span> <span class="ot">${place}</span></span>
-      <span class="otot">AED ${o.total}</span>
-    </div>`;
+      <span class="omode"><span class="pill">${esc(o.mode)}</span> <span class="ot">${esc(place)}</span></span>
+      <span class="otot">${money(o.total)}</span>
+    </div>` + (lines ? `<div class="order-lines">${lines}</div>` : "");
   }
 
   /* Orders live in the database: a guest orders from their own phone, so a
@@ -1041,6 +1054,7 @@
       return;
     }
 
+    if (r.data.currency) state.currency = r.data.currency;
     const list = (r.data.orders || []).map((o) => ({
       ts: o.createdAt,
       mode: o.mode,

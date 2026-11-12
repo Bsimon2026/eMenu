@@ -356,6 +356,26 @@ body.app-body { background: var(--canvas); }
 }
 
 .order-row:last-child { border-bottom: none; }
+
+/* the order's lines, indented under it and in the same column as the guest */
+.order-lines {
+  display: grid;
+  gap: 3px;
+  padding: 2px 18px 12px 98px;
+  border-bottom: 1px solid #f1f3f4;
+  font-size: 12.5px;
+}
+.order-lines:last-child { border-bottom: none; }
+.order-lines .oline {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--ink-2, #3d4448);
+}
+.order-lines .oqty { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.order-lines .oname { overflow-wrap: anywhere; }
+.order-lines .oamt { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .order-row .ot { color: var(--ink-3); font-size: 12.5px; }
 .order-row .otot { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
 .order-row .omode { justify-self: start; }
@@ -639,6 +659,7 @@ body.app-body { background: var(--canvas); }
   .qr-panel { flex-direction: column; align-items: flex-start; }
   .order-row { grid-template-columns: 1fr auto; gap: 6px; }
   .order-row .ot, .order-row .omode { display: none; }
+  .order-lines { padding: 2px 14px 12px 14px; }
   .topbar { padding: 0 14px; }
   .topbar h1 { font-size: 15px; }
   .review-row { grid-template-columns: 24px minmax(0, 1fr) 64px; }
