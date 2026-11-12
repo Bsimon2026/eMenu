@@ -1175,9 +1175,9 @@
         (where ? '<span class="meta">' + esc(where) + '</span>' : '') +
       '</div>' +
       '<div class="ototal">' + money(o.total) + '</div>' +
-      '<div class="ostate">' +
-        '<span class="st"><span class="dot"></span>' + (done ? "Done" : "Pending") + '</span>' +
-        '<button class="btn btn-sm ' + (done ? "btn-outline" : "btn-brand") + '" type="button" ' +
+      '<div class="ostate"><span class="st"><span class="dot"></span>' + (done ? "Done" : "Pending") + '</span></div>' +
+      '<div class="oact">' +
+        '<button class="btn btn-sm ' + (done ? "btn-quiet" : "btn-outline") + '" type="button" ' +
           'data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
           (done ? "Reopen" : "Mark done") +
         '</button>' +
@@ -1197,7 +1197,8 @@
     const key = new Date().toDateString();
     const today = ORDERS.filter((o) => new Date(o.ts).toDateString() === key);
     const takings = today.reduce((n, o) => n + (Number(o.total) || 0), 0);
-    return '<b>' + pending + '</b> pending · ' + today.length + ' today · <b>' + money(takings) + '</b>';
+    return '<b>' + pending + '</b> pending, ' + today.length + ' order' + (today.length === 1 ? "" : "s") +
+      ' today, <b>' + money(takings) + '</b> taken';
   }
 
   async function renderOrders() {

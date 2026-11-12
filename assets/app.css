@@ -996,7 +996,8 @@ body[data-role="orders"] #newCatName { display: none !important; }
    in that order, and never have to read the whole card to find one fact.
    Money and times use tabular figures so columns actually line up. */
 
-.orders-card .card-head { padding-bottom: 14px; }
+.orders-card .orders-lede { padding: 16px 18px 15px; }
+.orders-card .orders-lede p { margin: 0; font-size: 13px; color: var(--ink-3); max-width: 74ch; }
 
 .orders-bar {
   display: flex;
@@ -1045,12 +1046,14 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .orders-sum { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .orders-sum b { color: var(--ink-2); font-weight: 500; }
 
+/* seven columns, one fact each: the state is a word, the action is a button,
+   and neither has to be stacked to fit */
 .orders-head,
 .orow {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1.5fr) 116px 104px 132px;
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1.45fr) 108px 100px 96px 104px;
+  gap: 14px;
+  align-items: center;
 }
 
 .orders-head {
@@ -1064,7 +1067,7 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .orders-head .num { text-align: right; }
 
 .orow {
-  padding: 14px 18px;
+  padding: 13px 18px;
   border-bottom: 1px solid #f1f3f4;
   font-size: 13.5px;
   transition: background-color 120ms ease-out;
@@ -1108,7 +1111,7 @@ body[data-role="orders"] #newCatName { display: none !important; }
   letter-spacing: -0.01em;
 }
 
-.orow .ostate { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.orow .ostate { display: flex; align-items: center; }
 .orow .ostate .st {
   display: inline-flex;
   align-items: center;
@@ -1123,20 +1126,20 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .orow.is-done .ostate .dot { background: var(--ok); }
 .orow.is-done .ototal { color: var(--ink-2); font-weight: 500; }
 
-.orow .ostate button {
+.orow .oact { display: flex; justify-content: flex-end; }
+.orow .oact button {
   height: 30px;
-  padding: 0 11px;
+  padding: 0 12px;
   font-size: 12.5px;
   border-radius: var(--r-sm);
+  white-space: nowrap;
 }
-.orow .ostate button:focus-visible { outline: none; box-shadow: var(--focus); }
-.orow.is-done .ostate button { color: var(--ink-3); }
-.orow.is-done .ostate button:hover { color: var(--ink); background: var(--canvas); }
+.orow .oact button:focus-visible { outline: none; box-shadow: var(--focus); }
 
 /* loading: the shape of what is coming, not a sentence about waiting */
 .skrow {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1.5fr) 116px 104px 132px;
+  grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1.45fr) 108px 100px 96px 104px;
   gap: 16px;
   padding: 15px 18px;
   border-bottom: 1px solid #f1f3f4;
@@ -1158,16 +1161,18 @@ body[data-role="orders"] #newCatName { display: none !important; }
       "guest  total"
       "time   where"
       "items  items"
-      "state  state";
+      "state  act";
     gap: 6px 12px;
     padding: 14px;
+    align-items: start;
   }
   .orow .oguest { grid-area: guest; }
   .orow .ototal { grid-area: total; }
   .orow .otime { grid-area: time; flex-direction: row; gap: 6px; align-items: baseline; }
   .orow .owhere { grid-area: where; flex-direction: row; gap: 6px; justify-self: end; }
   .orow .oitems { grid-area: items; margin-top: 4px; }
-  .orow .ostate { grid-area: state; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .orow .ostate { grid-area: state; margin-top: 8px; }
+  .orow .oact { grid-area: act; margin-top: 4px; }
   .seg { overflow-x: auto; scrollbar-width: none; }
   .seg::-webkit-scrollbar { display: none; }
 }
