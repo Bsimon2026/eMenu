@@ -1141,11 +1141,17 @@
     return seen;
   }
 
-  function orderCardHtml(o) {
-    const d = new Date(o.ts);
-    const when = d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  function money(n) {
     const cur = state.currency || "AED";
-    const money = (n) => cur + " " + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return cur + " " + (Math.round((Number(n) || 0) * 100) / 100)
+      .toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function orderRowHtml(o) {
+    const d = new Date(o.ts);
+    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const day = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+    const done = o.status === "confirmed";
 
     const where = o.mode === "Dine In"
       ? (o.table ? "Table " + o.table : "")
@@ -1153,41 +1159,55 @@
         ? (o.pickup ? "Pickup " + o.pickup : "")
         : (o.address || "");
 
-    const done = o.status === "confirmed";
-    const lines = (o.items || []).map((i) =>
-      '<span class="oline">' +
-        '<span class="oqty">' + (i.qty || 1) + '×</span>' +
-        '<span class="oname">' + esc(i.name) + '</span>' +
-        '<span class="oamt">' + money((Number(i.price) || 0) * (Number(i.qty) || 1)) + '</span>' +
-      '</span>'
+    const items = (o.items || []).map((i) =>
+      '<span class="oline"><span class="q">' + (i.qty || 1) + '×</span>' +
+      '<span class="nm">' + esc(i.name) + '</span></span>'
     ).join("");
 
-    return '<article class="ocard' + (done ? " is-done" : "") + '">' +
-      '<div class="ohead">' +
-        '<span>' + esc(when) + '</span>' +
-        '<span class="opill">' + esc(o.mode || "Order") + (where ? " · " + esc(where) : "") + '</span>' +
-        '<span class="ost ' + (done ? "done" : "pending") + '">' + (done ? "Done" : "Pending") + '</span>' +
-      '</div>' +
+    return '<article class="orow ' + (done ? "is-done" : "is-pending") + '" data-order="' + esc(o.id) + '">' +
+      '<div class="otime"><b>' + esc(time) + '</b><span>' + esc(day) + '</span></div>' +
       '<div class="oguest"><b>' + esc(o.guest || "Guest") + '</b>' +
-        (o.phone ? ' · <a href="tel:' + esc(o.phone.replace(/[^\d+]/g, "")) + '">' + esc(o.phone) + '</a>' : ' · <span class="ot">no number</span>') +
+        (o.phone ? '<a href="tel:' + esc(o.phone.replace(/[^\d+]/g, "")) + '">' + esc(o.phone) + '</a>'
+                 : '<span class="none">no number</span>') +
       '</div>' +
-      (lines ? '<div class="olines">' + lines + '</div>' : '') +
-      '<div class="ofoot">' +
-        '<span class="otot">' + money(o.total) + '</span>' +
-        '<button class="btn btn-sm ' + (done ? "btn-outline" : "btn-brand") + '" data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
+      '<div class="oitems">' + (items || '<span class="oline"><span class="nm">no dishes recorded</span></span>') + '</div>' +
+      '<div class="owhere"><span>' + esc(o.mode || "Order") + '</span>' +
+        (where ? '<span class="meta">' + esc(where) + '</span>' : '') +
+      '</div>' +
+      '<div class="ototal">' + money(o.total) + '</div>' +
+      '<div class="ostate">' +
+        '<span class="st"><span class="dot"></span>' + (done ? "Done" : "Pending") + '</span>' +
+        '<button class="btn btn-sm ' + (done ? "btn-outline" : "btn-brand") + '" type="button" ' +
+          'data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
           (done ? "Reopen" : "Mark done") +
         '</button>' +
       '</div>' +
     '</article>';
   }
 
+  function skeletonRows(n) {
+    let out = "";
+    for (let i = 0; i < n; i++) out += '<div class="skrow"><span></span><span></span><span></span><span></span><span></span><span></span></div>';
+    return out;
+  }
+
+  /* what the shift needs at a glance: how much work is open, and what it took */
+  function orderSummary() {
+    const pending = ORDERS.filter((o) => o.status !== "confirmed").length;
+    const key = new Date().toDateString();
+    const today = ORDERS.filter((o) => new Date(o.ts).toDateString() === key);
+    const takings = today.reduce((n, o) => n + (Number(o.total) || 0), 0);
+    return '<b>' + pending + '</b> pending · ' + today.length + ' today · <b>' + money(takings) + '</b>';
+  }
+
   async function renderOrders() {
-    const host = $("#ordersList"), tabs = $("#orderTabs");
-    host.innerHTML = '<div class="empty">Loading orders…</div>';
+    const host = $("#ordersList"), tabs = $("#orderTabs"), sum = $("#orderSum");
+    host.innerHTML = skeletonRows(3);
 
     const list = await loadOrders(true);
     if (!list) {
       tabs.innerHTML = "";
+      sum.textContent = "";
       host.innerHTML = '<div class="empty"><b>Could not load orders</b>' + esc(ordersError) + '</div>';
       return;
     }
@@ -1199,19 +1219,21 @@
     const count = (m) => (m === "all" ? ORDERS.length : ORDERS.filter((o) => o.mode === m).length);
     tabs.innerHTML = [["all", "All"]].concat(modes.map((m) => [m, m]))
       .map(([key, label]) =>
-        '<button class="otab' + (ORDER_TAB === key ? " on" : "") + '" data-otab="' + esc(key) + '" type="button">' +
+        '<button type="button" role="tab" data-otab="' + esc(key) + '" aria-selected="' + (ORDER_TAB === key ? "true" : "false") + '">' +
           esc(label) + ' <span class="n">' + count(key) + '</span>' +
         '</button>'
       ).join("");
 
+    sum.innerHTML = orderSummary();
+
     const shown = ORDER_TAB === "all" ? ORDERS : ORDERS.filter((o) => o.mode === ORDER_TAB);
     if (!shown.length) {
       host.innerHTML = ORDER_TAB === "all"
-        ? `<div class="empty"><b>No orders yet</b>When a guest sends an order it appears here with their name and mobile number, even if the WhatsApp message never arrives.</div>`
-        : `<div class="empty"><b>No ${esc(ORDER_TAB)} orders yet</b>They will appear here when one arrives.</div>`;
+        ? '<div class="empty"><b>No orders yet</b>A guest orders from their own phone and a copy lands here within seconds, with their name and number — even if the WhatsApp message never arrives.</div>'
+        : '<div class="empty"><b>No ' + esc(ORDER_TAB) + ' orders yet</b>They will appear here. The other tabs keep theirs.</div>';
       return;
     }
-    host.innerHTML = shown.map(orderCardHtml).join("");
+    host.innerHTML = shown.map(orderRowHtml).join("");
   }
 
   /* one listener for the tab strip and the state buttons — the list is redrawn

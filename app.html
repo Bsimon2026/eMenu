@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/base.css?v=20261111s">
-<link rel="stylesheet" href="/assets/app.css?v=20261112i">
+<link rel="stylesheet" href="/assets/app.css?v=20261112j">
 </head>
 <body class="app-body">
 
@@ -320,15 +320,29 @@
 
       <!-- ---------------- orders ---------------- -->
       <section class="content-in" data-pane="orders" hidden>
-        <div class="card">
+        <div class="card orders-card">
           <div class="card-head">
             <div>
               <h2>Orders</h2>
-              <p>Orders arrive in your WhatsApp and are copied here as a record. Mark one done and the guest moves to Marketing.</p>
+              <p>A copy of every order, even when the WhatsApp message never arrives. Mark one done and the guest moves to Marketing.</p>
             </div>
           </div>
-          <div class="otabs" id="orderTabs"></div>
-          <div class="card-body tight" id="ordersList"></div>
+
+          <div class="orders-bar">
+            <div class="seg" id="orderTabs" role="tablist" aria-label="Order types"></div>
+            <div class="orders-sum" id="orderSum" aria-live="polite"></div>
+          </div>
+
+          <div class="orders-head" id="ordersHead" aria-hidden="true">
+            <span>Time</span>
+            <span>Guest</span>
+            <span>Order</span>
+            <span>Where</span>
+            <span class="num">Total</span>
+            <span>State</span>
+          </div>
+
+          <div id="ordersList"></div>
         </div>
       </section>
 
@@ -799,6 +813,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261112i"></script>
+<script src="/assets/app.js?v=20261112j"></script>
 </body>
 </html>

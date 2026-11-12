@@ -989,115 +989,185 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .review-replace input { margin-top: 2px; accent-color: var(--warn, #b45309); }
 .review-replace b { color: var(--ink-1, #b45309); }
 
-/* ---------- orders: tabs and cards ---------- */
+}
 
-.otabs {
+/* ---------- orders: a ledger, not a wall of cards ----------
+   Operate surface: the eye should land on the guest, the dishes and the state,
+   in that order, and never have to read the whole card to find one fact.
+   Money and times use tabular figures so columns actually line up. */
+
+.orders-card .card-head { padding-bottom: 14px; }
+
+.orders-bar {
   display: flex;
-  gap: 6px;
-  padding: 0 18px 14px;
-  border-bottom: 1px solid #f1f3f4;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
-.otab {
-  border: 1px solid var(--line, #e6e9eb);
-  background: #fff;
-  border-radius: 999px;
-  padding: 6px 13px;
+
+/* tabs are views of the same ledger, so they read as sections: an underline,
+   not a floating pill */
+.seg { display: flex; gap: 2px; margin-bottom: -1px; }
+.seg button {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 9px 11px 10px;
   font: inherit;
-  font-size: 13px;
-  color: var(--ink-3, #6c757c);
+  font-size: 13.5px;
+  color: var(--ink-3);
   cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 150ms ease-out, background-color 150ms ease-out;
+}
+.seg button:hover { color: var(--ink); background: var(--canvas); }
+.seg button:focus-visible { outline: none; box-shadow: var(--focus); }
+.seg button[aria-selected="true"] { color: var(--ink); font-weight: 500; }
+.seg button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+.seg .n { font-size: 11.5px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.seg button[aria-selected="true"] .n { color: var(--ink-3); }
+
+.orders-sum { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.orders-sum b { color: var(--ink-2); font-weight: 500; }
+
+.orders-head,
+.orow {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1.5fr) 116px 104px 132px;
+  gap: 16px;
+  align-items: start;
+}
+
+.orders-head {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  letter-spacing: .02em;
+  color: var(--ink-4);
+  background: #fbfcfc;
+}
+.orders-head .num { text-align: right; }
+
+.orow {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f3f4;
+  font-size: 13.5px;
+  transition: background-color 120ms ease-out;
+}
+.orow:last-child { border-bottom: none; }
+.orow:hover { background: #fbfcfd; }
+.orow:focus-within { background: #fbfcfd; }
+
+.orow .otime { display: flex; flex-direction: column; line-height: 1.35; }
+.orow .otime b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.orow .otime span { color: var(--ink-4); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.orow .oguest { display: flex; flex-direction: column; gap: 1px; line-height: 1.4; }
+.orow .oguest b { font-weight: 500; overflow-wrap: anywhere; }
+.orow .oguest a,
+.orow .oguest .none {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.orow .oguest a:hover { color: var(--brand-text); text-decoration: underline; }
+
+.orow .oitems { display: flex; flex-direction: column; gap: 2px; line-height: 1.45; }
+.orow .oitems .oline {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 6px;
+  color: var(--ink-2);
+}
+.orow .oitems .q { color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.orow .oitems .nm { overflow-wrap: anywhere; }
+
+.orow .owhere { display: flex; flex-direction: column; gap: 1px; line-height: 1.4; }
+.orow .owhere .meta { color: var(--ink-3); font-size: 12.5px; }
+
+.orow .ototal {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.orow .ostate { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.orow .ostate .st {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.otab .n { font-size: 11.5px; color: #9aa4ab; font-variant-numeric: tabular-nums; }
-.otab.on { background: var(--ink, #171a1d); border-color: var(--ink, #171a1d); color: #fff; }
-.otab.on .n { color: #cfd5d9; }
-
-.ocard {
-  padding: 14px 18px;
-  border-bottom: 1px solid #f1f3f4;
-  display: grid;
-  gap: 8px;
-}
-.ocard:last-child { border-bottom: none; }
-.ocard.is-done { background: #fcfdfc; }
-
-.ocard .ohead {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-  color: var(--ink-3, #6c757c);
-}
-.ocard .opill {
-  border: 1px solid var(--line, #e6e9eb);
-  border-radius: 999px;
-  padding: 2px 9px;
   font-size: 12px;
-  color: var(--ink-2, #3d4448);
+  color: var(--ink-3);
 }
-.ocard .ost {
-  margin-left: auto;
-  font-size: 11.5px;
-  letter-spacing: .03em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  padding: 3px 10px;
+.orow .ostate .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-4); }
+.orow.is-pending .ostate .st { color: var(--warn); }
+.orow.is-pending .ostate .dot { background: #d99a12; }
+.orow.is-done .ostate .st { color: var(--ok); }
+.orow.is-done .ostate .dot { background: var(--ok); }
+.orow.is-done .ototal { color: var(--ink-2); font-weight: 500; }
+
+.orow .ostate button {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 12.5px;
+  border-radius: var(--r-sm);
 }
-.ocard .ost.pending { background: #fff5e5; color: #946200; }
-.ocard .ost.done { background: #e7f5ee; color: #0f7b4f; }
+.orow .ostate button:focus-visible { outline: none; box-shadow: var(--focus); }
+.orow.is-done .ostate button { color: var(--ink-3); }
+.orow.is-done .ostate button:hover { color: var(--ink); background: var(--canvas); }
 
-.ocard .oguest { font-size: 14px; }
-.ocard .oguest a { color: var(--brand-text, #c6263c); text-decoration: none; }
-.ocard .oguest a:hover { text-decoration: underline; }
-
-.ocard .olines { display: grid; gap: 3px; font-size: 13px; }
-.ocard .oline {
+/* loading: the shape of what is coming, not a sentence about waiting */
+.skrow {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  gap: 10px;
-  color: var(--ink-2, #3d4448);
-}
-.ocard .oline .oqty { color: var(--ink-3, #6c757c); font-variant-numeric: tabular-nums; }
-.ocard .oline .oamt { color: var(--ink-3, #6c757c); font-variant-numeric: tabular-nums; }
-
-.ocard .ofoot {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 2px;
-}
-.ocard .otot { font-weight: 600; font-variant-numeric: tabular-nums; }
-
-.mk-done-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px;
+  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1.5fr) 116px 104px 132px;
+  gap: 16px;
+  padding: 15px 18px;
   border-bottom: 1px solid #f1f3f4;
+  animation: skpulse 1.5s ease-in-out infinite;
 }
-.mk-done-bar .chk { margin: 0; }
-.mk-done-row {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 4px 12px;
-  padding: 11px 18px;
-  border-bottom: 1px solid #f1f3f4;
-  font-size: 13px;
-}
-.mk-done-row:last-child { border-bottom: none; }
-.mk-done-row { cursor: pointer; }
-.mk-done-row .who { font-weight: 500; }
-.mk-done-row .meta { color: var(--ink-3, #6c757c); font-size: 12.5px; }
-.mk-done-row .amt { color: var(--ink-3, #6c757c); font-variant-numeric: tabular-nums; text-align: right; }
+.skrow span { height: 11px; border-radius: 3px; background: #edf0f2; }
+.skrow span:nth-child(2) { width: 70%; }
+.skrow span:nth-child(3) { width: 88%; }
+.skrow span:nth-child(5) { justify-self: end; width: 60%; }
+@keyframes skpulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .skrow { animation: none; } }
 
-@media (max-width: 620px) {
-  .otabs { padding: 0 14px 12px; }
-  .ocard { padding: 13px 14px; }
+@media (max-width: 980px) {
+  .orders-head { display: none; }
+  .skrow { display: none; }
+  .orow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "guest  total"
+      "time   where"
+      "items  items"
+      "state  state";
+    gap: 6px 12px;
+    padding: 14px;
+  }
+  .orow .oguest { grid-area: guest; }
+  .orow .ototal { grid-area: total; }
+  .orow .otime { grid-area: time; flex-direction: row; gap: 6px; align-items: baseline; }
+  .orow .owhere { grid-area: where; flex-direction: row; gap: 6px; justify-self: end; }
+  .orow .oitems { grid-area: items; margin-top: 4px; }
+  .orow .ostate { grid-area: state; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .seg { overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
 }
