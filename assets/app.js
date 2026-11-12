@@ -1593,6 +1593,7 @@
 
   function bulkPaintList() {
     const host = $("#bulkList");
+    if (!host) return;
     const cats = (state.menu && state.menu.categories) || [];
     if (!cats.length) { host.innerHTML = '<div class="hint" style="padding:12px">There is no menu to change yet.</div>'; return; }
 
@@ -1635,6 +1636,7 @@
     const plan = bulkPlan();
     const changed = plan.filter((p) => Math.abs(p.was - p.now) > 0.004);
     const out = $("#bulkPreview");
+    if (!out) return;
 
     if (!plan.length) {
       out.innerHTML = "Nothing is selected — tick the dishes this should apply to.";
@@ -1644,7 +1646,8 @@
         (sample.length ? esc(sample.join(" · ")) + (changed.length > 3 ? " …" : "") : "");
     }
 
-    $("#bulkSelCount").textContent = plan.length;
+    const selCount = $("#bulkSelCount");
+    if (selCount) selCount.textContent = plan.length;
     const go = $("#bulkGo");
     if (go && !go.dataset.armed) {
       go.textContent = changed.length ? "Apply to " + changed.length + (changed.length === 1 ? " dish" : " dishes") : "Apply";
@@ -1653,7 +1656,10 @@
 
   (function wireBulkPrice() {
     const btn = $("#bulkPriceBtn");
-    if (!btn || btn.dataset.wired) return;
+    const panel = $("#bulkPricePanel");
+    /* a missing control must cost the control, never the page: this is wired
+       during load, so a throw here leaves the whole dashboard unrendered */
+    if (!btn || !panel || btn.dataset.wired) return;
     btn.dataset.wired = "1";
 
     const open = (on) => {
@@ -1674,6 +1680,9 @@
       $("#" + id).addEventListener("input", bulkPaint);
       $("#" + id).addEventListener("change", bulkPaint);
     });
+
+    const allBtn = $("#bulkAll"), noneBtn = $("#bulkNone"), listHost = $("#bulkList");
+    if (!allBtn || !noneBtn || !listHost) return;
 
     $("#bulkAll").addEventListener("click", () => {
       bulkSel = new Set(bulkItems().map((x) => x.item.id));
@@ -1699,8 +1708,10 @@
       }
     });
 
-    $("#bulkGo").addEventListener("click", async () => {
-      const go = $("#bulkGo");
+    const goEl = $("#bulkGo");
+    if (!goEl) return;
+    goEl.addEventListener("click", async () => {
+      const go = goEl;
       const plan = bulkPlan().filter((p) => Math.abs(p.was - p.now) > 0.004);
       if (!plan.length) { toast(bulkSel.size ? "Those prices are already there." : "Nothing is selected."); return; }
 

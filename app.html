@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/base.css?v=20261111s">
-<link rel="stylesheet" href="/assets/app.css?v=20261112r">
+<link rel="stylesheet" href="/assets/app.css?v=20261112t">
 </head>
 <body class="app-body">
 
@@ -157,7 +157,7 @@
           <div class="card-body" id="bulkPricePanel" hidden>
             <div class="grid-2">
               <div class="field">
-                <label for="bulkPct">Change every price by</label>
+                <label for="bulkPct">Change the price by</label>
                 <div style="display:flex;gap:8px">
                   <select class="input" id="bulkDir" aria-label="Direction">
                     <option value="1">increase</option>
@@ -177,9 +177,20 @@
                 </select>
               </div>
             </div>
+            <div class="bulk-pick">
+              <div class="bulk-pick-head">
+                <span>Apply to <b id="bulkSelCount">0</b> dishes</span>
+                <span class="bulk-pick-tools">
+                  <button class="btn-quiet" type="button" id="bulkAll">Select all</button>
+                  <button class="btn-quiet" type="button" id="bulkNone">Clear</button>
+                </span>
+              </div>
+              <div class="bulk-list" id="bulkList"></div>
+            </div>
+
             <div class="hint" id="bulkPreview">Nothing changes until you press the button.</div>
             <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-              <button class="btn btn-brand btn-sm" type="button" id="bulkGo">Apply to the whole menu</button>
+              <button class="btn btn-brand btn-sm" type="button" id="bulkGo">Apply</button>
               <button class="btn-quiet" type="button" id="bulkCancel">Cancel</button>
             </div>
           </div>
@@ -811,6 +822,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261112r"></script>
+<script src="/assets/app.js?v=20261112t"></script>
 </body>
 </html>
