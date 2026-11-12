@@ -376,6 +376,9 @@
 
   /* an order marked Done is a guest who ate, paid and left happy enough to be
      asked. This is where those people surface. */
+  /* An order marked Done is a guest who ate, paid and left. This is where
+     those people surface, and the button here queues them for the ask — the
+     same queue the sending card below already drains. */
   async function mkLoadDone() {
     const card = $("#mkDoneCard"), body = $("#mkDoneBody");
     if (!card || !body) return;
@@ -386,15 +389,44 @@
 
     card.hidden = false;
     $("#mkDoneCount").textContent = done.length;
-    body.innerHTML = done.slice(0, 40).map((o) => {
-      const when = new Date(o.ts).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-      return '<div class="mk-done-row">' +
-        '<span><span class="who">' + esc(o.guest || "Guest") + '</span> ' +
-          '<span class="meta">' + esc(o.phone || "no number") + ' · ' + esc(when) + ' · ' + esc(o.mode || "") + '</span></span>' +
-        '<span class="amt">' + esc((state.currency || "AED") + " " + (Math.round((Number(o.total) || 0) * 100) / 100)) + '</span>' +
-      '</div>';
-    }).join("");
+
+    body.innerHTML =
+      '<div class="mk-done-bar">' +
+        '<label class="chk"><input type="checkbox" id="mkDoneAll"> Select all</label>' +
+        '<button class="btn btn-brand btn-sm" type="button" id="mkDoneAsk">Ask these people</button>' +
+      '</div>' +
+      done.slice(0, 60).map((o) => {
+        const when = new Date(o.ts).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+        return '<label class="mk-done-row">' +
+          '<input type="checkbox" class="mk-done-chk" value="' + esc(o.id) + '">' +
+          '<span><span class="who">' + esc(o.guest || "Guest") + '</span> ' +
+            '<span class="meta">' + esc(o.phone || "no number") + ' · ' + esc(when) + ' · ' + esc(o.mode || "") + '</span></span>' +
+          '<span class="amt">' + esc((state.currency || "AED") + " " + (Math.round((Number(o.total) || 0) * 100) / 100)) + '</span>' +
+        '</label>';
+      }).join("");
   }
+
+  /* the rows are rebuilt on every load, so these two are delegated rather than
+     bound to elements that keep being replaced */
+  document.addEventListener("change", (e) => {
+    if (e.target && e.target.id === "mkDoneAll") {
+      const on = e.target.checked;
+      Array.from(document.querySelectorAll(".mk-done-chk")).forEach((c) => { c.checked = on; });
+    }
+  });
+
+  document.addEventListener("click", async (e) => {
+    if (!e.target || e.target.id !== "mkDoneAsk") return;
+    const btn = e.target;
+    const ids = Array.from(document.querySelectorAll(".mk-done-chk:checked")).map((c) => c.value);
+    if (!ids.length) { toast("Tick who you want to ask."); return; }
+    btn.disabled = true;
+    const r = await window.Auth.api("/api/marketing?queue=1", { method: "POST", body: JSON.stringify({ orderIds: ids }) });
+    btn.disabled = false;
+    if (!r.ok) { toast((r.data && r.data.message) || "That did not work."); return; }
+    toast("Queued " + r.data.queued + (r.data.skipped ? " · " + r.data.skipped + " already asked or no number" : ""));
+    await mkLoadQueue();
+  });
 
   async function mkLoadQueue() {
     const r = await window.Auth.api("/api/marketing?queue=1");

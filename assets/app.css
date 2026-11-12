@@ -1073,15 +1073,26 @@ body[data-role="orders"] #newCatName { display: none !important; }
 }
 .ocard .otot { font-weight: 600; font-variant-numeric: tabular-nums; }
 
+.mk-done-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #f1f3f4;
+}
+.mk-done-bar .chk { margin: 0; }
 .mk-done-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
   gap: 4px 12px;
   padding: 11px 18px;
   border-bottom: 1px solid #f1f3f4;
   font-size: 13px;
 }
 .mk-done-row:last-child { border-bottom: none; }
+.mk-done-row { cursor: pointer; }
 .mk-done-row .who { font-weight: 500; }
 .mk-done-row .meta { color: var(--ink-3, #6c757c); font-size: 12.5px; }
 .mk-done-row .amt { color: var(--ink-3, #6c757c); font-variant-numeric: tabular-nums; text-align: right; }
