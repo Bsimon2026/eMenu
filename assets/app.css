@@ -1444,3 +1444,36 @@ body[data-role="orders"] #newCatName { display: none !important; }
   margin-top: 2px;
 }
 .ar-pub input { margin: 0; }
+
+/* ---------------- archived orders ---------------- */
+
+.orow.is-archived { opacity: .62; }
+.orow.is-archived .ostate .st { color: var(--ink-3); }
+.orow.is-archived .ostate .dot { background: var(--ink-4); }
+.orow .oact { gap: 6px; }
+
+.arch-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -4px 0 4px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--warn-bg, #fdf3e2);
+  border: 1px solid #f0dcb4;
+}
+.arch-why { font-size: 12.5px; font-weight: 600; color: var(--warn, #8a5a00); margin-right: 2px; }
+.arch-btn {
+  border: 1px solid #e3cfac;
+  background: #fff;
+  border-radius: 99px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.arch-btn:hover { border-color: var(--ink-3); color: var(--ink); }
+.arch-btn:focus-visible { outline: none; box-shadow: var(--focus); }

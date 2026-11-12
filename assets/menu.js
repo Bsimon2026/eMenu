@@ -268,6 +268,10 @@
   const sheetBack = $("#sheetBack");
 
   function openSheet() {
+    /* the confirm button is disabled after a successful send; opening the
+       sheet again is a new order and it must be pressable */
+    const cb = $("#confirmOrder");
+    if (cb) cb.disabled = false;
     if (!totals().count) return;
     renderModeFields();
     renderSheetTotals();
@@ -427,6 +431,8 @@
 
     const guest = $("#guestName").value.trim();
     const msg = buildMessage(guest, phoneRaw);
+    const confirmBtn = $("#confirmOrder");
+    if (confirmBtn) confirmBtn.disabled = true;
     const saved = await submitOrder(guest, phoneRaw);
     const url = "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent(msg);
     recordOrder(guest, msg, phoneRaw);

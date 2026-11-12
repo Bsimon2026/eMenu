@@ -27,6 +27,7 @@ module.exports = async function listOrders(req, res) {
      them the list stops at the newest 100 and a six-month-old order cannot be
      found by any date search. Everything is validated, never interpolated raw. */
   const q = req.query || {};
+  const wantArchived = q.state === "archived";
   const state = q.state === "done" ? "eq.confirmed" : q.state === "active" ? "neq.confirmed" : "";
   const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : "");
   const from = day(q.from), to = day(q.to);
@@ -36,12 +37,24 @@ module.exports = async function listOrders(req, res) {
   if (from) filters += "&created_at=gte." + from + "T00:00:00";
   if (to) filters += "&created_at=lte." + to + "T23:59:59";
 
-  const list = await rest(
-    "orders?restaurant_id=eq." + restaurant.id +
-    "&select=id,mode,table_no,pickup_at,address,guest_name,guest_phone,total,status,created_at" +
-    filters +
-    "&order=created_at.desc&limit=" + (from || to || state === "eq.confirmed" ? 500 : 100)
-  );
+  /* archived rows are out of the shift unless they are what was asked for */
+  let archFilter = "";
+  if (wantArchived) archFilter = "&archived_at=not.is.null";
+  else if (q.state) archFilter = "&archived_at=is.null";
+
+  const COLS = "id,mode,table_no,pickup_at,address,guest_name,guest_phone,total,status,created_at";
+  const base = "orders?restaurant_id=eq." + restaurant.id;
+  const tail = "&order=created_at.desc&limit=" + (from || to || state === "eq.confirmed" || wantArchived ? 500 : 100);
+
+  /* 0016 adds the archive columns. A deploy can land before the migration is
+     run, so ask for them and fall back to the plain read rather than taking
+     the order list down. */
+  let list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + filters + archFilter + tail);
+  let hasArchive = true;
+  if (!list.ok) {
+    hasArchive = false;
+    list = await rest(base + "&select=" + COLS + filters + tail);
+  }
   if (!list.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
 
   const orders = list.data || [];
@@ -72,6 +85,8 @@ module.exports = async function listOrders(req, res) {
       phone: o.guest_phone,
       total: Number(o.total),
       status: o.status,
+      archivedAt: o.archived_at || null,
+      archiveReason: o.archive_reason || null,
       items: byOrder.get(o.id) || []
     }))
   });
@@ -104,6 +119,27 @@ module.exports.setStatus = async function setStatus(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
   const id = body && String(body.id || "").trim();
   if (!id) return res.status(400).json({ ok: false, code: "NO_ID", message: "Which order?" });
+
+  /* Archiving is not a status: the order still happened, and which state it
+     reached stays as it was. It just leaves the shift, with a reason on file. */
+  if (body.archive !== undefined) {
+    const on = body.archive === true;
+    const updArch = await rest("orders?id=eq." + encodeURIComponent(id) + "&restaurant_id=eq." + restaurant.id, {
+      method: "PATCH",
+      prefer: "return=representation",
+      body: on
+        ? { archived_at: new Date().toISOString(), archive_reason: String(body.reason || "").trim().slice(0, 120) || "Other" }
+        : { archived_at: null, archive_reason: null }
+    });
+    if (!updArch.ok) {
+      /* the columns arrive with 0016 */
+      return res.status(503).json({ ok: false, code: "NO_ARCHIVE", message: "Archiving is not switched on yet — run db/0016_archive_orders.sql." });
+    }
+    if (!(updArch.data || []).length) {
+      return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "That order is not yours." });
+    }
+    return res.status(200).json({ ok: true, id, archived: on });
+  }
 
   /* two states, not four: everything else in the column is history */
   const want = body.status === "confirmed" ? "confirmed" : "awaiting_confirmation";

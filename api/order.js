@@ -116,6 +116,29 @@ module.exports = async function handler(req, res) {
     status: "awaiting_confirmation"
   };
 
+  /* A second press of the same button, a double tap on a slow phone, or the
+     same order sent twice a second apart all used to land as separate orders —
+     the kitchen then cooks the same dish three times. An identical order from
+     the same phone within two minutes is the same order: return the one that
+     exists instead of making another. */
+  const since = new Date(Date.now() - 120000).toISOString();
+  const twin = await rest(
+    "orders?restaurant_id=eq." + restaurant.id +
+    "&guest_phone=eq." + encodeURIComponent(order.guest_phone) +
+    "&total=eq." + total +
+    "&created_at=gte." + encodeURIComponent(since) +
+    "&select=id,created_at&order=created_at.desc&limit=1"
+  );
+  if (twin.ok && (twin.data || []).length) {
+    return res.status(200).json({
+      ok: true,
+      duplicate: true,
+      orderId: twin.data[0].id,
+      notified: false,
+      message: "This order was already received."
+    });
+  }
+
   const made = await rest("orders", { method: "POST", body: order, prefer: "return=representation" });
   if (!made.ok) {
     return res.status(500).json({

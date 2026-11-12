@@ -1085,7 +1085,9 @@
       total: o.total,
       count: (o.items || []).reduce((n, i) => n + i.qty, 0),
       items: o.items || [],
-      status: o.status
+      status: o.status,
+      archivedAt: o.archivedAt || null,
+      archiveReason: o.archiveReason || null
     }));
   }
 
@@ -1194,6 +1196,7 @@
   /* Open vs History is the split the shift actually uses; a counter, not a
      filter over a hundred rows. */
   let ORDER_STATE = "active", OR_RANGE = { from: "", to: "" }, FB_FILTER = "all";
+  let ARCH_FOR = null;   /* the order whose reason bar is open */
   let REVIEWS = { byOrder: new Map(), list: [] };
 
   /* the tabs are the order types this restaurant actually offers — read from
@@ -1239,6 +1242,7 @@
   }
 
   function orderLedgerRowHtml(o, rev) {
+    const archived = Boolean(o.archivedAt);
     const d = new Date(o.ts);
     const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     const day = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
@@ -1273,14 +1277,25 @@
         (where ? '<span class="meta">' + esc(where) + '</span>' : '') +
       '</div>' +
       '<div class="ototal">' + money(o.total) + '</div>' +
-      '<div class="ostate"><span class="st"><span class="dot"></span>' + (done ? "Done" : "Pending") + '</span></div>' +
+      '<div class="ostate"><span class="st"><span class="dot"></span>' +
+        (archived ? "Archived" : done ? "Done" : "Pending") + '</span></div>' +
       '<div class="oact">' +
-        '<button class="btn btn-sm ' + (done ? "btn-quiet" : "btn-outline") + '" type="button" ' +
-          'data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
-          (done ? "Reopen" : "Mark done") +
-        '</button>' +
+        (archived
+          ? '<button class="btn btn-sm btn-outline" type="button" data-arch="' + esc(o.id) + '" data-on="0">Restore</button>'
+          : '<button class="btn btn-sm ' + (done ? "btn-quiet" : "btn-outline") + '" type="button" ' +
+              'data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
+              (done ? "Reopen" : "Mark done") + '</button>' +
+            '<button class="btn btn-sm btn-quiet" type="button" data-arch="' + esc(o.id) + '" data-on="1">Archive</button>') +
       '</div>' + review +
-    '</article>';
+    '</article>' + (ARCH_FOR === o.id
+      ? '<div class="arch-bar">' +
+          '<span class="arch-why">Archive this order — why?</span>' +
+          ["Duplicate", "Test order", "Guest cancelled", "Wrong entry"].map(function (why) {
+            return '<button type="button" class="arch-btn" data-arch-do="' + esc(why) + '">' + esc(why) + '</button>';
+          }).join("") +
+          '<button type="button" class="btn-quiet" data-arch-cancel>Cancel</button>' +
+        '</div>'
+      : '');
   }
 
   function skeletonRows(n) {
@@ -1330,7 +1345,10 @@
     if (range) range.hidden = ORDER_STATE !== "history";
 
     let rows, err = "";
-    if (ORDER_STATE === "history" && (OR_RANGE.from || OR_RANGE.to)) {
+    if (ORDER_STATE === "archived") {
+      const r = await fetchOrders({ state: "archived" });
+      if (!r.ok) { err = r.message; rows = []; } else rows = r.orders;
+    } else if (ORDER_STATE === "history" && (OR_RANGE.from || OR_RANGE.to)) {
       const r = await fetchOrders({ state: "done", from: OR_RANGE.from, to: OR_RANGE.to });
       if (!r.ok) { err = r.message; rows = []; } else rows = r.orders;
     } else {
@@ -1342,7 +1360,8 @@
        search that reached further back than that. */
     if (stateTabs) {
       const historyCount = ORDER_STATE === "history" ? rows.length : doneRows.length;
-      stateTabs.innerHTML = [["active", "Open", openRows.length], ["history", "History", historyCount]]
+      void historyCount;
+      stateTabs.innerHTML = [["active", "Open", openRows.length], ["history", "History", historyCount], ["archived", "Archived", ORDER_STATE === "archived" ? rows.length : null]]
         .map(function (t) {
           return '<button type="button" role="tab" data-ostate="' + t[0] + '" aria-selected="' +
             (ORDER_STATE === t[0] ? "true" : "false") + '">' + t[1] +
@@ -1490,6 +1509,27 @@
       return;
     }
 
+    const archBtn = e.target.closest && e.target.closest("[data-arch]");
+    if (archBtn) {
+      const id = archBtn.getAttribute("data-arch");
+      if (archBtn.getAttribute("data-on") === "0") {
+        await archiveOrder(id, null);
+      } else {
+        ARCH_FOR = ARCH_FOR === id ? null : id;
+        renderOrders();
+      }
+      return;
+    }
+
+    const archDo = e.target.closest && e.target.closest("[data-arch-do]");
+    if (archDo && ARCH_FOR) {
+      await archiveOrder(ARCH_FOR, archDo.getAttribute("data-arch-do"));
+      return;
+    }
+
+    const archNo = e.target.closest && e.target.closest("[data-arch-cancel]");
+    if (archNo) { ARCH_FOR = null; renderOrders(); return; }
+
     const btn = e.target.closest && e.target.closest("[data-status]");
     if (!btn) return;
     e.preventDefault();
@@ -1504,6 +1544,22 @@
     if (typeof renderRecentOrders === "function") renderRecentOrders();
     toast(status === "confirmed" ? "Done \u2014 it moved to History." : "Back to open.");
   });
+
+  async function archiveOrder(id, reason) {
+    const r = await window.Auth.api("/api/orders", {
+      method: "PATCH",
+      body: JSON.stringify(reason ? { id: id, archive: true, reason: reason } : { id: id, archive: false })
+    });
+    if (!r.ok) {
+      const d = r.data || {};
+      toast(d.code === "NO_ARCHIVE" ? "Archiving is not switched on yet — run db/0016_archive_orders.sql." : (d.message || "That did not save."));
+      return;
+    }
+    ARCH_FOR = null;
+    ordersFetchedAt = 0;
+    await renderOrders();
+    toast(reason ? "Archived — " + reason : "Back in the list.");
+  }
 
   /* the date range is a search, so it fires on change rather than per keystroke */
   ["#orFrom", "#orTo"].forEach(function (sel) {
@@ -2717,6 +2773,7 @@
 
   function renderProfile() {
     const set = (sel, val) => { const el = $(sel); if (el) el.value = val || ""; };
+    set("#setRestName", state.restaurant.name);
     set("#setTagline", state.restaurant.tagline);
     set("#setAddress", state.restaurant.address);
     set("#setCurrency", state.currency || "AED");
@@ -2783,6 +2840,7 @@
     btn.textContent = "Saving…";
 
     const payload = {
+      name: $("#setRestName").value.trim(),
       tagline: $("#setTagline").value.trim(),
       address_line: $("#setAddress").value.trim(),
       currency: $("#setCurrency").value,
