@@ -123,9 +123,11 @@
       return '<tr>' +
         '<td><b>' + r.name + '</b><br><span style="color:#8a949b;font-size:12.5px">/' + r.handle + '</span></td>' +
         '<td>' + planSel + '</td>' +
-        '<td>' + (r.paid_through || "—") + '<br><span style="color:#8a949b;font-size:12.5px">$' + r.price + ' / ' + r.billing + '</span></td>' +
+        '<td>' + (r.onTrial
+            ? '<b>free week</b><br><span style="color:#8a949b;font-size:12.5px">' + r.trialDaysLeft + ' day' + (r.trialDaysLeft === 1 ? '' : 's') + ' left</span>'
+            : (r.paid_through || "—") + '<br><span style="color:#8a949b;font-size:12.5px">$' + r.price + ' / ' + r.billing + '</span>') + '</td>' +
         '<td>' + (r.status === "published" ? tag("published", "ok") : tag(r.status, "draft")) +
-          ' ' + (r.active ? tag("paid", "ok") : tag("unpaid", "no")) + '</td>' +
+          ' ' + (r.onTrial ? tag("trial", "draft") : (r.paid ? tag("paid", "ok") : tag("unpaid", "no"))) + '</td>' +
         '<td>' + (r.custom_domain
             ? '<b>' + esc(r.custom_domain) + '</b><br><span style="color:#8a949b;font-size:12.5px">' +
               (r.domain_status === "live" ? tag("live", "ok") : tag(r.domain_status || "pending", "draft")) + '</span>'

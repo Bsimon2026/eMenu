@@ -160,23 +160,31 @@ async function restaurantHandler(req, res) {
         });
       }
 
-      /* The paywall. A menu can be built in full for nothing, but it does not
-         become public until a paid period exists. Checked here rather than in
+      /* The paywall. A menu can be built in full for nothing, and a new
+         restaurant gets seven free days with everything on. After that it does
+         not stay public until a paid period exists. Checked here rather than in
          the dashboard, so no client can publish around it.
-         Until migration 0007 runs the column is absent — then behave as before. */
+         Until migration 0007/0011 run the columns are absent — then behave as
+         before. */
       const hasPlanColumns = Boolean(existing && Object.prototype.hasOwnProperty.call(existing, "paid_through"));
       const paidThrough = existing && existing.paid_through;
+      const trialEnds = existing && existing.trial_ends;
       const today = new Date().toISOString().slice(0, 10);
-      if (hasPlanColumns && (!paidThrough || paidThrough < today)) {
+      const paidNow = Boolean(paidThrough && paidThrough >= today);
+      const onTrial = Boolean(trialEnds && trialEnds >= today);
+
+      if (hasPlanColumns && !paidNow && !onTrial) {
         const plan = (existing && existing.plan) || "qr";
         const price = plan === "order" ? { m: 19, y: 190 } : { m: 2, y: 20 };
         return res.status(402).json({
           ok: false,
           code: "PAYMENT_REQUIRED",
-          message: "Your menu is ready. Pay $" + (plan === "order" ? "19/month or $190/year" : "2/month or $20/year") +
+          message: "Your free week is over. Your menu is ready and stays saved — pay $" +
+            (plan === "order" ? "19/month or $190/year" : "2/month or $20/year") +
             " by transfer or on WhatsApp — connect@indubaicity.com — and it goes live the same day.",
           plan,
-          prices: price
+          prices: price,
+          trialEnded: Boolean(trialEnds)
         });
       }
     }
@@ -200,7 +208,33 @@ async function restaurantHandler(req, res) {
 
   const saved = existing
     ? await rest("restaurants?id=eq." + existing.id, { method: "PATCH", body: patch, prefer: "return=representation" })
-    : await rest("restaurants", { method: "POST", body: { ...patch, owner_id: user.id }, prefer: "return=representation" });
+    : await rest("restaurants", {
+        method: "POST",
+        prefer: "return=representation",
+        /* seven free days, everything on, from the moment the row exists.
+           trial_granted_at makes it a one-time gift: no re-signup for another
+           week. A deployment can land before 0011 runs, so the columns are
+           optional — the retry below drops them. */
+        body: {
+          ...patch,
+          owner_id: user.id,
+          trial_ends: (function () {
+            const d = new Date();
+            d.setUTCDate(d.getUTCDate() + 7);
+            return d.toISOString().slice(0, 10);
+          })(),
+          trial_granted_at: new Date().toISOString()
+        }
+      });
+
+  if (!saved.ok && !existing && /trial_ends|trial_granted_at/.test(JSON.stringify(saved.data || ""))) {
+    const retry = await rest("restaurants", {
+      method: "POST",
+      prefer: "return=representation",
+      body: { ...patch, owner_id: user.id }
+    });
+    if (retry.ok || retry.status < 500) saved = retry;
+  }
 
   if (!saved.ok) {
     const detail = typeof saved.data === "object" && saved.data ? JSON.stringify(saved.data).slice(0, 200) : String(saved.data).slice(0, 200);

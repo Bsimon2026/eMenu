@@ -157,7 +157,7 @@ async function menuHandler(req, res) {
   }
 
   const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
-  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain";
+  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends";
   const query = (cols) =>
     "restaurants?" + lookup + "&status=eq.published&select=" + cols;
 
@@ -192,7 +192,11 @@ async function menuHandler(req, res) {
   if (hasGateCols) {
     planSeen = restaurant.plan || "qr";
     const today = new Date().toISOString().slice(0, 10);
-    ordering = planSeen === "order" && Boolean(restaurant.paid_through && restaurant.paid_through >= today);
+    const paid = Boolean(restaurant.paid_through && restaurant.paid_through >= today);
+    const onTrial = Boolean(restaurant.trial_ends && restaurant.trial_ends >= today);
+    /* the seven free days include ordering, so a new restaurant sees the whole
+       product before anybody pays for it */
+    ordering = onTrial || (planSeen === "order" && paid);
   } else {
     const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
     if (gate.ok && (gate.data || [])[0]) {

@@ -206,14 +206,30 @@ module.exports = async function handler(req, res) {
 
   /* ---- list every restaurant with what it is owed ---- */
   if (req.method === "GET") {
-    const r = await rest("restaurants?select=id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,order_email,custom_domain,domain_status,domain_error&order=created_at");
+    const BASE = "id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,order_email";
+    /* a deploy can land before 0011 runs: ask for the trial columns, and fall
+       back to the ones that have always existed rather than breaking the panel */
+    let r = await rest("restaurants?select=" + BASE + ",custom_domain,domain_status,domain_error,trial_ends,trial_granted_at&order=created_at");
+    if (!r.ok) r = await rest("restaurants?select=" + BASE + ",custom_domain,domain_status,domain_error&order=created_at");
+    if (!r.ok) r = await rest("restaurants?select=" + BASE + "&order=created_at");
     if (!r.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
     const today = new Date().toISOString().slice(0, 10);
-    const rows = (r.data || []).map((x) => ({
-      ...x,
-      active: Boolean(x.paid_through && x.paid_through >= today),
-      price: x.plan === "order" ? (x.billing === "yearly" ? 190 : 19) : (x.billing === "yearly" ? 20 : 2)
-    }));
+    const rows = (r.data || []).map((x) => {
+      const paid = Boolean(x.paid_through && x.paid_through >= today);
+      const onTrial = Boolean(x.trial_ends && x.trial_ends >= today) && !paid;
+      const daysLeft = x.trial_ends
+        ? Math.max(0, Math.round((new Date(x.trial_ends) - new Date(today)) / 86400000))
+        : 0;
+      return {
+        ...x,
+        paid,
+        onTrial,
+        trialDaysLeft: onTrial ? daysLeft : 0,
+        /* a restaurant is live on a payment or inside its free week */
+        active: paid || onTrial,
+        price: x.plan === "order" ? (x.billing === "yearly" ? 190 : 19) : (x.billing === "yearly" ? 20 : 2)
+      };
+    });
     return res.status(200).json({ ok: true, restaurants: rows, today });
   }
 
@@ -259,6 +275,8 @@ module.exports = async function handler(req, res) {
     if (typeof body.addonSite === "boolean") patch.addon_site = body.addonSite;
   } else if (action === "stop") {
     patch.paid_through = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    /* a stopped account must not stay live on the strength of its free week */
+    patch.trial_ends = null;
   } else {
     return res.status(400).json({ ok: false, code: "BAD_ACTION", message: "Unknown action." });
   }

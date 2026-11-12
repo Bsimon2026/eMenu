@@ -931,6 +931,19 @@
         ? "Everything needed is here. Publish when you are happy with the menu."
         : "Still needed: " + missing.join(", ") + ".";
 
+    /* seven free days, said plainly, and what happens when they end */
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const paidNow = Boolean(state.paidThrough && state.paidThrough >= todayStr);
+    if (state.trialEnds && !paidNow) {
+      const left = Math.round((new Date(state.trialEnds) - new Date(todayStr)) / 86400000);
+      if (left >= 0) {
+        $("#publishHint").textContent = "Free until " +
+          new Date(state.trialEnds).toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
+          " — " + left + " day" + (left === 1 ? "" : "s") + " left with everything on. After that the menu stays " +
+          "private until you pay, and everything you built is kept.";
+      }
+    }
+
     const pubBtn = $("#publishBtn");
     if (pubBtn) {
       pubBtn.disabled = !ready || live;
@@ -2325,6 +2338,9 @@
     state.handle = r.handle || state.handle;
     state.accent = r.accent || state.accent;
     state.status = r.status || "trial";
+    /* the free week: kept in state so the overview can say how long is left */
+    state.trialEnds = r.trial_ends || null;
+    state.paidThrough = r.paid_through || null;
     state.currency = r.currency || "AED";
     state.restaurant.tagline = r.tagline || "";
     state.restaurant.address = r.address_line || "";
