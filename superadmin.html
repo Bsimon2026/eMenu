@@ -260,7 +260,8 @@
     }
     PERMS = r.d.perms || [];
     $("#meName").textContent = (r.d.me && r.d.me.name) || "Admin";
-    $("#meEmail").textContent = r.d.me && r.d.me.username ? "@" + r.d.me.username : ((r.d.me && r.d.me.email) || "");
+    var id = r.d.me && r.d.me.username ? "@" + r.d.me.username : ((r.d.me && r.d.me.email) || "");
+    $("#meEmail").textContent = id === $("#meName").textContent ? "" : id;
     $("#mePerms").textContent = PERMS.length ? PERMS.join(" · ") : "no rights";
     $("#btnExport").classList.toggle("hidden", PERMS.indexOf("export") === -1);
     $("#adminsCard").classList.toggle("hidden", PERMS.indexOf("admins") === -1);
