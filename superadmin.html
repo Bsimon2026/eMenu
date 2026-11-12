@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/assets/favicon.ico" sizes="any">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/base.css?v=20261111s">
+<link rel="stylesheet" href="/assets/base.css?v=20261112a">
 <style>
   body { background: #f6f7f8; font-family: var(--ui); color: #171a1d; margin: 0; }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 26px 20px 70px; }
@@ -38,6 +38,15 @@
   .chk input { height: auto; }
   .hidden { display: none !important; }
   button.link { border: 0; background: none; height: auto; padding: 0; color: #f0485f; font-size: 13px; text-decoration: underline; cursor: pointer; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #eef1f3; margin-bottom: 14px; }
+  .tab { border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; background: none; color: #6a757c; font-weight: 500; margin-bottom: -1px; }
+  .tab .n { font-size: 11.5px; color: #9aa4ab; margin-left: 2px; }
+  .tab.on { background: #fff; border-color: #e3e7ea; color: #171a1d; }
+  .tab.on .n { color: #f0485f; }
+  .drawer { border: 1px solid #e3e7ea; border-radius: 10px; padding: 16px; margin-top: 16px; background: #fcfcfd; }
+  a.perms { color: #6a757c; text-decoration: none; }
+  a.perms:hover { text-decoration: underline; }
+  select.chk { height: auto; }
 </style>
 </head>
 <body>
@@ -83,15 +92,50 @@
   </div>
 
   <div class="card" id="listCard">
-    <h1 style="font-size:16px">Restaurants <span class="perms" id="count"></span></h1>
-    <p class="sub" style="margin-bottom:8px">Payments are taken outside this page — this keeps the books straight and switches the rights on.</p>
+    <div class="tabs">
+      <button class="tab on" data-tab="trial" type="button">Trial <span class="n" id="nTrial">0</span></button>
+      <button class="tab" data-tab="paid" type="button">Paid <span class="n" id="nPaid">0</span></button>
+    </div>
     <table>
       <thead><tr>
-        <th>Restaurant</th><th>Status</th><th>Plan</th><th id="thPaid">Paid through</th><th>Domain</th><th id="thAct"></th>
+        <th>Restaurant</th><th>Status</th><th>Plan</th><th id="thMkt">Marketing</th><th id="thAct"></th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
     <div class="err" id="listErr"></div>
+
+    <!-- one customer at a time: record a payment, see everything they ever paid -->
+    <div class="drawer hidden" id="drawer">
+      <div class="who" style="margin-bottom:12px">
+        <div>
+          <h1 id="dwName" style="font-size:15px;margin:0"></h1>
+          <p class="sub" id="dwUrl" style="margin:2px 0 0"></p>
+        </div>
+        <button id="dwClose" type="button">Close</button>
+      </div>
+
+      <div class="row">
+        <div><label for="dwPlan">Plan</label><select id="dwPlan"><option value="qr">QR Menu</option><option value="order">QR + Ordering</option></select></div>
+        <div><label for="dwBill">Billing</label><select id="dwBill"><option value="monthly">monthly</option><option value="yearly">yearly</option></select></div>
+        <div><label for="dwAmt">Amount (USD)</label><input id="dwAmt" type="number" step="0.01" min="0" style="width:110px"></div>
+        <div><label for="dwMethod">Method</label><select id="dwMethod"><option value="transfer">transfer</option><option value="cash">cash</option><option value="card">card</option><option value="stripe">stripe</option><option value="manual">other</option></select></div>
+        <div><label for="dwRef">Reference</label><input id="dwRef" placeholder="bank ref, cheque no." style="width:170px"></div>
+        <div style="padding-bottom:9px"><button class="primary" id="dwRecord" type="button">Record payment</button></div>
+      </div>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="dwMkt"> Marketing add-on <span class="perms">— $149 setup + $8.50 a month</span></label>
+      <div class="err" id="dwErr"></div>
+
+      <h1 style="font-size:14px;margin:18px 0 6px">Payment history <span class="perms" id="dwTotal"></span></h1>
+      <table>
+        <thead><tr><th>Date</th><th>What</th><th>Amount</th><th>Method</th><th>Reference</th><th>By</th></tr></thead>
+        <tbody id="dwRows"></tbody>
+      </table>
+
+      <div style="margin-top:16px;border-top:1px solid #eef1f3;padding-top:12px">
+        <button id="dwStop" type="button">Stop this account</button>
+        <span class="perms">Takes the menu off the internet and ends the free week.</span>
+      </div>
+    </div>
   </div>
 
   <div class="card hidden" id="adminsCard">
@@ -114,9 +158,9 @@
   </div>
 </div>
 
-<script src="/api/config?v=20261111s"></script>
-<script src="/assets/config.js?v=20261111s"></script>
-<script src="/assets/auth.js?v=20261111s"></script>
+<script src="/api/config?v=20261112a"></script>
+<script src="/assets/config.js?v=20261112a"></script>
+<script src="/assets/auth.js?v=20261112a"></script>
 <script>
 (function () {
   "use strict";
@@ -220,8 +264,9 @@
     $("#mePerms").textContent = PERMS.length ? PERMS.join(" · ") : "no rights";
     $("#btnExport").classList.toggle("hidden", PERMS.indexOf("export") === -1);
     $("#adminsCard").classList.toggle("hidden", PERMS.indexOf("admins") === -1);
-    $("#thPaid").classList.toggle("hidden", PERMS.indexOf("pay_view") === -1);
-    $("#thAct").classList.toggle("hidden", PERMS.indexOf("pay_entry") === -1);
+    var canSee = PERMS.indexOf("pay_view") !== -1, canPay = PERMS.indexOf("pay_entry") !== -1;
+    $("#thMkt").classList.toggle("hidden", !canSee);
+    $("#thAct").classList.toggle("hidden", !(canSee || canPay));
     showApp();
     loadList();
     if (PERMS.indexOf("admins") !== -1) { loadAdmins(); paintPerms(); }
@@ -230,55 +275,176 @@
   function tag(text, cls) { return '<span class="tag ' + cls + '">' + text + "</span>"; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
 
+  var TAB = "trial", ROWS = [], CUR = null, PRICES = null, AMT_TOUCHED = false;
+
+  function dwFail(msg) {
+    var e = $("#dwErr");
+    e.textContent = msg || "";
+    e.style.display = msg ? "block" : "none";
+  }
+
+  function statusCell(x) {
+    /* the three things the operator actually chases, plus the date it turns
+       into the third one */
+    var label = "Unpublished", cls = "draft";
+    if (x.state === "expired") { label = "Expired"; cls = "no"; }
+    else if (x.published) { label = "Published"; cls = "ok"; }
+    var when = x.expires ? (x.state === "expired" ? "ended " : "until ") + esc(x.expires) : "no date";
+    return tag(label, cls) + '<br><span class="perms">' + when + "</span>";
+  }
+
+  function paint() {
+    var trial = ROWS.filter(function (x) { return !x.hasPaid; });
+    var paid = ROWS.filter(function (x) { return x.hasPaid; });
+    $("#nTrial").textContent = trial.length;
+    $("#nPaid").textContent = paid.length;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"), function (b) {
+      b.classList.toggle("on", b.getAttribute("data-tab") === TAB);
+    });
+
+    var canPay = PERMS.indexOf("pay_entry") !== -1;
+    var canSee = PERMS.indexOf("pay_view") !== -1;
+    var list = TAB === "trial" ? trial : paid;
+
+    if (!list.length) {
+      $("#rows").innerHTML = '<tr><td colspan="5" class="perms" style="padding:24px 8px">Nothing in here yet.</td></tr>';
+      return;
+    }
+
+    $("#rows").innerHTML = list.map(function (x) {
+      return "<tr>" +
+        "<td><b>" + esc(x.name) + "</b><br>" +
+          '<a class="perms" href="https://' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.url) + "</a></td>" +
+        "<td>" + statusCell(x) + "</td>" +
+        "<td>" + esc(x.plan === "order" ? "QR + Ordering" : "QR Menu") + '<br><span class="perms">' + esc(x.billing || "") + "</span></td>" +
+        "<td>" + (x.addon_marketing ? tag("on", "ok") : '<span class="perms">off</span>') + "</td>" +
+        '<td style="text-align:right">' +
+          '<button data-open="' + esc(x.handle) + '">' + (canPay ? "Record" : (canSee ? "Payments" : "Open")) + "</button>" +
+        "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
   async function loadList() {
     fail("#listErr", "");
     var r;
     try { r = await api(""); } catch (e) { return; }
     if (!r.ok) { fail("#listErr", r.d.message || "Could not load."); return; }
+    ROWS = r.d.restaurants || [];
+    paint();
+    if (CUR && !ROWS.some(function (x) { return x.handle === CUR; })) closeDrawer();
+  }
 
-    var canPay = PERMS.indexOf("pay_entry") !== -1;
-    var canSeeMoney = PERMS.indexOf("pay_view") !== -1;
-    var rows = r.d.restaurants || [];
-    $("#count").textContent = "· " + rows.length;
+  /* ---------- the payment module ---------- */
+  function rowOf(handle) {
+    return ROWS.filter(function (x) { return x.handle === handle; })[0] || {};
+  }
 
-    $("#rows").innerHTML = rows.map(function (x) {
-      var status = x.onTrial
-        ? tag("trial · " + x.trialDaysLeft + "d", "draft")
-        : (x.status === "published" ? tag("published", "ok") : tag(x.status, "draft"));
-      var money = x.active ? tag("live", "ok") : tag("not live", "no");
+  function fillAmount() {
+    if (AMT_TOUCHED || !PRICES) return;
+    var x = rowOf(CUR);
+    var plan = $("#dwPlan").value, bill = $("#dwBill").value;
+    var amt = (PRICES[plan] && PRICES[plan][bill]) || 0;
+    if ($("#dwMkt").checked) {
+      amt += PRICES.marketing.monthly;
+      if (!x.addon_marketing) amt += PRICES.marketing.setup;   /* once, on the first sale */
+    }
+    $("#dwAmt").value = String(Math.round(amt * 100) / 100);
+  }
+
+  function closeDrawer() {
+    CUR = null;
+    $("#drawer").classList.add("hidden");
+  }
+
+  async function openDrawer(handle) {
+    CUR = handle;
+    var x = rowOf(handle);
+    $("#drawer").classList.remove("hidden");
+    dwFail("");
+    $("#dwName").textContent = x.name || handle;
+    $("#dwUrl").innerHTML = '<a class="perms" href="https://' + esc(x.url || "") + '" target="_blank" rel="noopener">' + esc(x.url || "") + "</a>";
+    $("#dwPlan").value = x.plan === "order" ? "order" : "qr";
+    $("#dwBill").value = x.billing === "yearly" ? "yearly" : "monthly";
+    $("#dwMkt").checked = Boolean(x.addon_marketing);
+    $("#dwRows").innerHTML = "";
+    $("#dwTotal").textContent = "";
+    AMT_TOUCHED = false;
+
+    var r;
+    try { r = await api("?payments=1&handle=" + encodeURIComponent(handle)); } catch (e) { return; }
+    if (!r.ok) { dwFail(r.d.message || "Could not load the payments."); return; }
+
+    PRICES = r.d.prices;
+    var total = Number(r.d.total || 0);
+    $("#dwTotal").textContent = "· $" + total.toFixed(2) + " recorded, ever";
+    var rows = r.d.payments || [];
+    $("#dwRows").innerHTML = rows.length ? rows.map(function (p) {
+      var what = p.kind === "setup" ? "Marketing setup"
+        : p.kind === "addon" ? "Marketing, monthly"
+        : (p.plan === "order" ? "QR + Ordering" : "QR Menu") + " · " + (p.billing || "");
       return "<tr>" +
-        "<td><b>" + esc(x.name) + '</b><br><span class="perms">/' + esc(x.handle) + "</span></td>" +
-        "<td>" + status + "</td>" +
-        "<td>" + esc(x.plan === "order" ? "QR + Ordering" : "QR Menu") + '<br><span class="perms">' + esc(x.billing || "") + "</span></td>" +
-        (canSeeMoney ? "<td>" + (x.onTrial ? '<span class="perms">free week</span>' : esc(x.paid_through || "—")) + "</td>" : "") +
-        "<td>" + (x.custom_domain ? esc(x.custom_domain) + ' <span class="perms">' + esc(x.domain_status || "") + "</span>" : '<span class="perms">—</span>') + "</td>" +
-        (canPay ? '<td><select data-plan="' + esc(x.handle) + '"><option value="qr"' + (x.plan === "qr" ? " selected" : "") + ">QR Menu</option><option value=\"order\"" + (x.plan === "order" ? " selected" : "") + ">QR + Ordering</option></select> " +
-          '<select data-bill="' + esc(x.handle) + '"><option value="monthly">monthly</option><option value="yearly"' + (x.billing === "yearly" ? " selected" : "") + ">yearly</option></select> " +
-          '<button class="primary" data-pay="' + esc(x.handle) + '">Record</button> <button data-stop="' + esc(x.handle) + '">Stop</button></td>' : "") +
+        "<td>" + esc(String(p.created_at || "").slice(0, 10)) + "</td>" +
+        "<td>" + esc(what) + "</td>" +
+        "<td>$" + Number(p.amount).toFixed(2) + "</td>" +
+        "<td>" + esc(p.method || "") + "</td>" +
+        "<td>" + esc(p.reference || "—") + "</td>" +
+        "<td>" + esc(p.recorded_by || "") + "</td>" +
         "</tr>";
-    }).join("");
+    }).join("") : '<tr><td colspan="6" class="perms" style="padding:16px 8px">No payment recorded yet.</td></tr>';
+
+    fillAmount();
   }
 
   document.addEventListener("click", async function (e) {
     var el = e.target;
-    var pay = el.getAttribute && el.getAttribute("data-pay");
-    var stop = el.getAttribute && el.getAttribute("data-stop");
-    if (!pay && !stop) return;
-    var handle = pay || stop;
-    var tr = el.closest("tr");
-    var body = { handle: handle };
-    if (pay) {
-      body.plan = tr.querySelector("[data-plan]").value;
-      body.billing = tr.querySelector("[data-bill]").value;
-      body.payRef = "offline";
+    var tab = el.getAttribute && el.getAttribute("data-tab");
+    if (tab) { TAB = tab; paint(); return; }
+
+    var open = el.getAttribute && el.getAttribute("data-open");
+    if (open) { openDrawer(open); return; }
+
+    if (el.id === "dwClose") { closeDrawer(); return; }
+
+    if (el.id === "dwRecord" && CUR) {
+      var body = {
+        handle: CUR,
+        plan: $("#dwPlan").value,
+        billing: $("#dwBill").value,
+        marketing: $("#dwMkt").checked,
+        amount: $("#dwAmt").value,
+        method: $("#dwMethod").value,
+        payRef: $("#dwRef").value.trim() || "offline"
+      };
+      el.disabled = true;
+      var r = await api("?payment=1", { method: "POST", body: body });
+      el.disabled = false;
+      if (!r.ok) { dwFail(r.d.message || "That did not work."); return; }
+      var warn = r.d.warning || "";
+      $("#dwRef").value = "";
+      AMT_TOUCHED = false;
+      await loadList();
+      await openDrawer(CUR);
+      if (warn) dwFail(warn);
+      return;
     }
-    el.disabled = true;
-    var r = await api(stop ? "?stop=1" : "?payment=1", { method: "POST", body: body });
-    el.disabled = false;
-    if (!r.ok) { fail("#listErr", r.d.message || "That did not work."); return; }
-    fail("#listErr", "");
-    loadList();
+
+    if (el.id === "dwStop" && CUR) {
+      if (!window.confirm("Take " + CUR + " off the internet and end the free week?")) return;
+      el.disabled = true;
+      var st = await api("?stop=1", { method: "POST", body: { handle: CUR } });
+      el.disabled = false;
+      if (!st.ok) { dwFail(st.d.message || "That did not work."); return; }
+      await loadList();
+      await openDrawer(CUR);
+      return;
+    }
   });
+
+  ["#dwPlan", "#dwBill", "#dwMkt"].forEach(function (sel) {
+    $(sel).addEventListener("change", fillAmount);
+  });
+  $("#dwAmt").addEventListener("input", function () { AMT_TOUCHED = true; });
 
   $("#btnExport").addEventListener("click", async function () {
     var t = await window.Auth.token();

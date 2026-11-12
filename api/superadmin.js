@@ -28,6 +28,14 @@ const {
 } = require("./_lib/db");
 
 const ALL = ["view", "export", "pay_view", "pay_entry", "admins"];
+
+/* what a plan costs, and what the marketing add-on costs: $149 to set up,
+   $8.50 a month, recorded as its own lines so it can be seen and stopped
+   without touching the menu subscription */
+const priceOf = (plan, billing) =>
+  billing === "yearly" ? (plan === "order" ? 190 : 20) : (plan === "order" ? 19 : 2);
+const MKT_SETUP = 149;
+const MKT_MONTHLY = 8.5;
 const PLANS = ["qr", "order"];
 const BILLING = ["monthly", "yearly"];
 
@@ -82,7 +90,7 @@ function csv(rows, cols) {
   return [cols.join(",")].concat(rows.map((r) => cols.map((c) => esc(r[c])).join(","))).join("\n");
 }
 
-const BASE_COLS = "id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,order_email,custom_domain,domain_status,trial_ends,created_at";
+const BASE_COLS = "id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,addon_marketing,order_email,custom_domain,domain_status,trial_ends,created_at";
 
 async function restaurantRows() {
   let r = await rest("restaurants?select=" + BASE_COLS + "&order=created_at");
@@ -100,6 +108,14 @@ function shape(row, perms) {
   const onTrial = Boolean(row.trial_ends && row.trial_ends >= today) && !paid;
   const out = {
     handle: row.handle, name: row.name, status: row.status, plan: row.plan, billing: row.billing,
+    /* the address a guest actually opens, and the state the operator chases:
+       published · unpublished · expired */
+    url: row.custom_domain && row.domain_status === "live" ? row.custom_domain : "digimenu.indubaicity.com/" + row.handle,
+    published: row.status === "published",
+    state: paid ? "paid" : (onTrial ? "trial" : "expired"),
+    expires: (paid ? row.paid_through : row.trial_ends) || null,
+    addon_marketing: Boolean(row.addon_marketing),
+    hasPaid: Boolean(row.paid_through),
     active: paid || onTrial, onTrial,
     trialDaysLeft: onTrial ? Math.max(0, Math.round((new Date(row.trial_ends) - new Date(today)) / 86400000)) : 0,
     paid_through: row.paid_through || null,
@@ -368,19 +384,60 @@ module.exports = async function handler(req, res) {
     if (!r0) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No restaurant with that handle." });
 
     const patch = {};
+    let ledger = [];
     if (q.stop !== undefined) {
       patch.paid_through = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       patch.trial_ends = null;
     } else {
       const billing = BILLING.includes(body.billing) ? body.billing : "monthly";
       const plan = PLANS.includes(body.plan) ? body.plan : (r0.plan || "qr");
+
+      /* the marketing add-on is sold as $149 to set up plus $8.50 a month. The
+         setup fee is only ever charged once per customer. */
+      const wantMarketing = body.marketing === true;
+      const marketingOn = body.marketing === undefined ? Boolean(r0.addon_marketing) : wantMarketing;
+      const firstMarketing = wantMarketing && !r0.addon_marketing;
+
+      const suggested =
+        priceOf(plan, billing) +
+        (firstMarketing ? MKT_SETUP : 0) +
+        (wantMarketing ? MKT_MONTHLY : 0);
+      const amount = body.amount === undefined || body.amount === null || body.amount === ""
+        ? suggested
+        : Number(body.amount);
+      if (!Number.isFinite(amount) || amount < 0) {
+        return res.status(400).json({ ok: false, code: "BAD_AMOUNT", message: "That amount is not a number." });
+      }
+
       patch.plan = plan;
       patch.billing = billing;
       patch.paid_through = extend(body.from || r0.paid_through, billing);
-      patch.paid_amount = Number(body.amount) || (billing === "yearly" ? (plan === "order" ? 190 : 20) : (plan === "order" ? 19 : 2));
+      patch.paid_amount = amount;
       patch.pay_ref = body.payRef ? String(body.payRef).slice(0, 120) : null;
-      patch.pay_method = "manual";
+      patch.pay_method = ["manual", "cash", "transfer", "card", "stripe"].includes(body.method) ? body.method : "manual";
       patch.activated_at = new Date().toISOString();
+      if (body.marketing !== undefined) patch.addon_marketing = wantMarketing;
+
+      /* every payment is a line in the ledger — the plan, the setup fee (once),
+         and the monthly add-on separately, so any of them can be seen alone */
+      ledger = [{
+        plan, billing, kind: "subscription", amount,
+        period_end: patch.paid_through
+      }];
+      if (firstMarketing) {
+        ledger.push({ kind: "setup", addon: "marketing", billing: "one-off", amount: MKT_SETUP });
+      }
+      if (wantMarketing) {
+        ledger.push({ kind: "addon", addon: "marketing", billing: "monthly", amount: MKT_MONTHLY, period_end: patch.paid_through });
+      }
+      for (const row of ledger) {
+        row.restaurant_id = r0.id;
+        row.currency = "USD";
+        row.method = patch.pay_method;
+        row.reference = patch.pay_ref;
+        row.note = body.note ? String(body.note).slice(0, 200) : null;
+        row.recorded_by = me.name;
+      }
     }
 
     const upd = await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: patch, prefer: "return=representation" });
@@ -393,8 +450,24 @@ module.exports = async function handler(req, res) {
       if (!off.ok) return res.status(502).json({ ok: false, code: "UNPUBLISH_FAILED" });
     }
 
-    console.log("[superadmin]", me.name, q.stop !== undefined ? "stopped" : "recorded payment for", r0.handle, patch.paid_through || "");
-    return res.status(200).json({ ok: true, restaurant: shape({ ...r0, ...row }, perms) });
+    /* the books are the point of recording this at all, so a failure to write
+       the ledger is reported rather than swallowed — the account is still live,
+       and the operator is told the line is missing */
+    let ledgerOk = true;
+    if (ledger.length) {
+      const ins = await rest("payments", { method: "POST", prefer: "return=minimal", body: ledger });
+      ledgerOk = ins.ok;
+      if (!ins.ok) console.log("[superadmin] LEDGER FAILED", r0.handle, String(ins.data).slice(0, 200));
+    }
+
+    console.log("[superadmin]", me.name, q.stop !== undefined ? "stopped" : "recorded payment for", r0.handle, patch.paid_through || "", "|", ledger.map((x) => x.kind + " " + x.amount).join(" + "));
+    return res.status(200).json({
+      ok: true,
+      restaurant: shape({ ...r0, ...row }, perms),
+      ledger: ledger.map((x) => ({ kind: x.kind, addon: x.addon || null, amount: x.amount })),
+      ledgerOk,
+      warning: ledgerOk ? undefined : "The payment went through, but its line in the history did not save."
+    });
   }
 
   /* ------------------------------------------------------------ export */
@@ -411,6 +484,28 @@ module.exports = async function handler(req, res) {
     res.setHeader("Content-Disposition", 'attachment; filename="digimenu-restaurants-' + stamp + '.csv"');
     if (typeof res.send === "function") return res.status(200).send(body);
     return res.status(200).json({ ok: true, csv: body });
+  }
+
+  /* ------------------------------------------------------------ ledger */
+  if (q.payments !== undefined) {
+    if (!can(perms, "pay_view") && !can(perms, "pay_entry")) return res.status(403).json({ ok: false, code: "NO_RIGHT", message: "Your admin account cannot see payments." });
+    const handle = String((q.handle || "")).trim().toLowerCase();
+    if (!handle) return res.status(400).json({ ok: false, code: "NO_HANDLE" });
+
+    const rr = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=id,handle,name,paid_through,trial_ends,addon_marketing,plan,billing");
+    const r0 = rr.ok && (rr.data || [])[0];
+    if (!r0) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
+
+    const pay = await rest("payments?restaurant_id=eq." + r0.id + "&select=amount,currency,plan,billing,kind,addon,period_end,method,reference,note,recorded_by,created_at&order=created_at.desc&limit=200");
+    if (!pay.ok) return res.status(503).json({ ok: false, code: "NO_LEDGER", message: "Payment history is not switched on yet." });
+    const rows = pay.data || [];
+    return res.status(200).json({
+      ok: true,
+      restaurant: { handle: r0.handle, name: r0.name, paid_through: r0.paid_through, trial_ends: r0.trial_ends, addon_marketing: Boolean(r0.addon_marketing), plan: r0.plan, billing: r0.billing },
+      payments: rows,
+      total: Math.round(rows.reduce((a, x) => a + Number(x.amount || 0), 0) * 100) / 100,
+      prices: { qr: { monthly: 2, yearly: 20 }, order: { monthly: 19, yearly: 190 }, marketing: { setup: MKT_SETUP, monthly: MKT_MONTHLY } }
+    });
   }
 
   /* --------------------------------------------------------------- list */
