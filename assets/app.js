@@ -1339,7 +1339,94 @@
     startEdit(row, catId, true);
   }
 
+  /* ---------------- bulk price change ----------------
+     Every dish, one percentage. It works by handing the merge the same rows
+     with new prices — category + name match, price updates, nothing is created
+     and nothing is deleted. The same safety as an import, because it IS an
+     import. */
+
+  const bulkItems = () => {
+    const out = [];
+    ((state.menu && state.menu.categories) || []).forEach((c) => {
+      (c.items || []).forEach((it) => out.push({ cat: c.name, item: it }));
+    });
+    return out;
+  };
+
+  function bulkPlan() {
+    const dir = Number($("#bulkDir").value) || 1;
+    const raw = Number($("#bulkPct").value);
+    const pct = dir * (Number.isFinite(raw) ? Math.max(0, Math.min(90, raw)) : 0);
+    const mode = $("#bulkRound").value;
+    return bulkItems().map((x) => {
+      const was = Number(x.item.price) || 0;
+      const now = Math.max(0, roundPrice(was * (1 + pct / 100), mode));
+      return { cat: x.cat, name: x.item.name, was, now };
+    });
+  }
+
+  function bulkPaint() {
+    const plan = bulkPlan();
+    const out = $("#bulkPreview");
+    if (!plan.length) { out.textContent = "There is no menu to change yet."; return; }
+    const changed = plan.filter((p) => Math.abs(p.was - p.now) > 0.004);
+    const sample = plan.slice(0, 4).map((p) => p.name + " " + p.was.toFixed(2) + " → " + p.now.toFixed(2));
+    out.innerHTML = "<b>" + changed.length + " of " + plan.length + " dishes change.</b> " +
+      esc(sample.join(" · ")) + (plan.length > 4 ? " …" : "");
+  }
+
+  (function wireBulkPrice() {
+    const btn = $("#bulkPriceBtn");
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+
+    const show = (on) => {
+      $("#bulkPricePanel").hidden = !on;
+      if (on) bulkPaint();
+    };
+
+    btn.addEventListener("click", () => show($("#bulkPricePanel").hidden));
+    $("#bulkCancel").addEventListener("click", () => show(false));
+    ["bulkPct", "bulkDir", "bulkRound"].forEach((id) =>
+      $("#" + id).addEventListener("input", bulkPaint)
+    );
+    $("#bulkRound").addEventListener("change", bulkPaint);
+    $("#bulkDir").addEventListener("change", bulkPaint);
+
+    $("#bulkGo").addEventListener("click", async () => {
+      const plan = bulkPlan().filter((p) => Math.abs(p.was - p.now) > 0.004);
+      if (!plan.length) { toast("Nothing to change."); return; }
+      if (btn.dataset.armed !== "1") {
+        btn.dataset.armed = "1";
+        $("#bulkGo").textContent = "Sure? " + plan.length + " prices change";
+        setTimeout(() => {
+          if (btn.dataset.armed === "1") { btn.dataset.armed = ""; $("#bulkGo").textContent = "Apply to the whole menu"; }
+        }, 5000);
+        return;
+      }
+      btn.dataset.armed = "";
+      $("#bulkGo").textContent = "Applying…";
+      $("#bulkGo").disabled = true;
+
+      const rows = plan.map((p) => ({ category: p.cat, name: p.name, price: p.now }));
+      const r = await window.Auth.api("/api/menu?op=edit", {
+        method: "POST", body: JSON.stringify({ action: "importRows", rows })
+      });
+
+      $("#bulkGo").disabled = false;
+      $("#bulkGo").textContent = "Apply to the whole menu";
+
+      if (!r.ok) { toast(r.data.message || "The prices were not changed."); return; }
+      toast(plan.length + " prices changed");
+      show(false);
+      await reloadOwnMenu();
+      renderMenuEditor();
+    });
+  })();
+
   /* ---------------- import ---------------- */
+
+  wireReviewTools();
 
   const drop = $("#dropZone");
   const fileMenu = $("#fileMenu");
@@ -1437,25 +1524,178 @@
     else showImportFailure(data);
   }
 
-  function showImportResult(data) {
-    pendingImport = data;
-    const rows = [];
-    data.categories.forEach((c) =>
-      c.items.forEach((it) => rows.push({ cat: c.name, name: it.name, price: it.price, image: it.image }))
-    );
+  /* ---------------- what an import will actually change ----------------
+     The reader returns rows; what matters is what those rows do to a menu that
+     already exists. POST ?op=save deleted every dish and category first and
+     re-inserted — which is how an import made the old menu vanish. The default
+     is now the merge the spreadsheet upload has always used: match on
+     category + name (the same key the server uses, so the preview cannot lie),
+     update the price, create only what is new, delete nothing.
+     A loose key exists too, but only to *suggest* that two rows are one dish —
+     never to merge them. Merging "Paneer Tikka (8 pcs)" into "Paneer Tikka"
+     automatically is how a menu quietly loses a size. */
 
-    $("#reviewRows").innerHTML = rows.map((r, i) => `
-      <label class="review-row">
-        <input type="checkbox" checked data-review="${i}">
-        <span><span class="rc">${r.cat}</span><br>${r.name}</span>
-        <span class="rp">${r.price == null ? "—" : "AED " + r.price}</span>
-        <span class="rconf ${r.image ? "" : "low"}">${r.image ? "photo" : "no photo"}</span>
-      </label>`).join("");
+  const REV_STEP = { exact: 0, "0.25": 0.25, "0.5": 0.5, "1": 1 };
+  const rev = { rows: [], pct: 0, round: "exact", replace: false, sample: false };
+
+  function roundPrice(p, mode) {
+    const step = REV_STEP[mode] || 0;
+    const v = Number(p) || 0;
+    if (!step) return Math.round(v * 100) / 100;
+    return Math.round(v / step) * step;
+  }
+
+  const revKey = (cat, name) =>
+    String(cat).trim().toLowerCase() + "|" + String(name).trim().toLowerCase();
+
+  function looseKey(name) {
+    return String(name)
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  function menuIndex() {
+    const exact = new Map();
+    const loose = new Map();
+    ((state.menu && state.menu.categories) || []).forEach((c) => {
+      (c.items || []).forEach((it) => {
+        exact.set(revKey(c.name, it.name), { name: it.name, price: Number(it.price) || 0, cat: c.name });
+        const k = looseKey(it.name);
+        if (k && !loose.has(k)) loose.set(k, { name: it.name, price: Number(it.price) || 0, cat: c.name });
+      });
+    });
+    return { exact, loose };
+  }
+
+  function revBuild(source, sample) {
+    const idx = menuIndex();
+    const rows = [];
+    (source.categories || []).forEach((c) => {
+      (c.items || []).forEach((it) => {
+        const base = it.price == null || it.price === "" ? null : Number(it.price);
+        const existing = idx.exact.get(revKey(c.name, it.name)) || null;
+        const near = existing ? null : (idx.loose.get(looseKey(it.name)) || null);
+        rows.push({
+          cat: c.name, name: it.name, desc: it.description || "", image: it.image || null,
+          base, price: base, existing, near, ticked: true
+        });
+      });
+    });
+    rev.rows = rows;
+    rev.pct = 0;
+    rev.round = "exact";
+    rev.replace = false;
+    rev.sample = !!sample;
+    return rows;
+  }
+
+  function revRecalc() {
+    rev.rows.forEach((r) => {
+      if (r.base == null) { r.price = null; return; }
+      const p = r.base * (1 + rev.pct / 100);
+      r.price = p < 0 ? 0 : roundPrice(p, rev.round);
+    });
+  }
+
+  function revState(r) {
+    if (r.existing) {
+      const was = Number(r.existing.price) || 0;
+      if (r.price != null && Math.abs(was - r.price) > 0.004) {
+        return { key: "change", label: was.toFixed(2) + " → " + r.price.toFixed(2), cls: "chg" };
+      }
+      return { key: "same", label: "unchanged", cls: "same" };
+    }
+    if (r.near) return { key: "near", label: "looks like “" + r.near.name + "”", cls: "near" };
+    return { key: "new", label: "new", cls: "new" };
+  }
+
+  function renderReview() {
+    const host = $("#reviewRows");
+    if (!host) return;
+
+    host.innerHTML = rev.rows.map((r, i) => {
+      const st = revState(r);
+      return '<label class="review-row">' +
+        '<input type="checkbox" data-review="' + i + '"' + (r.ticked ? " checked" : "") + ">" +
+        '<span><span class="rc">' + esc(r.cat) + "</span><br>" + esc(r.name) + "</span>" +
+        '<span class="rp">' + (r.price == null ? "—" : "AED " + r.price.toFixed(2)) +
+          (r.existing && st.key === "change" ? '<br><s>' + esc(String(Number(r.existing.price).toFixed(2))) + "</s>" : "") + "</span>" +
+        '<span class="rev-badge ' + st.cls + '">' + esc(st.label) + "</span>" +
+        "</label>";
+    }).join("");
+
+    const counts = { new: 0, change: 0, same: 0, near: 0 };
+    rev.rows.forEach((r) => { counts[revState(r).key]++; });
+    const picked = rev.rows.filter((r) => r.ticked).length;
 
     $("#reviewSummary").textContent =
-      data.itemCount + " dishes in " + data.categories.length + " categories · " +
-      data.withImages + " with photos" +
-      (data.restaurant && data.restaurant.name ? " · read from " + data.restaurant.name : "");
+      counts.new + " new · " + counts.change + " price change" + (counts.change === 1 ? "" : "s") +
+      " · " + counts.same + " unchanged" +
+      (counts.near ? " · " + counts.near + " need a look" : "") +
+      " · " + picked + " selected" + (rev.pct ? " · prices " + (rev.pct > 0 ? "+" : "") + rev.pct + "%" : "");
+
+    $$("[data-review]").forEach((b) => b.addEventListener("change", () => {
+      rev.rows[Number(b.dataset.review)].ticked = b.checked;
+      renderReview();
+    }));
+
+    const rep = $("#revReplace");
+    if (rep) rep.checked = rev.replace;
+    const apply = $("#applyImport");
+    if (apply) apply.textContent = rev.replace ? "Replace my menu" : "Merge into my menu";
+  }
+
+  function wireReviewTools() {
+    const pct = $("#revPct");
+    if (!pct || pct.dataset.wired) return;
+    pct.dataset.wired = "1";
+
+    const recalc = () => {
+      const n = Number(pct.value);
+      rev.pct = Number.isFinite(n) ? Math.max(-90, Math.min(300, n)) : 0;
+      rev.round = $("#revRound").value;
+      revRecalc();
+      renderReview();
+    };
+    pct.addEventListener("input", recalc);
+    $("#revRound").addEventListener("change", recalc);
+
+    $$("[data-sel]").forEach((b) => b.addEventListener("click", () => {
+      const how = b.dataset.sel;
+      rev.rows.forEach((r) => {
+        const st = revState(r).key;
+        r.ticked = how === "all" ? true
+          : how === "changed" ? (st === "new" || st === "change")
+          : st === "new";
+      });
+      renderReview();
+    }));
+
+    const rep = $("#revReplace");
+    if (rep) rep.addEventListener("change", async () => {
+      if (!rep.checked) { rev.replace = false; renderReview(); return; }
+      /* replacing deletes dishes; make it a second, deliberate press */
+      rep.checked = false;
+      if (rep.dataset.armed !== "1") {
+        rep.dataset.armed = "1";
+        toast("Press it again to replace the whole menu — everything not in this file goes.");
+        setTimeout(() => { rep.dataset.armed = ""; }, 5000);
+        return;
+      }
+      rep.dataset.armed = "";
+      rep.checked = true;
+      rev.replace = true;
+      renderReview();
+    });
+  }
+
+  function showImportResult(data) {
+    pendingImport = data;
+    revBuild(data, false);
+    renderReview();
 
     $("#scan").hidden = true;          /* the progress panel has done its job */
     $("#review").hidden = false;
@@ -1463,7 +1703,7 @@
     $("#protoNote").innerHTML =
       "<b>Read from " + data.source + ".</b> " +
       (data.imagesNotice || "Check every line before publishing.") +
-      " Nothing reaches the guest menu until you press <b>Add to my menu</b>.";
+      " Nothing reaches the guest menu until you press <b>Merge into my menu</b>.";
     $("#review").scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
@@ -1558,20 +1798,32 @@
   }
 
   function showSampleReview() {
-    const rows = [];
-    DEMO_MENU.categories.slice(0, 5).forEach((c) => {
-      c.items.slice(0, 2).forEach((it) => rows.push({ cat: c.name, name: it.name, price: it.price, image: true }));
-    });
-    $("#reviewRows").innerHTML = rows.map((r, i) => `
-      <label class="review-row">
-        <input type="checkbox" checked data-review="${i}">
-        <span><span class="rc">${r.cat}</span><br>${r.name}</span>
-        <span class="rp">AED ${r.price}</span>
-        <span class="rconf">sample</span>
-      </label>`).join("");
-    $("#reviewSummary").textContent = rows.length + " sample dishes";
+    revBuild({ categories: DEMO_MENU.categories.slice(0, 5).map((c) => ({ name: c.name, items: c.items.slice(0, 2) })) }, true);
+    renderReview();
     $("#review").hidden = false;
     $("#review").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  async function reloadOwnMenu() {
+    try {
+      const m = await window.Auth.api("/api/menu?mine=1");
+      if (m.ok && m.data.categories) {
+        state.menu = {
+          categories: m.data.categories.map((c) => ({
+            id: c.id, name: c.name, featured: !!c.featured,
+            items: (c.items || []).map((it) => ({
+              id: it.id, name: it.name, desc: it.description || "",
+              price: it.price == null ? 0 : it.price, diet: null,
+              image: it.image || null, soldOut: !!it.soldOut
+            }))
+          }))
+        };
+        state.menuImported = true;
+        save();
+      }
+    } catch (e) {
+      /* the editor shows what it has; the next load fixes it */
+    }
   }
 
   $("#discard").addEventListener("click", () => {
@@ -1582,70 +1834,81 @@
   });
 
   $("#applyImport").addEventListener("click", async () => {
-    const ticked = $$("[data-review]").filter((c) => c.checked).map((c) => Number(c.dataset.review));
-    if (!ticked.length) { toast("Select at least one dish"); return; }
+    const picked = rev.rows.filter((r) => r.ticked);
+    if (!picked.length) { toast("Select at least one dish"); return; }
 
-    if (!pendingImport) {
+    /* the sample rows are a demonstration, not a menu: never write them */
+    if (rev.sample) {
+      toast(picked.length + " sample dishes applied");
       state.menu = JSON.parse(JSON.stringify(DEMO_MENU));
       state.menuImported = true;
       save();
-      toast(ticked.length + " sample dishes applied");
       showView("menu");
       return;
     }
 
-    // real import: keep only the ticked dishes, preserving category order
-    let cursor = 0;
-    let kept = 0;
-    const categories = [];
-
-    pendingImport.categories.forEach((c, ci) => {
-      const items = [];
-      c.items.forEach((it, j) => {
-        const flatIndex = cursor + j;
-        if (ticked.indexOf(flatIndex) !== -1) {
-          kept++;
-          items.push({
-            id: "i" + ci + "x" + j,
-            name: it.name,
-            desc: it.description || "",
-            price: it.price == null ? 0 : it.price,
-            diet: null,
-            image: it.image || null,
-            soldOut: false,
-            source: pendingImport.source || "manual",
-            sourceId: it.sourceId || null
-          });
-        }
-      });
-      cursor += c.items.length;
-      if (items.length) categories.push({ id: "c" + ci, name: c.name, items: items });
-    });
-
-    state.menu = { categories: categories };
-    state.menuImported = true;
-    save();
-
     const btn = $("#applyImport");
     const label = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "Saving…";
+    btn.textContent = rev.replace ? "Replacing…" : "Merging…";
 
-    const r = await window.Auth.api("/api/menu?op=save", {
-      method: "POST",
-      body: JSON.stringify({ categories: categories })
-    });
+    let r;
+
+    if (rev.replace) {
+      /* the only destructive path left, and it is a deliberate, guarded choice */
+      const order = [];
+      const byCat = new Map();
+      picked.forEach((row) => {
+        if (!byCat.has(row.cat)) { byCat.set(row.cat, []); order.push(row.cat); }
+        byCat.get(row.cat).push(row);
+      });
+      const categories = order.map((name, ci) => ({
+        id: "c" + ci, name,
+        items: byCat.get(name).map((row, j) => ({
+          id: "i" + ci + "x" + j,
+          name: row.name, desc: row.desc || "",
+          price: row.price == null ? 0 : row.price,
+          diet: null, image: row.image || null, soldOut: false,
+          source: (pendingImport && pendingImport.source) || "manual", sourceId: null
+        }))
+      }));
+      r = await window.Auth.api("/api/menu?op=save", { method: "POST", body: JSON.stringify({ categories }) });
+    } else {
+      /* merge: same key the server matches on, no deletes */
+      const rows = picked.map((row) => ({
+        category: row.cat, name: row.name, price: row.price,
+        description: row.desc || "", image: row.image || ""
+      }));
+      r = await window.Auth.api("/api/menu?op=edit", {
+        method: "POST",
+        body: JSON.stringify({ action: "importRows", rows })
+      });
+    }
 
     btn.disabled = false;
     btn.textContent = label;
 
     if (!r.ok) {
-      toast(r.data.message || "Kept on this device only — the database refused it.");
-      showView("menu");
+      toast(r.data.message || "The database refused that. Nothing was changed.");
       return;
     }
 
-    toast(kept + " dishes saved to your menu");
+    if (rev.replace) {
+      toast(picked.length + " dishes — the menu was replaced");
+    } else {
+      const d = r.data || {};
+      toast((d.createdItems || 0) + " new · " + (d.updatedItems || 0) + " updated · nothing deleted");
+    }
+
+    rev.rows = [];
+    pendingImport = null;
+    rev.replace = false;
+    $("#review").hidden = true;
+    $("#protoNote").hidden = true;
+    const rep = $("#revReplace");
+    if (rep) rep.checked = false;
+
+    await reloadOwnMenu();
     showView("menu");
   });
 

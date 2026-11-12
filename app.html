@@ -6,15 +6,15 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Dashboard — DigiMenu</title>
 <meta name="theme-color" content="#12161A">
-<link rel="icon" href="/assets/favicon.ico?v=20261111m" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20261111m">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon-180.png?v=20261111m">
+<link rel="icon" href="/assets/favicon.ico?v=20261111n" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20261111n">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon-180.png?v=20261111n">
   <link rel="manifest" href="/assets/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/base.css?v=20261111m">
-<link rel="stylesheet" href="/assets/app.css?v=20261111m">
+<link rel="stylesheet" href="/assets/base.css?v=20261111n">
+<link rel="stylesheet" href="/assets/app.css?v=20261111n">
 </head>
 <body class="app-body">
 
@@ -23,7 +23,7 @@
 
   <aside class="side">
     <a class="side-logo" href="/index.html" aria-label="Indubaicity">
-      <img src="/assets/indubaicity-mark.png?v=20261111m" alt="Indubaicity">
+      <img src="/assets/indubaicity-mark.png?v=20261111n" alt="Indubaicity">
       <span class="p">DigiMenu</span>
     </a>
 
@@ -149,7 +149,39 @@
               <h2>Menu</h2>
               <p>Switch a dish off when you run out. It stays visible to guests, marked sold out.</p>
             </div>
-            <button class="btn btn-outline btn-sm" type="button" data-view="import">Import from photo or link</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-outline btn-sm" type="button" id="bulkPriceBtn">Adjust prices</button>
+              <button class="btn btn-outline btn-sm" type="button" data-view="import">Import from photo or link</button>
+            </div>
+          </div>
+          <div class="card-body" id="bulkPricePanel" hidden>
+            <div class="grid-2">
+              <div class="field">
+                <label for="bulkPct">Change every price by</label>
+                <div style="display:flex;gap:8px">
+                  <select class="input" id="bulkDir" aria-label="Direction">
+                    <option value="1">increase</option>
+                    <option value="-1">decrease</option>
+                  </select>
+                  <input class="input" id="bulkPct" type="number" step="0.5" value="5" inputmode="decimal">
+                  <span style="align-self:center">%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="bulkRound">Rounding</label>
+                <select class="input" id="bulkRound">
+                  <option value="0.25">round to 0.25</option>
+                  <option value="0.5">round to 0.50</option>
+                  <option value="1">round to whole</option>
+                  <option value="exact">exact</option>
+                </select>
+              </div>
+            </div>
+            <div class="hint" id="bulkPreview">Nothing changes until you press the button.</div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="btn btn-brand btn-sm" type="button" id="bulkGo">Apply to the whole menu</button>
+              <button class="btn-quiet" type="button" id="bulkCancel">Cancel</button>
+            </div>
           </div>
           <div class="card-body tight" id="menuEditor"></div>
         </div>
@@ -220,17 +252,37 @@
             </div>
 
             <div class="review" id="review" hidden>
+              <div class="review-tools">
+                <label class="rt-pct">Change prices by
+                  <input class="input" id="revPct" type="number" step="0.5" value="0" inputmode="decimal">
+                  <span>%</span>
+                </label>
+                <select class="input" id="revRound" aria-label="Rounding">
+                  <option value="exact">exact</option>
+                  <option value="0.25">round to 0.25</option>
+                  <option value="0.5">round to 0.50</option>
+                  <option value="1">round to whole</option>
+                </select>
+                <span class="rt-grow"></span>
+                <button class="btn-quiet" type="button" data-sel="new">New only</button>
+                <button class="btn-quiet" type="button" data-sel="changed">New + changed</button>
+                <button class="btn-quiet" type="button" data-sel="all">All</button>
+              </div>
               <div class="review-row" style="background:#fbfbfc;font-size:12px;color:var(--ink-3)">
-                <span></span><span>Dish</span><span style="text-align:right">Price</span><span style="text-align:right">Photo</span>
+                <span></span><span>Dish</span><span style="text-align:right">Price</span><span style="text-align:right">Effect</span>
               </div>
               <div id="reviewRows"></div>
               <div class="review-foot">
                 <span id="reviewSummary">—</span>
-                <div style="display:flex;gap:8px">
+                <div style="display:flex;gap:8px;align-items:center">
                   <button class="btn btn-outline btn-sm" type="button" id="discard">Discard</button>
-                  <button class="btn btn-brand btn-sm" type="button" id="applyImport">Add to my menu</button>
+                  <button class="btn btn-brand btn-sm" type="button" id="applyImport">Merge into my menu</button>
                 </div>
               </div>
+              <label class="review-replace">
+                <input type="checkbox" id="revReplace">
+                <span>Replace my whole menu with this file instead — <b>deletes every dish not listed here</b>. Almost never what you want.</span>
+              </label>
             </div>
 
             <div class="note" id="protoNote" style="margin-top:14px" hidden>
@@ -728,14 +780,14 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="/api/config?v=20261111m"></script>
+<script src="/api/config?v=20261111n"></script>
 
-<script src="/assets/config.js?v=20261111m"></script>
-<script src="/assets/auth.js?v=20261111m"></script>
-<script src="/assets/data.js?v=20261111m"></script>
-<script src="/assets/phone.js?v=20261111m"></script>
-<script src="/assets/vendor/xlsx.full.min.js?v=20261111m"></script>
-<script src="/assets/vendor/qrcode-generator.js?v=20261111m"></script>
-<script src="/assets/app.js?v=20261111m"></script>
+<script src="/assets/config.js?v=20261111n"></script>
+<script src="/assets/auth.js?v=20261111n"></script>
+<script src="/assets/data.js?v=20261111n"></script>
+<script src="/assets/phone.js?v=20261111n"></script>
+<script src="/assets/vendor/xlsx.full.min.js?v=20261111n"></script>
+<script src="/assets/vendor/qrcode-generator.js?v=20261111n"></script>
+<script src="/assets/app.js?v=20261111n"></script>
 </body>
 </html>

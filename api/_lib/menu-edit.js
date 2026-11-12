@@ -340,11 +340,30 @@ module.exports = async function handler(req, res) {
         const catBy = new Map((existing.data || []).map((c) => [String(c.name).trim().toLowerCase(), c.id]));
         let catPos = (existing.data || []).length;
 
-        const itemsNow = await rest("menu_items?restaurant_id=eq." + rid + "&select=id,category_id,name,price");
+        const itemsNow = await rest("menu_items?restaurant_id=eq." + rid + "&select=id,category_id,name,price,image_url");
         if (!itemsNow.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
         const byNameInCat = new Map();
         for (const it of itemsNow.data || []) {
           byNameInCat.set(it.category_id + "|" + String(it.name).trim().toLowerCase(), it);
+        }
+
+        /* A dish can sit in more than one category through menu_item_categories,
+           and the guest page shows it in each. Without indexing those links, a
+           re-import looks for the dish under the second category, misses its
+           primary row, and invents a duplicate — which is exactly what a second
+           import of the same menu used to do. */
+        const catIds = (existing.data || []).map((c) => c.id);
+        if (catIds.length) {
+          const byId = new Map((itemsNow.data || []).map((it) => [it.id, it]));
+          const linksRes = await rest(
+            "menu_item_categories?category_id=in.(" + catIds.join(",") + ")&select=item_id,category_id&limit=5000"
+          );
+          for (const link of (linksRes.ok && linksRes.data) || []) {
+            const it = byId.get(link.item_id);
+            if (!it) continue;
+            const key = link.category_id + "|" + String(it.name).trim().toLowerCase();
+            if (!byNameInCat.has(key)) byNameInCat.set(key, it);
+          }
         }
 
         let createdItems = 0;
@@ -377,6 +396,9 @@ module.exports = async function handler(req, res) {
             const patch = {};
             if (price !== null && Number(existingItem.price) !== price) patch.price = price;
             if (row.description) patch.description = String(row.description).slice(0, 400);
+            /* a re-import may carry a photo for a dish that has none; it must
+               never overwrite one the owner chose by hand */
+            if (row.image && !existingItem.image_url) patch.image_url = String(row.image).slice(0, 500);
             if (Object.keys(patch).length) {
               await rest("menu_items?id=eq." + existingItem.id, { method: "PATCH", body: patch });
               updatedItems++;
@@ -392,6 +414,7 @@ module.exports = async function handler(req, res) {
               category_id: categoryId,
               name: name,
               description: row.description ? String(row.description).slice(0, 400) : null,
+              image_url: row.image ? String(row.image).slice(0, 500) : null,
               price: price === null ? 0 : price,
               diet: row.diet === "veg" || row.diet === "nonveg" ? row.diet : null,
               sold_out: false,
