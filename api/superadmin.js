@@ -176,7 +176,12 @@ module.exports = async function handler(req, res) {
     if (!username) return res.status(400).json({ ok: false, code: "BAD_USER", message: "Type your user id." });
 
     const found = await rest("admin_users?username=eq." + encodeURIComponent(username) + "&select=email");
-    const row = (found.ok && (found.data || [])[0]) || null;
+    /* without the table there is nothing to look up, and pretending otherwise
+       sends people to an inbox to wait for a mail that was never sent */
+    if (!found.ok) {
+      return res.status(503).json({ ok: false, code: "NO_TABLE", message: "Admin sign-in is not switched on yet." });
+    }
+    const row = (found.data || [])[0] || null;
     if (row) {
       const reset = require("./_lib/reset-password");
       const shim = { setHeader() {}, status() { return shim; }, json() { return shim; }, end() { return shim; } };

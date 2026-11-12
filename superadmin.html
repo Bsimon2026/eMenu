@@ -199,7 +199,7 @@
     fetch("/api/superadmin?forgot=1", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: username })
     }).then(function (r) { return r.json(); }).then(function (d) {
-      fail("#lgErr", (d && d.message) || "If that user id exists, a temporary password is on its way.");
+      fail("#lgErr", d && d.ok ? ((d.message) || "If that user id exists, a temporary password is on its way.") : friendly(d));
       $("#lgErr").style.color = d && d.ok ? "#0f7b4f" : "#b32b3f";
     }).catch(function () { fail("#lgErr", "Could not reach the server."); });
   });
