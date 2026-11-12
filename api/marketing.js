@@ -393,20 +393,36 @@ async function owner(req, res) {
         }
       };
 
-      let ok = false, err = "";
-      try {
-        const r = await fetch("https://graph.facebook.com/" + GRAPH + "/" + s.wa_phone_number_id + "/messages", {
-          method: "POST",
-          headers: { Authorization: "Bearer " + s.wa_access_token, "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(15000)
-        });
-        const text = await r.text();
-        let d = null; try { d = text ? JSON.parse(text) : null; } catch (e) { d = null; }
-        ok = r.ok;
-        if (!ok) err = String((d && d.error && (d.error.message || d.error.code)) || text).slice(0, 200);
-      } catch (e) {
-        err = String(e && e.message || "network").slice(0, 120);
+      let ok = false, err = "", via = "";
+      /* Two doors to the same API. A number registered straight with Meta
+         answers on graph.facebook.com; one connected through Kapso answers on
+         Kapso's Meta-compatible proxy, which takes the project API key as the
+         bearer. The token is not something we can inspect to tell them apart,
+         so an auth refusal on one door is retried on the other — and a bad
+         template (the other common failure) is not retried, because it is bad
+         on both. */
+      const routes = [
+        { name: "meta", base: "https://graph.facebook.com/" + GRAPH },
+        { name: "kapso", base: (process.env.WA_API_BASE || "https://api.kapso.ai/meta/whatsapp/v24.0") }
+      ];
+      for (const route of routes) {
+        try {
+          const r = await fetch(route.base + "/" + s.wa_phone_number_id + "/messages", {
+            method: "POST",
+            headers: { Authorization: "Bearer " + s.wa_access_token, "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(15000)
+          });
+          const text = await r.text();
+          let d = null; try { d = text ? JSON.parse(text) : null; } catch (e) { d = null; }
+          ok = r.ok;
+          if (ok) { via = route.name; err = ""; break; }
+          err = String((d && d.error && (d.error.message || d.error.code)) || text).slice(0, 200);
+          /* only a refused credential is worth asking the other door */
+          if (r.status !== 401 && r.status !== 403) break;
+        } catch (e) {
+          err = String(e && e.message || "network").slice(0, 120);
+        }
       }
 
       await rest("review_requests?id=eq." + row.id, {
@@ -416,7 +432,7 @@ async function owner(req, res) {
           : { status: "failed", error: err }
       });
 
-      results.push({ id: row.id, phone: row.phone, ok, error: ok ? null : err });
+      results.push({ id: row.id, phone: row.phone, ok, error: ok ? null : err, via: via || null });
       /* slow on purpose: pacing is what keeps a number healthy */
       await new Promise((r) => setTimeout(r, 700));
     }

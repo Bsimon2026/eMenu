@@ -439,11 +439,13 @@
                 <div class="field">
                   <label for="mkPhoneId">Phone number ID</label>
                   <input class="input" id="mkPhoneId" inputmode="numeric" placeholder="1098…" autocomplete="off">
+                  <div class="hint">Meta → API Setup, or Kapso → WhatsApp → Phone numbers. This is the ID, not the phone number.</div>
                 </div>
                 <div class="field">
                   <label for="mkToken">Access token</label>
                   <input class="input" id="mkToken" type="password" placeholder="Leave empty to keep the saved one" autocomplete="new-password">
                   <div class="hint" id="mkTokenHint">&nbsp;</div>
+                  <div class="hint">A Meta system-user token, or a Kapso project API key (Integrations → API keys).</div>
                 </div>
               </div>
               <div class="grid-2">
@@ -455,6 +457,7 @@
                 <div class="field">
                   <label for="mkLang">Language code</label>
                   <input class="input" id="mkLang" placeholder="en" value="en" autocomplete="off">
+                  <div class="hint">Exactly as approved — en, en_US or ar.</div>
                 </div>
               </div>
             </div>
@@ -879,6 +882,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261113h"></script>
+<script src="/assets/app.js?v=20261113i"></script>
 </body>
 </html>
