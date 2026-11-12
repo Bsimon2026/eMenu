@@ -1111,7 +1111,9 @@ body[data-role="orders"] #newCatName { display: none !important; }
   letter-spacing: -0.01em;
 }
 
-.orow .ostate { display: flex; align-items: center; }
+/* a small gap so the state reads as its own column, not as part of the total */
+.orow .ostate { display: flex; align-items: center; padding-left: 10px; }
+.orders-head span:nth-child(6) { padding-left: 10px; }
 .orow .ostate .st {
   display: inline-flex;
   align-items: center;
