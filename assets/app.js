@@ -188,6 +188,7 @@
     if (name === "marketing") renderMarketing();
     if (name === "docs") { renderDocs(); renderProfile(); renderTeam(); }
     if (name === "qr") renderQrPane();
+    renderGuestLinks();
     if (name === "overview") renderOverview();
   }
 
@@ -2646,11 +2647,16 @@
 
   /* ---------------- qr pane ---------------- */
 
+  /* The guest page needs the restaurant in the address. menu.html on its own is
+     the page with no restaurant, which is the "This menu is not available"
+     screen — so every "open the menu" link points at the permanent address the
+     QR encodes, /<handle>, and never at the bare page. */
   function renderGuestLinks() {
-    const link = $("#guestViewLink");
-    if (link) {
-      link.href = state.handle ? "menu.html?r=" + encodeURIComponent(state.handle) : "menu.html";
-    }
+    const href = state.handle ? "/" + encodeURIComponent(state.handle) : "/menu.html";
+    ["#guestViewLink", "#guestViewTop"].forEach((sel) => {
+      const el = $(sel);
+      if (el) el.href = href;
+    });
   }
 
   function renderQrPane() {
