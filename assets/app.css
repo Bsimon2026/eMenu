@@ -349,7 +349,7 @@ body.app-body { background: var(--canvas); }
   display: grid;
   /* five fields, five columns: time, guest, phone, how, total — with four the
      total wraps to a second line and sits under the guest */
-  grid-template-columns: 84px minmax(0, 1fr) 128px 104px 96px;
+  grid-template-columns: 84px minmax(0, 1fr) 126px 116px 96px;
   gap: 12px;
   align-items: center;
   padding: 12px 18px;
@@ -380,7 +380,7 @@ body.app-body { background: var(--canvas); }
 .order-lines .oamt { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .order-row .ot { color: var(--ink-3); font-size: 12.5px; }
 .order-row .otot { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
-.order-row .omode { justify-self: start; }
+.order-row .omode { justify-self: start; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
 
 .empty {
   padding: 34px 20px;
