@@ -347,7 +347,9 @@ body.app-body { background: var(--canvas); }
 
 .order-row {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) 110px 90px;
+  /* five fields, five columns: time, guest, phone, how, total — with four the
+     total wraps to a second line and sits under the guest */
+  grid-template-columns: 84px minmax(0, 1fr) 128px 104px 96px;
   gap: 12px;
   align-items: center;
   padding: 12px 18px;
