@@ -1580,7 +1580,11 @@
         const near = existing ? null : (idx.loose.get(looseKey(it.name)) || null);
         rows.push({
           cat: c.name, name: it.name, desc: it.description || "", image: it.image || null,
-          base, price: base, existing, near, ticked: true
+          base, price: base, existing, near,
+          /* a near match is left unticked: if it really is a second listing of a
+             dish you already have, the safe default is to not create it. The
+             owner ticks it if it is genuinely something new. */
+          ticked: !near
         });
       });
     });
