@@ -37,6 +37,7 @@
   .chk { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 13px; color: #171a1d; }
   .chk input { height: auto; }
   .hidden { display: none !important; }
+  button.link { border: 0; background: none; height: auto; padding: 0; color: #f0485f; font-size: 13px; text-decoration: underline; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -50,8 +51,7 @@
       <div><label for="lgUser">User id</label><input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="@dmin"></div>
       <div><label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password"></div>
       <button class="primary" id="lgGo" type="button">Sign in</button>
-      <button id="lgForgot" type="button" style="border:0;background:none;color:#6a757c;text-align:left;padding:0;height:auto">Forgot your password? Email me a temporary one</button>
-      <p class="hint" style="margin:0">The user id is not an email. A temporary password goes to the address on file.</p>
+      <div style="text-align:right"><button class="link" id="lgForgot" type="button">Forgot password?</button></div>
     </div>
     <div class="err" id="lgErr"></div>
   </div>
@@ -169,7 +169,7 @@
     }).then(function (r) { return r.json(); }).then(function (d) {
       $("#lgGo").disabled = false;
       $("#lgGo").textContent = "Sign in";
-      if (!d || !d.ok) { fail("#lgErr", (d && d.message) || "That did not work."); return; }
+      if (!d || !d.ok) { fail("#lgErr", friendly(d)); return; }
       window.Auth.adopt(d.session);
       fail("#lgErr", "");
       boot();
@@ -178,6 +178,16 @@
       $("#lgGo").textContent = "Sign in";
       fail("#lgErr", "Could not reach the server.");
     });
+  }
+
+  /* never show a filename or an error code to the person signing in */
+  function friendly(d) {
+    if (!d) return "That did not work. Try again.";
+    if (d.code === "NO_TABLE") return "Admin sign-in is not switched on yet.";
+    if (d.code === "BAD_LOGIN") return "Enter your user id and password.";
+    if (d.code === "SLOW_DOWN") return d.message || "Too many tries. Wait an hour.";
+    if (d.code === "NO_LOGIN" || d.code === "NO_SESSION") return "That user id and password do not match.";
+    return d.message || "That did not work.";
   }
   $("#lgGo").addEventListener("click", signIn);
   $("#lgPass").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
