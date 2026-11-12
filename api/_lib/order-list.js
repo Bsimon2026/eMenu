@@ -62,3 +62,49 @@ module.exports = async function listOrders(req, res) {
     }))
   });
 };
+
+/**
+ * PATCH /api/orders  { id, status }
+ *
+ * The restaurant moves an order between the two states it cares about:
+ * pending (it is in the kitchen) and confirmed (it is done, and the guest is
+ * someone worth asking for a review). Scoped to the caller's own restaurant —
+ * the id in the body is never trusted to imply ownership.
+ */
+module.exports.setStatus = async function setStatus(req, res) {
+  cors(res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "PATCH") return res.status(405).json({ ok: false, code: "METHOD" });
+  if (!configured) {
+    return res.status(500).json({ ok: false, code: "NOT_CONFIGURED", message: "Credentials missing on the server." });
+  }
+
+  const user = await userFromToken(bearer(req));
+  if (!user) return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
+
+  const actor = await actorRestaurant(user, "id,handle");
+  const restaurant = actor && actor.restaurant;
+  if (!restaurant) return res.status(403).json({ ok: false, code: "NOT_STAFF", message: "This account has no restaurant." });
+
+  let body = req.body;
+  if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
+  const id = body && String(body.id || "").trim();
+  if (!id) return res.status(400).json({ ok: false, code: "NO_ID", message: "Which order?" });
+
+  /* two states, not four: everything else in the column is history */
+  const want = body.status === "confirmed" ? "confirmed" : "awaiting_confirmation";
+
+  const upd = await rest("orders?id=eq." + encodeURIComponent(id) + "&restaurant_id=eq." + restaurant.id, {
+    method: "PATCH",
+    prefer: "return=representation",
+    body: { status: want }
+  });
+  if (!upd.ok) {
+    return res.status(502).json({ ok: false, code: "SAVE_FAILED", message: "That did not save." });
+  }
+  if (!(upd.data || []).length) {
+    return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "That order is not yours." });
+  }
+
+  return res.status(200).json({ ok: true, id, status: want });
+};

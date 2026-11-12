@@ -374,6 +374,28 @@
     return r.data;
   }
 
+  /* an order marked Done is a guest who ate, paid and left happy enough to be
+     asked. This is where those people surface. */
+  async function mkLoadDone() {
+    const card = $("#mkDoneCard"), body = $("#mkDoneBody");
+    if (!card || !body) return;
+
+    const all = await loadOrders();
+    const done = (all || []).filter((o) => o.status === "confirmed");
+    if (!done.length) { card.hidden = true; body.innerHTML = ""; return; }
+
+    card.hidden = false;
+    $("#mkDoneCount").textContent = done.length;
+    body.innerHTML = done.slice(0, 40).map((o) => {
+      const when = new Date(o.ts).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+      return '<div class="mk-done-row">' +
+        '<span><span class="who">' + esc(o.guest || "Guest") + '</span> ' +
+          '<span class="meta">' + esc(o.phone || "no number") + ' · ' + esc(when) + ' · ' + esc(o.mode || "") + '</span></span>' +
+        '<span class="amt">' + esc((state.currency || "AED") + " " + (Math.round((Number(o.total) || 0) * 100) / 100)) + '</span>' +
+      '</div>';
+    }).join("");
+  }
+
   async function mkLoadQueue() {
     const r = await window.Auth.api("/api/marketing?queue=1");
     if (!r.ok) return;
@@ -474,6 +496,7 @@
       f.value = new Date(now.getTime() - 29 * 86400000).toISOString().slice(0, 10);
     }
     await mkLoadSettings();
+    await mkLoadDone();
     await mkLoadQueue();
     await mkLoadReviews();
   }
@@ -1014,6 +1037,7 @@
     ordersError = "";
     if (r.data.currency) state.currency = r.data.currency;
     ordersCache = (r.data.orders || []).map((o) => ({
+      id: o.id,
       ts: o.createdAt,
       mode: o.mode,
       guest: o.guest,
@@ -1072,22 +1096,111 @@
 
   /* Orders live in the database: a guest orders from their own phone, so a
      copy in this browser's storage would never be seen by the restaurant. */
+  let ORDER_TAB = "all", ORDERS = [];
+
+  /* the tabs are the order types this restaurant actually offers — read from
+     the menu first, then from the orders it has taken, so a restaurant that
+     only does dine-in never sees a Delivery tab for nothing */
+  function orderModes() {
+    const seen = [];
+    const add = (m) => { if (m && seen.indexOf(m) < 0) seen.push(m); };
+    ((state.restaurant && state.restaurant.purposes) || []).forEach(add);
+    ORDERS.forEach((o) => add(o.mode));
+    return seen;
+  }
+
+  function orderCardHtml(o) {
+    const d = new Date(o.ts);
+    const when = d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    const cur = state.currency || "AED";
+    const money = (n) => cur + " " + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const where = o.mode === "Dine In"
+      ? (o.table ? "Table " + o.table : "")
+      : o.mode === "Take Away"
+        ? (o.pickup ? "Pickup " + o.pickup : "")
+        : (o.address || "");
+
+    const done = o.status === "confirmed";
+    const lines = (o.items || []).map((i) =>
+      '<span class="oline">' +
+        '<span class="oqty">' + (i.qty || 1) + '×</span>' +
+        '<span class="oname">' + esc(i.name) + '</span>' +
+        '<span class="oamt">' + money((Number(i.price) || 0) * (Number(i.qty) || 1)) + '</span>' +
+      '</span>'
+    ).join("");
+
+    return '<article class="ocard' + (done ? " is-done" : "") + '">' +
+      '<div class="ohead">' +
+        '<span>' + esc(when) + '</span>' +
+        '<span class="opill">' + esc(o.mode || "Order") + (where ? " · " + esc(where) : "") + '</span>' +
+        '<span class="ost ' + (done ? "done" : "pending") + '">' + (done ? "Done" : "Pending") + '</span>' +
+      '</div>' +
+      '<div class="oguest"><b>' + esc(o.guest || "Guest") + '</b>' +
+        (o.phone ? ' · <a href="tel:' + esc(o.phone.replace(/[^\d+]/g, "")) + '">' + esc(o.phone) + '</a>' : ' · <span class="ot">no number</span>') +
+      '</div>' +
+      (lines ? '<div class="olines">' + lines + '</div>' : '') +
+      '<div class="ofoot">' +
+        '<span class="otot">' + money(o.total) + '</span>' +
+        '<button class="btn btn-sm ' + (done ? "btn-outline" : "btn-brand") + '" data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
+          (done ? "Reopen" : "Mark done") +
+        '</button>' +
+      '</div>' +
+    '</article>';
+  }
+
   async function renderOrders() {
-    const host = $("#ordersList");
+    const host = $("#ordersList"), tabs = $("#orderTabs");
     host.innerHTML = '<div class="empty">Loading orders…</div>';
 
     const list = await loadOrders(true);
     if (!list) {
+      tabs.innerHTML = "";
       host.innerHTML = '<div class="empty"><b>Could not load orders</b>' + esc(ordersError) + '</div>';
       return;
     }
+    ORDERS = list;
 
-    if (!list.length) {
-      host.innerHTML = `<div class="empty"><b>No orders yet</b>When a guest sends an order it appears here with their name and mobile number, even if the WhatsApp message never arrives.</div>`;
+    const modes = orderModes();
+    if (ORDER_TAB !== "all" && modes.indexOf(ORDER_TAB) < 0) ORDER_TAB = "all";
+
+    const count = (m) => (m === "all" ? ORDERS.length : ORDERS.filter((o) => o.mode === m).length);
+    tabs.innerHTML = [["all", "All"]].concat(modes.map((m) => [m, m]))
+      .map(([key, label]) =>
+        '<button class="otab' + (ORDER_TAB === key ? " on" : "") + '" data-otab="' + esc(key) + '" type="button">' +
+          esc(label) + ' <span class="n">' + count(key) + '</span>' +
+        '</button>'
+      ).join("");
+
+    const shown = ORDER_TAB === "all" ? ORDERS : ORDERS.filter((o) => o.mode === ORDER_TAB);
+    if (!shown.length) {
+      host.innerHTML = ORDER_TAB === "all"
+        ? `<div class="empty"><b>No orders yet</b>When a guest sends an order it appears here with their name and mobile number, even if the WhatsApp message never arrives.</div>`
+        : `<div class="empty"><b>No ${esc(ORDER_TAB)} orders yet</b>They will appear here when one arrives.</div>`;
       return;
     }
-    host.innerHTML = list.map(orderRowHtml).join("");
+    host.innerHTML = shown.map(orderCardHtml).join("");
   }
+
+  /* one listener for the tab strip and the state buttons — the list is redrawn
+     on every change, so per-button handlers would be re-bound constantly */
+  document.addEventListener("click", async (e) => {
+    const tab = e.target.closest && e.target.closest("[data-otab]");
+    if (tab) { ORDER_TAB = tab.getAttribute("data-otab"); renderOrders(); return; }
+
+    const btn = e.target.closest && e.target.closest("[data-status]");
+    if (!btn) return;
+    e.preventDefault();
+    const id = btn.getAttribute("data-id");
+    const status = btn.getAttribute("data-status");
+    btn.disabled = true;
+    const r = await window.Auth.api("/api/orders", { method: "PATCH", body: JSON.stringify({ id, status }) });
+    btn.disabled = false;
+    if (!r.ok) { toast((r.data && r.data.message) || "That did not save."); return; }
+    ordersFetchedAt = 0;
+    await renderOrders();
+    toast(status === "confirmed" ? "Done — the guest is now in Marketing." : "Back to pending.");
+  });
 
   $("#dlOverview").addEventListener("click", () => downloadQR($("#qrOverview"), state.handle));
 

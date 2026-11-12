@@ -26,6 +26,7 @@ module.exports = async function handler(req, res) {
   /* one function, two verbs: POST places an order, GET lists the owner's orders.
      The Hobby plan allows 12 functions and we were at the ceiling. */
   if (req.method === "GET") return listOrders(req, res);
+  if (req.method === "PATCH") return listOrders.setStatus(req, res);
   if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
   if (!configured) {
     return res.status(500).json({ ok: false, code: "NOT_CONFIGURED", message: "Credentials missing on the server." });

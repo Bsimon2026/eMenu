@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/base.css?v=20261111s">
-<link rel="stylesheet" href="/assets/app.css?v=20261112g">
+<link rel="stylesheet" href="/assets/app.css?v=20261112h">
 </head>
 <body class="app-body">
 
@@ -324,9 +324,10 @@
           <div class="card-head">
             <div>
               <h2>Orders</h2>
-              <p>Orders arrive in your WhatsApp and are copied here as a record.</p>
+              <p>Orders arrive in your WhatsApp and are copied here as a record. Mark one done and the guest moves to Marketing.</p>
             </div>
           </div>
+          <div class="otabs" id="orderTabs"></div>
           <div class="card-body tight" id="ordersList"></div>
         </div>
       </section>
@@ -407,6 +408,16 @@
               <span class="hint" id="mkCount"></span>
             </div>
           </div>
+        </div>
+
+        <div class="card" id="mkDoneCard" hidden>
+          <div class="card-head">
+            <div>
+              <h2>Finished orders <span class="pill" id="mkDoneCount">0</span></h2>
+              <p>Guests whose order you marked <b>Done</b> on the Orders page. These are the people worth asking.</p>
+            </div>
+          </div>
+          <div class="card-body tight" id="mkDoneBody"></div>
         </div>
 
         <div class="card" id="mkQueueCard" hidden>
@@ -788,6 +799,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261112g"></script>
+<script src="/assets/app.js?v=20261112h"></script>
 </body>
 </html>
