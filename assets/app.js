@@ -1249,12 +1249,12 @@
       '<span class="nm">' + esc(i.name) + '</span></span>'
     ).join("");
 
-    /* the review travels with the order it came from — that is the whole point
-       of the history tab: one guest, one order, one verdict, one row */
+    /* the review gets its own full-width line under the row: squeezed into the
+       items column it wrapped into five lines and made the list unreadable */
     const review = rev
-      ? '<span class="orev r' + rev.rating + '">' + starHtml(rev.rating) +
-        (rev.comment ? '<span class="orev-text">' + esc(rev.comment) + '</span>' : '') + '</span>'
-      : (done ? '<span class="orev none">no review</span>' : '');
+      ? '<div class="orev r' + rev.rating + '">' + starHtml(rev.rating) +
+        (rev.comment ? '<span class="orev-text">' + esc(rev.comment) + '</span>' : '') + '</div>'
+      : (done ? '<div class="orev none">no review left</div>' : '');
 
     return '<article class="orow ' + (done ? "is-done" : "is-pending") + '" data-order="' + esc(o.id) + '">' +
       '<div class="otime"><b>' + esc(time) + '</b><span>' + esc(day) + '</span></div>' +
@@ -1262,7 +1262,7 @@
         (o.phone ? '<a href="tel:' + esc(o.phone.replace(/[^\d+]/g, "")) + '">' + esc(o.phone) + '</a>'
                  : '<span class="none">no number</span>') +
       '</div>' +
-      '<div class="oitems">' + (items || '<span class="oline"><span class="nm">no dishes recorded</span></span>') + review + '</div>' +
+      '<div class="oitems">' + (items || '<span class="oline"><span class="nm">no dishes recorded</span></span>') + '</div>' +
       '<div class="owhere"><span>' + esc(o.mode || "Order") + '</span>' +
         (where ? '<span class="meta">' + esc(where) + '</span>' : '') +
       '</div>' +
@@ -1273,7 +1273,7 @@
           'data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
           (done ? "Reopen" : "Mark done") +
         '</button>' +
-      '</div>' +
+      '</div>' + review +
     '</article>';
   }
 
@@ -1417,7 +1417,7 @@
     if (pill) pill.textContent = d.count
       ? d.count + " review" + (d.count === 1 ? "" : "s") + " \u00b7 " + Math.round((d.happy / d.count) * 100) + "% happy"
       : "Nothing yet";
-    if (avg) avg.textContent = d.count ? d.average : "\u2014";
+    if (avg) avg.textContent = d.count ? (Math.round((d.average || 0) * 10) / 10).toFixed(1) : "\u2014";
 
     if (bars) {
       const max = Math.max(1, ...(d.spread || [0]));
