@@ -3,6 +3,11 @@
   "regions": [
     "bom1"
   ],
+  "functions": {
+    "api/social.js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     {
       "source": "/api/orders",

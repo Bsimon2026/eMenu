@@ -1,5 +1,6 @@
 # scratch and build artefacts
 _build/
+_preview/
 node_modules/
 *.log
 

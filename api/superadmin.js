@@ -378,7 +378,10 @@ module.exports = async function handler(req, res) {
     if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
     if (!body || !body.handle) return res.status(400).json({ ok: false, code: "NO_HANDLE" });
 
-    const found = await rest("restaurants?handle=eq." + encodeURIComponent(String(body.handle).toLowerCase()) + "&select=id,handle,plan,billing,paid_through,trial_ends");
+    let found = await rest("restaurants?handle=eq." + encodeURIComponent(String(body.handle).toLowerCase()) + "&select=id,handle,plan,billing,paid_through,trial_ends,addon_marketing");
+    if (!found.ok) {
+      found = await rest("restaurants?handle=eq." + encodeURIComponent(String(body.handle).toLowerCase()) + "&select=id,handle,plan,billing,paid_through,trial_ends");
+    }
     if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
     const r0 = (found.data || [])[0];
     if (!r0) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No restaurant with that handle." });
@@ -395,48 +398,58 @@ module.exports = async function handler(req, res) {
       /* the marketing add-on is sold as $149 to set up plus $8.50 a month. The
          setup fee is only ever charged once per customer. */
       const wantMarketing = body.marketing === true;
-      const marketingOn = body.marketing === undefined ? Boolean(r0.addon_marketing) : wantMarketing;
       const firstMarketing = wantMarketing && !r0.addon_marketing;
+      const setup = firstMarketing ? MKT_SETUP : 0;
+      const addonFee = wantMarketing ? MKT_MONTHLY : 0;
+      const list = priceOf(plan, billing) + setup + addonFee;
 
-      const suggested =
-        priceOf(plan, billing) +
-        (firstMarketing ? MKT_SETUP : 0) +
-        (wantMarketing ? MKT_MONTHLY : 0);
-      const amount = body.amount === undefined || body.amount === null || body.amount === ""
-        ? suggested
-        : Number(body.amount);
-      if (!Number.isFinite(amount) || amount < 0) {
+      /* what was actually taken. Blank means "the list price"; anything else is
+         what the operator saw land in the bank, discounts and part payments
+         included. */
+      const received = body.amount === undefined || body.amount === null || body.amount === ""
+        ? list
+        : Math.round(Number(body.amount) * 100) / 100;
+      if (!Number.isFinite(received) || received < 0) {
         return res.status(400).json({ ok: false, code: "BAD_AMOUNT", message: "That amount is not a number." });
       }
 
       patch.plan = plan;
       patch.billing = billing;
       patch.paid_through = extend(body.from || r0.paid_through, billing);
-      patch.paid_amount = amount;
+      patch.paid_amount = received;
       patch.pay_ref = body.payRef ? String(body.payRef).slice(0, 120) : null;
       patch.pay_method = ["manual", "cash", "transfer", "card", "stripe"].includes(body.method) ? body.method : "manual";
       patch.activated_at = new Date().toISOString();
       if (body.marketing !== undefined) patch.addon_marketing = wantMarketing;
 
-      /* every payment is a line in the ledger — the plan, the setup fee (once),
-         and the monthly add-on separately, so any of them can be seen alone */
-      ledger = [{
-        plan, billing, kind: "subscription", amount,
-        period_end: patch.paid_through
-      }];
-      if (firstMarketing) {
-        ledger.push({ kind: "setup", addon: "marketing", billing: "one-off", amount: MKT_SETUP });
-      }
-      if (wantMarketing) {
-        ledger.push({ kind: "addon", addon: "marketing", billing: "monthly", amount: MKT_MONTHLY, period_end: patch.paid_through });
-      }
-      for (const row of ledger) {
-        row.restaurant_id = r0.id;
-        row.currency = "USD";
-        row.method = patch.pay_method;
-        row.reference = patch.pay_ref;
-        row.note = body.note ? String(body.note).slice(0, 200) : null;
-        row.recorded_by = me.name;
+      /* One line per thing sold, and every line carries every column: PostgREST
+         refuses a bulk insert whose objects have different keys (PGRST102), and
+         a silently empty ledger is worse than no ledger. The plan line absorbs
+         the difference so the lines always add up to the money received. */
+      const line = (o) => Object.assign({
+        restaurant_id: r0.id,
+        currency: "USD",
+        plan: null,
+        billing: null,
+        kind: "subscription",
+        addon: null,
+        period_start: null,
+        period_end: patch.paid_through,
+        amount: 0,
+        method: patch.pay_method,
+        reference: patch.pay_ref,
+        note: body.note ? String(body.note).slice(0, 200) : null,
+        recorded_by: me.name
+      }, o);
+
+      const planShare = Math.round((received - setup - addonFee) * 100) / 100;
+      if (planShare < 0) {
+        /* they paid less than the add-on alone — one honest line, no invented split */
+        ledger = [line({ amount: received, plan, billing, note: "part payment of " + list })];
+      } else {
+        ledger = [line({ amount: planShare, plan, billing })];
+        if (setup) ledger.push(line({ amount: setup, kind: "setup", addon: "marketing", billing: "one-off" }));
+        if (addonFee) ledger.push(line({ amount: addonFee, kind: "addon", addon: "marketing", billing: "monthly" }));
       }
     }
 
