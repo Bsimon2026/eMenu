@@ -218,7 +218,9 @@ body.app-body { background: var(--canvas); }
 
 .mrow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px 92px;
+  /* the tools column now holds Edit, Delete and the Available/Sold out pill,
+     so it takes the width it needs instead of clipping the pill */
+  grid-template-columns: minmax(0, 1fr) 84px auto;
   gap: 14px;
   align-items: center;
   padding: 11px 18px;
@@ -681,7 +683,7 @@ body.app-body { background: var(--canvas); }
 /* ---------- menu editor controls ---------- */
 
 .cat-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-.row-tools { display: flex; align-items: center; gap: 10px; }
+.row-tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 
 .btn-quiet.danger { color: #b03a2e; }
 .btn-quiet.danger:hover { background: #fdecea; }
