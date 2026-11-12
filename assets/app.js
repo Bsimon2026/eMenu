@@ -1030,6 +1030,31 @@
     return ordersCache;
   }
 
+  function orderRowHtml(o) {
+    const d = new Date(o.ts);
+    const when = d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    const place = o.mode === "Dine In" ? "Table " + o.table : o.mode === "Take Away" ? o.pickup : "Delivery";
+    const cur = state.currency || "AED";
+    const money = (n) => cur + " " + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    /* what was actually ordered, not just how many things */
+    const lines = (o.items || []).map((i) =>
+      `<span class="oline">` +
+        `<span class="oqty">${i.qty}×</span>` +
+        `<span class="oname">${esc(i.name)}</span>` +
+        `<span class="oamt">${money((Number(i.price) || 0) * (Number(i.qty) || 0))}</span>` +
+      `</span>`
+    ).join("");
+
+    return `<div class="order-row">
+      <span class="ot">${when}</span>
+      <span>${esc(o.guest || "Guest")} · ${o.count} item${o.count === 1 ? "" : "s"}</span>
+      <span class="ophone">${o.phone ? `<a href="tel:${esc(o.phone.replace(/[^\\d+]/g, ""))}">${esc(o.phone)}</a>` : '<span class="ot">no number</span>'}</span>
+      <span class="omode"><span class="pill">${esc(o.mode)}</span> <span class="ot">${esc(place)}</span></span>
+      <span class="otot">${money(o.total)}</span>
+    </div>` + (lines ? `<div class="order-lines">${lines}</div>` : "");
+  }
+
   async function renderRecentOrders() {
     const host = $("#recentOrders");
     const all = await loadOrders();
