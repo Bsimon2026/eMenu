@@ -440,7 +440,14 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const upd = await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: patch, prefer: "return=representation" });
+    let upd = await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: patch, prefer: "return=representation" });
+    /* addon_marketing comes with 0013: if it is not there yet, the payment is
+       still a real payment — record the money, leave the switch alone */
+    if (!upd.ok && "addon_marketing" in patch) {
+      const trimmed = { ...patch };
+      delete trimmed.addon_marketing;
+      upd = await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: trimmed, prefer: "return=representation" });
+    }
     if (!upd.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED", detail: String(upd.data).slice(0, 200) });
     const row = (upd.data || [])[0] || {};
 
@@ -492,7 +499,13 @@ module.exports = async function handler(req, res) {
     const handle = String((q.handle || "")).trim().toLowerCase();
     if (!handle) return res.status(400).json({ ok: false, code: "NO_HANDLE" });
 
-    const rr = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=id,handle,name,paid_through,trial_ends,addon_marketing,plan,billing");
+    /* addon_marketing arrives with 0013, and a select naming a column that is
+       not there yet fails the whole row — so fall back rather than reporting a
+       restaurant that plainly exists as missing */
+    let rr = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=id,handle,name,paid_through,trial_ends,addon_marketing,plan,billing");
+    if (!rr.ok) {
+      rr = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=id,handle,name,paid_through,trial_ends,plan,billing");
+    }
     const r0 = rr.ok && (rr.data || [])[0];
     if (!r0) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
 
