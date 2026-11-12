@@ -934,7 +934,7 @@ html { scrollbar-color: #3a3d42 var(--night); }
 /* ---------------- pricing: two plans, no comparison table ---------------- */
 .plans {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   max-width: 1120px;
   align-items: stretch;
@@ -980,6 +980,7 @@ html { scrollbar-color: #3a3d42 var(--night); }
   margin: 5px 0 0;
   min-height: 38px;
 }
+.addon { margin-top: 18px; max-width: 1120px; }
 .plan .price {
   display: flex;
   align-items: baseline;

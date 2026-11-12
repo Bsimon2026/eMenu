@@ -175,12 +175,12 @@ async function restaurantHandler(req, res) {
 
       if (hasPlanColumns && !paidNow && !onTrial) {
         const plan = (existing && existing.plan) || "qr";
-        const price = plan === "order" ? { m: 19, y: 190 } : { m: 2, y: 20 };
+        const price = plan === "order" ? { m: 99, y: 999 } : { m: 99, y: 99 };
         return res.status(402).json({
           ok: false,
           code: "PAYMENT_REQUIRED",
-          message: "Your free week is over. Your menu is ready and stays saved — pay $" +
-            (plan === "order" ? "19/month or $190/year" : "2/month or $20/year") +
+          message: "Your free week is over. Your menu is ready and stays saved — pay AED " +
+            (plan === "order" ? "99/month or AED 999/year" : "99/year") +
             " by transfer or on WhatsApp — connect@indubaicity.com — and it goes live the same day.",
           plan,
           prices: price,
