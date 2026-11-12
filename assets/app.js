@@ -165,6 +165,7 @@
     import: "Import menu",
     qr: "QR & link",
     orders: "Orders",
+    feedback: "Feedback",
     marketing: "Marketing",
     docs: "Documents"
   };
@@ -178,6 +179,7 @@
     location.hash = name === "overview" ? "" : name;
     if (name === "menu") renderMenuEditor();
     if (name === "orders") renderOrders();
+    if (name === "feedback") renderFeedback();
     if (name === "marketing") renderMarketing();
     if (name === "docs") { renderDocs(); renderProfile(); renderTeam(); }
     if (name === "qr") renderQrPane();
@@ -1061,17 +1063,11 @@
      how the tab showed orders the overview swore did not exist. */
   let ordersCache = null, ordersFetchedAt = 0, ordersError = "";
 
-  async function loadOrders(force) {
-    if (!force && ordersCache && Date.now() - ordersFetchedAt < 20000) return ordersCache;
-    let r;
-    /* no-store: a list of live orders must never come back from the browser's
-       cache — marking one done and watching it stay Pending is exactly what a
-       cached GET does */
-    try { r = await window.Auth.api("/api/orders", { cache: "no-store" }); } catch (e) { ordersError = "Could not reach the server."; return null; }
-    if (!r.ok) { ordersError = (r.data && r.data.message) || "Try again in a moment."; return null; }
-    ordersError = "";
-    if (r.data.currency) state.currency = r.data.currency;
-    ordersCache = (r.data.orders || []).map((o) => ({
+  /* One normaliser for every path that reads orders — the cached list, the
+     filtered history search, and the overview — so a row means the same thing
+     wherever it is drawn. */
+  function normaliseOrders(rows) {
+    return (rows || []).map((o) => ({
       id: o.id,
       ts: o.createdAt,
       mode: o.mode,
@@ -1085,63 +1081,144 @@
       items: o.items || [],
       status: o.status
     }));
+  }
+
+  async function loadOrders(force) {
+    if (!force && ordersCache && Date.now() - ordersFetchedAt < 20000) return ordersCache;
+    let r;
+    /* no-store: a list of live orders must never come back from the browser's
+       cache — marking one done and watching it stay Pending is exactly what a
+       cached GET does */
+    try { r = await window.Auth.api("/api/orders", { cache: "no-store" }); } catch (e) { ordersError = "Could not reach the server."; return null; }
+    if (!r.ok) { ordersError = (r.data && r.data.message) || "Try again in a moment."; return null; }
+    ordersError = "";
+    if (r.data.currency) state.currency = r.data.currency;
+    ordersCache = normaliseOrders(r.data.orders);
     ordersFetchedAt = Date.now();
     return ordersCache;
   }
 
-  function orderRowHtml(o) {
-    const d = new Date(o.ts);
-    const when = d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-    const place = o.mode === "Dine In" ? "Table " + o.table : o.mode === "Take Away" ? o.pickup : "Delivery";
-    const cur = state.currency || "AED";
-    const money = (n) => cur + " " + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  /* The history search goes to the server: the cached list stops at the newest
+     rows, so a range that reaches back months has nothing to filter. This same
+     loader is used by nothing else, and it never writes the cache. */
+  async function fetchOrders(params) {
+    const qs = Object.keys(params)
+      .filter((k) => params[k])
+      .map((k) => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
+      .join("&");
+    let r;
+    try { r = await window.Auth.api("/api/orders?" + qs, { cache: "no-store" }); }
+    catch (e) { return { ok: false, message: "Could not reach the server." }; }
+    if (!r.ok) return { ok: false, message: (r.data && r.data.message) || "Try again in a moment." };
+    return { ok: true, orders: normaliseOrders(r.data.orders) };
+  }
 
-    /* what was actually ordered, not just how many things */
-    const lines = (o.items || []).map((i) =>
-      `<span class="oline">` +
-        `<span class="oqty">${i.qty}×</span>` +
-        `<span class="oname">${esc(i.name)}</span>` +
-        `<span class="oamt">${money((Number(i.price) || 0) * (Number(i.qty) || 0))}</span>` +
-      `</span>`
-    ).join("");
+  function ovAgo(ts) {
+    const d = new Date(ts);
+    const mins = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + " min ago";
+    const h = Math.floor(mins / 60);
+    if (h < 24) return h + "h ago";
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  }
 
-    return `<div class="order-row">
-      <span class="ot">${when}</span>
-      <span>${esc(o.guest || "Guest")} · ${o.count} item${o.count === 1 ? "" : "s"}</span>
-      <span class="ophone">${o.phone ? `<a href="tel:${esc(o.phone.replace(/[^\\d+]/g, ""))}">${esc(o.phone)}</a>` : '<span class="ot">no number</span>'}</span>
-      <span class="omode"><span class="pill">${esc(o.mode)}</span> <span class="ot">${esc(place)}</span></span>
-      <span class="otot">${money(o.total)}</span>
-    </div>` + (lines ? `<div class="order-lines">${lines}</div>` : "");
+  function ovPlace(o) {
+    if (o.mode === "Dine In") return o.table ? "Table " + o.table : "Dine in";
+    if (o.mode === "Take Away") return o.pickup ? "Pickup " + o.pickup : "Take away";
+    return "Delivery";
+  }
+
+  /* One line per order, not a five-cell table: the overview is a glance at what
+     the kitchen still owes, not the ledger. The ledger is the Orders pane. */
+  function ovRowHtml(o) {
+    return '<div class="ov-row">' +
+      '<span class="ov-who"><b>' + esc(o.guest || "Guest") + '</b>' +
+        '<span class="ov-meta">' + esc(ovPlace(o)) + ' · ' + esc(o.count + " item" + (o.count === 1 ? "" : "s")) + '</span>' +
+      '</span>' +
+      '<span class="ov-when">' + esc(ovAgo(o.ts)) + '</span>' +
+      '<span class="ov-total">' + money(o.total) + '</span>' +
+      '<button class="btn btn-outline btn-sm" type="button" data-id="' + esc(o.id) + '" data-status="confirmed">Done</button>' +
+    '</div>';
+  }
+
+  function ovStat(label, value, note) {
+    return '<div class="ov-stat"><span class="ov-k">' + esc(label) + '</span>' +
+      '<b class="ov-v">' + value + '</b>' +
+      '<span class="ov-n">' + esc(note) + '</span></div>';
   }
 
   async function renderRecentOrders() {
-    const host = $("#recentOrders");
+    const host = $("#recentOrders"), stats = $("#ovOrderStats"), sub = $("#ovOrdersSub");
     const all = await loadOrders();
     if (!all) {
+      if (stats) stats.innerHTML = "";
       host.innerHTML = `<div class="empty"><b>Could not load orders</b>${esc(ordersError)}</div>`;
       return;
     }
-    const list = all.slice(0, 3);
-    if (!list.length) {
-      host.innerHTML = `<div class="empty"><b>No orders yet</b>When a guest sends an order it arrives in your WhatsApp, and a copy appears here.</div>`;
+
+    const open = all.filter((o) => o.status !== "confirmed");
+    const todayKey = new Date().toDateString();
+    const today = all.filter((o) => new Date(o.ts).toDateString() === todayKey);
+    const takings = today.reduce((n, o) => n + (Number(o.total) || 0), 0);
+    const oldest = open.length ? open[open.length - 1].ts : null;
+
+    if (stats) {
+      stats.innerHTML =
+        ovStat("Open now", String(open.length), open.length ? "oldest " + ovAgo(oldest) : "all clear") +
+        ovStat("Today", String(today.length), "orders") +
+        ovStat("Taken", money(takings), "today");
+    }
+    if (sub) {
+      sub.textContent = open.length
+        ? open.length + " still in the kitchen."
+        : "Nothing waiting. Finished orders are under Orders \u2192 History.";
+    }
+
+    if (!open.length) {
+      host.innerHTML = '<div class="empty"><b>Nothing in the kitchen</b>New orders land here the moment a guest sends one, with their name, number and dishes.</div>';
       return;
     }
-    host.innerHTML = list.map(orderRowHtml).join("");
+    host.innerHTML = open.slice(0, 4).map(ovRowHtml).join("");
   }
 
   /* Orders live in the database: a guest orders from their own phone, so a
      copy in this browser's storage would never be seen by the restaurant. */
   let ORDER_TAB = "all", ORDERS = [];
+  /* Open vs History is the split the shift actually uses; a counter, not a
+     filter over a hundred rows. */
+  let ORDER_STATE = "active", OR_RANGE = { from: "", to: "" }, FB_FILTER = "all";
+  let REVIEWS = { byOrder: new Map(), list: [] };
 
   /* the tabs are the order types this restaurant actually offers — read from
      the menu first, then from the orders it has taken, so a restaurant that
      only does dine-in never sees a Delivery tab for nothing */
-  function orderModes() {
+  function orderModes(rows) {
     const seen = [];
     const add = (m) => { if (m && seen.indexOf(m) < 0) seen.push(m); };
     ((state.restaurant && state.restaurant.purposes) || []).forEach(add);
-    ORDERS.forEach((o) => add(o.mode));
+    (rows || ORDERS).forEach((o) => add(o.mode));
     return seen;
+  }
+
+  /* reviews come from review_requests, keyed by the order they belong to, so a
+     history row can show its own verdict without a second request per row */
+  let reviewsFetchedAt = 0;
+  async function loadReviews(force) {
+    if (!force && reviewsFetchedAt && Date.now() - reviewsFetchedAt < 30000) return REVIEWS;
+    let r;
+    try { r = await window.Auth.api("/api/marketing?reviews=1", { cache: "no-store" }); }
+    catch (e) { return { ok: false, message: "Could not reach the server.", byOrder: new Map(), list: [] }; }
+    if (!r.ok) return { ok: false, message: (r.data && r.data.message) || "Try again in a moment.", byOrder: new Map(), list: [] };
+    const list = (r.data.reviews || []);
+    const byOrder = new Map();
+    list.forEach((x) => { if (x.orderId) byOrder.set(x.orderId, x); });
+    REVIEWS = {
+      ok: true, byOrder: byOrder, list: list,
+      average: r.data.average, count: r.data.count, happy: r.data.happy, spread: r.data.spread
+    };
+    reviewsFetchedAt = Date.now();
+    return REVIEWS;
   }
 
   function money(n) {
@@ -1150,7 +1227,12 @@
       .toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  function orderLedgerRowHtml(o) {
+  function starHtml(n) {
+    const k = Math.max(0, Math.min(5, Number(n) || 0));
+    return "\u2605".repeat(k) + "\u2606".repeat(5 - k);
+  }
+
+  function orderLedgerRowHtml(o, rev) {
     const d = new Date(o.ts);
     const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     const day = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
@@ -1163,9 +1245,16 @@
         : (o.address || "");
 
     const items = (o.items || []).map((i) =>
-      '<span class="oline"><span class="q">' + (i.qty || 1) + '×</span>' +
+      '<span class="oline"><span class="q">' + (i.qty || 1) + '\u00d7</span>' +
       '<span class="nm">' + esc(i.name) + '</span></span>'
     ).join("");
+
+    /* the review travels with the order it came from — that is the whole point
+       of the history tab: one guest, one order, one verdict, one row */
+    const review = rev
+      ? '<span class="orev r' + rev.rating + '">' + starHtml(rev.rating) +
+        (rev.comment ? '<span class="orev-text">' + esc(rev.comment) + '</span>' : '') + '</span>'
+      : (done ? '<span class="orev none">no review</span>' : '');
 
     return '<article class="orow ' + (done ? "is-done" : "is-pending") + '" data-order="' + esc(o.id) + '">' +
       '<div class="otime"><b>' + esc(time) + '</b><span>' + esc(day) + '</span></div>' +
@@ -1173,7 +1262,7 @@
         (o.phone ? '<a href="tel:' + esc(o.phone.replace(/[^\d+]/g, "")) + '">' + esc(o.phone) + '</a>'
                  : '<span class="none">no number</span>') +
       '</div>' +
-      '<div class="oitems">' + (items || '<span class="oline"><span class="nm">no dishes recorded</span></span>') + '</div>' +
+      '<div class="oitems">' + (items || '<span class="oline"><span class="nm">no dishes recorded</span></span>') + review + '</div>' +
       '<div class="owhere"><span>' + esc(o.mode || "Order") + '</span>' +
         (where ? '<span class="meta">' + esc(where) + '</span>' : '') +
       '</div>' +
@@ -1195,56 +1284,196 @@
   }
 
   /* what the shift needs at a glance: how much work is open, and what it took */
-  function orderSummary() {
-    const pending = ORDERS.filter((o) => o.status !== "confirmed").length;
+  function orderSummary(rows) {
+    if (ORDER_STATE === "history") {
+      const takings = rows.reduce((n, o) => n + (Number(o.total) || 0), 0);
+      const rated = rows.filter((o) => REVIEWS.byOrder.has(o.id));
+      const avg = rated.length
+        ? rated.reduce((n, o) => n + REVIEWS.byOrder.get(o.id).rating, 0) / rated.length
+        : 0;
+      return '<b>' + rows.length + '</b> order' + (rows.length === 1 ? "" : "s") +
+        (OR_RANGE.from || OR_RANGE.to ? " in this range" : "") +
+        ', <b>' + money(takings) + '</b> taken' +
+        (rated.length ? ', <b>' + (Math.round(avg * 10) / 10) + '</b> avg from ' + rated.length + ' review' + (rated.length === 1 ? "" : "s") : "");
+    }
     const key = new Date().toDateString();
-    const today = ORDERS.filter((o) => new Date(o.ts).toDateString() === key);
+    const today = rows.filter((o) => new Date(o.ts).toDateString() === key);
     const takings = today.reduce((n, o) => n + (Number(o.total) || 0), 0);
-    return '<b>' + pending + '</b> pending, ' + today.length + ' order' + (today.length === 1 ? "" : "s") +
+    return '<b>' + rows.length + '</b> open, ' + today.length + ' order' + (today.length === 1 ? "" : "s") +
       ' today, <b>' + money(takings) + '</b> taken';
   }
 
   async function renderOrders() {
-    const host = $("#ordersList"), tabs = $("#orderTabs"), sum = $("#orderSum");
+    const host = $("#ordersList"), tabs = $("#orderTabs"), sum = $("#orderSum"),
+          stateTabs = $("#orderStateTabs"), range = $("#ordersRange");
     host.innerHTML = skeletonRows(3);
 
-    const list = await loadOrders(true);
-    if (!list) {
+    const cache = await loadOrders(true);
+    if (!cache) {
       tabs.innerHTML = "";
       sum.textContent = "";
+      if (stateTabs) stateTabs.innerHTML = "";
       host.innerHTML = '<div class="empty"><b>Could not load orders</b>' + esc(ordersError) + '</div>';
       return;
     }
-    ORDERS = list;
+    ORDERS = cache;
 
-    const modes = orderModes();
+    const openRows = ORDERS.filter((o) => o.status !== "confirmed");
+    const doneRows = ORDERS.filter((o) => o.status === "confirmed");
+
+    /* the split the shift actually uses: what to cook, and what happened */
+    if (stateTabs) {
+      stateTabs.innerHTML = [["active", "Open", openRows.length], ["history", "History", doneRows.length]]
+        .map(function (t) {
+          return '<button type="button" role="tab" data-ostate="' + t[0] + '" aria-selected="' +
+            (ORDER_STATE === t[0] ? "true" : "false") + '">' + t[1] +
+            ' <span class="n">' + t[2] + '</span></button>';
+        }).join("");
+    }
+    if (range) range.hidden = ORDER_STATE !== "history";
+
+    let rows, err = "";
+    if (ORDER_STATE === "history" && (OR_RANGE.from || OR_RANGE.to)) {
+      const r = await fetchOrders({ state: "done", from: OR_RANGE.from, to: OR_RANGE.to });
+      if (!r.ok) { err = r.message; rows = []; } else rows = r.orders;
+    } else {
+      rows = ORDER_STATE === "history" ? doneRows : openRows;
+    }
+
+    if (ORDER_STATE === "history") {
+      await loadReviews();
+    } else if (!REVIEWS.byOrder) {
+      REVIEWS = { byOrder: new Map(), list: [] };
+    }
+
+    const modes = orderModes(rows);
     if (ORDER_TAB !== "all" && modes.indexOf(ORDER_TAB) < 0) ORDER_TAB = "all";
 
-    const count = (m) => (m === "all" ? ORDERS.length : ORDERS.filter((o) => o.mode === m).length);
+    const count = (m) => (m === "all" ? rows.length : rows.filter((o) => o.mode === m).length);
     tabs.innerHTML = [["all", "All"]].concat(modes.map((m) => [m, m]))
-      .map(([key, label]) =>
-        '<button type="button" role="tab" data-otab="' + esc(key) + '" aria-selected="' + (ORDER_TAB === key ? "true" : "false") + '">' +
-          esc(label) + ' <span class="n">' + count(key) + '</span>' +
-        '</button>'
-      ).join("");
+      .map(function (t) {
+        return '<button type="button" role="tab" data-otab="' + esc(t[0]) + '" aria-selected="' +
+          (ORDER_TAB === t[0] ? "true" : "false") + '">' + esc(t[1]) +
+          ' <span class="n">' + count(t[0]) + '</span></button>';
+      }).join("");
 
-    sum.innerHTML = orderSummary();
+    sum.innerHTML = orderSummary(rows);
 
-    const shown = ORDER_TAB === "all" ? ORDERS : ORDERS.filter((o) => o.mode === ORDER_TAB);
-    if (!shown.length) {
-      host.innerHTML = ORDER_TAB === "all"
-        ? '<div class="empty"><b>No orders yet</b>A guest orders from their own phone and a copy lands here within seconds, with their name and number — even if the WhatsApp message never arrives.</div>'
-        : '<div class="empty"><b>No ' + esc(ORDER_TAB) + ' orders yet</b>They will appear here. The other tabs keep theirs.</div>';
+    if (err) {
+      host.innerHTML = '<div class="empty"><b>That search did not run</b>' + esc(err) + '</div>';
       return;
     }
-    host.innerHTML = shown.map(orderLedgerRowHtml).join("");
+
+    const shown = ORDER_TAB === "all" ? rows : rows.filter((o) => o.mode === ORDER_TAB);
+    if (!shown.length) {
+      host.innerHTML = ORDER_STATE === "history"
+        ? '<div class="empty"><b>No finished orders' + (OR_RANGE.from || OR_RANGE.to ? " in that range" : " yet") +
+          '</b>Mark an order done and it moves here, with the review the guest left.'
+        : (ORDER_TAB === "all"
+          ? '<div class="empty"><b>No open orders</b>A guest orders from their own phone and a copy lands here within seconds, with their name and number \u2014 even if the WhatsApp message never arrives.</div>'
+          : '<div class="empty"><b>No open ' + esc(ORDER_TAB) + ' orders</b>They will appear here. The other tabs keep theirs.</div>');
+      return;
+    }
+    host.innerHTML = shown.map((o) => orderLedgerRowHtml(o, REVIEWS.byOrder.get(o.id))).join("");
   }
 
-  /* one listener for the tab strip and the state buttons — the list is redrawn
-     on every change, so per-button handlers would be re-bound constantly */
+  /* ---------------- feedback ----------------
+     The reviews live in review_requests, which the marketing pane already
+     reads. This pane is the service view of them: the low scores first,
+     because those are the ones a phone call can still save. */
+
+  function fbRowHtml(x) {
+    const when = new Date(x.at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return '<article class="fb-row r' + x.rating + '">' +
+      '<div class="fb-score-cell"><b class="fb-num">' + x.rating + '</b>' +
+        '<span class="mk-stars">' + starHtml(x.rating) + '</span>' +
+        '<span class="fb-when">' + esc(when) + '</span></div>' +
+      '<div class="fb-body"><b>' + esc(x.name || "Guest") + '</b>' +
+        (x.phone ? ' <a class="fb-phone" href="tel:' + esc(String(x.phone).replace(/[^\d+]/g, "")) + '">' + esc(x.phone) + '</a>' : '') +
+        (x.comment ? '<p class="fb-text">' + esc(x.comment) + '</p>' : '<p class="fb-text none">No comment left.</p>') +
+      '</div>' +
+      '<div class="fb-act">' +
+        (x.orderId ? '<button class="btn-quiet" type="button" data-jump="' + esc(x.orderId) + '">See order</button>' : '') +
+      '</div>' +
+    '</article>';
+  }
+
+  async function renderFeedback() {
+    const pill = $("#fbPill"), avg = $("#fbAvg"), bars = $("#fbBars"),
+          tabs = $("#fbTabs"), host = $("#fbList");
+    if (!host) return;
+    host.innerHTML = '<div class="empty"><b>Loading</b>Reading what guests said.</div>';
+
+    const d = await loadReviews(true);
+    if (!d.ok) {
+      host.innerHTML = '<div class="empty"><b>Feedback could not load</b>' + esc(d.message || "Try again in a moment.") + '</div>';
+      return;
+    }
+
+    if (pill) pill.textContent = d.count
+      ? d.count + " review" + (d.count === 1 ? "" : "s") + " \u00b7 " + Math.round((d.happy / d.count) * 100) + "% happy"
+      : "Nothing yet";
+    if (avg) avg.textContent = d.count ? d.average : "\u2014";
+
+    if (bars) {
+      const max = Math.max(1, ...(d.spread || [0]));
+      bars.innerHTML = [5, 4, 3, 2, 1].map(function (n, i) {
+        const c = (d.spread || [])[i] || 0;
+        return '<div class="fb-bar"><span class="fb-bn">' + n + ' \u2605</span>' +
+          '<span class="fb-track"><span class="fb-fill r' + n + '" style="width:' + Math.round((c / max) * 100) + '%"></span></span>' +
+          '<span class="fb-bc">' + c + '</span></div>';
+      }).join("");
+    }
+
+    if (tabs) {
+      const counts = [5, 4, 3, 2, 1].map((n) => d.list.filter((x) => x.rating === n).length);
+      tabs.innerHTML = [["all", "All", d.list.length]]
+        .concat([5, 4, 3, 2, 1].map((n, i) => [String(n), n + " \u2605", counts[i]]))
+        .map(function (t) {
+          return '<button type="button" role="tab" data-frate="' + t[0] + '" aria-selected="' +
+            (FB_FILTER === t[0] ? "true" : "false") + '">' + t[1] +
+            ' <span class="n">' + t[2] + '</span></button>';
+        }).join("");
+    }
+
+    const shown = FB_FILTER === "all" ? d.list : d.list.filter((x) => x.rating === Number(FB_FILTER));
+    if (!shown.length) {
+      host.innerHTML = d.count
+        ? '<div class="empty"><b>No ' + esc(FB_FILTER) + '-star reviews</b>The other filters keep theirs.</div>'
+        : '<div class="empty"><b>No reviews yet</b>When a guest answers the message you sent after they ate, it lands here \u2014 the score, the comment, and the order it came from.</div>';
+      return;
+    }
+    host.innerHTML = shown.map(fbRowHtml).join("");
+  }
+
+  /* one listener for the tab strips, the state switch and the state buttons —
+     the list is redrawn on every change, so per-button handlers would be
+     re-bound constantly */
   document.addEventListener("click", async (e) => {
+    const st = e.target.closest && e.target.closest("[data-ostate]");
+    if (st) { ORDER_STATE = st.getAttribute("data-ostate"); renderOrders(); return; }
+
     const tab = e.target.closest && e.target.closest("[data-otab]");
     if (tab) { ORDER_TAB = tab.getAttribute("data-otab"); renderOrders(); return; }
+
+    const fr = e.target.closest && e.target.closest("[data-frate]");
+    if (fr) { FB_FILTER = fr.getAttribute("data-frate"); renderFeedback(); return; }
+
+    const jump = e.target.closest && e.target.closest("[data-jump]");
+    if (jump) {
+      const id = jump.getAttribute("data-jump");
+      ORDER_STATE = "history";
+      OR_RANGE = { from: "", to: "" };
+      const f = $("#orFrom"), t = $("#orTo");
+      if (f) f.value = "";
+      if (t) t.value = "";
+      showView("orders");
+      setTimeout(function () {
+        const row = document.querySelector('[data-order="' + id + '"]');
+        if (row) { row.classList.add("is-hit"); row.scrollIntoView({ block: "center", behavior: "smooth" }); }
+      }, 350);
+      return;
+    }
 
     const btn = e.target.closest && e.target.closest("[data-status]");
     if (!btn) return;
@@ -1257,8 +1486,43 @@
     if (!r.ok) { toast((r.data && r.data.message) || "That did not save."); return; }
     ordersFetchedAt = 0;
     await renderOrders();
-    toast(status === "confirmed" ? "Done — the guest is now in Marketing." : "Back to pending.");
+    if (typeof renderRecentOrders === "function") renderRecentOrders();
+    toast(status === "confirmed" ? "Done \u2014 it moved to History." : "Back to open.");
   });
+
+  /* the date range is a search, so it fires on change rather than per keystroke */
+  ["#orFrom", "#orTo"].forEach(function (sel) {
+    const el = $(sel);
+    if (el) el.addEventListener("change", function () {
+      OR_RANGE = { from: ($("#orFrom") || {}).value || "", to: ($("#orTo") || {}).value || "" };
+      if (OR_RANGE.from && OR_RANGE.to && OR_RANGE.from > OR_RANGE.to) {
+        const swap = OR_RANGE.from; OR_RANGE.from = OR_RANGE.to; OR_RANGE.to = swap;
+        $("#orFrom").value = OR_RANGE.from; $("#orTo").value = OR_RANGE.to;
+      }
+      if (ORDER_STATE === "history") renderOrders();
+    });
+  });
+
+  const orToday = $("#orToday");
+  if (orToday) orToday.addEventListener("click", function () {
+    const now = new Date().toISOString().slice(0, 10);
+    $("#orFrom").value = now;
+    $("#orTo").value = now;
+    OR_RANGE = { from: now, to: now };
+    ORDER_STATE = "history";
+    renderOrders();
+  });
+
+  const orClear = $("#orClear");
+  if (orClear) orClear.addEventListener("click", function () {
+    $("#orFrom").value = "";
+    $("#orTo").value = "";
+    OR_RANGE = { from: "", to: "" };
+    renderOrders();
+  });
+
+  const fbReload = $("#fbReload");
+  if (fbReload) fbReload.addEventListener("click", function () { renderFeedback(); });
 
   $("#dlOverview").addEventListener("click", () => downloadQR($("#qrOverview"), state.handle));
 

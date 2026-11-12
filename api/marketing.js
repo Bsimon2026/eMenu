@@ -433,20 +433,30 @@ async function owner(req, res) {
 
   /* -------------------------------------------------------------- reviews */
   if (q.reviews !== undefined) {
+    /* the service history needs to tie a review back to the order it came
+       from, so order_id travels with it */
+    const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : "");
+    const from = day(q.from), to = day(q.to);
+    let filters = "";
+    if (from) filters += "&created_at=gte." + from + "T00:00:00";
+    if (to) filters += "&created_at=lte." + to + "T23:59:59";
+
     const r = await rest(
-      "review_requests?restaurant_id=eq." + rid + "&rating=not.is.null" +
-      "&select=id,guest_name,phone,rating,comment,sent_at,created_at&order=created_at.desc&limit=100"
+      "review_requests?restaurant_id=eq." + rid + "&rating=not.is.null" + filters +
+      "&select=id,order_id,guest_name,phone,rating,comment,sent_at,created_at&order=created_at.desc&limit=500"
     );
     if (!r.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
     const rows = r.data || [];
     const avg = rows.length ? rows.reduce((n, x) => n + x.rating, 0) / rows.length : 0;
+    const spread = [5, 4, 3, 2, 1].map((n) => rows.filter((x) => x.rating === n).length);
     return res.status(200).json({
       ok: true,
       average: Math.round(avg * 10) / 10,
       count: rows.length,
       happy: rows.filter((x) => x.rating >= 4).length,
+      spread,
       reviews: rows.map((x) => ({
-        id: x.id, name: x.guest_name || "", phone: x.phone,
+        id: x.id, orderId: x.order_id || null, name: x.guest_name || "", phone: x.phone,
         rating: x.rating, comment: x.comment || "", at: x.created_at
       }))
     });

@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/base.css?v=20261111s">
-<link rel="stylesheet" href="/assets/app.css?v=20261112w">
+<link rel="stylesheet" href="/assets/app.css?v=20261112x">
 </head>
 <body class="app-body">
 
@@ -52,6 +52,10 @@
       <a href="#" data-view="orders">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 3.5h10a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.4"/><path d="M7 7.5h6M7 11h6M7 14.5h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         <span>Orders</span>
+      </a>
+      <a href="#" data-view="feedback">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.8l2.24 4.54 5.01.73-3.62 3.53.85 4.99L10 14.24l-4.48 2.35.85-4.99-3.62-3.53 5.01-.73L10 2.8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <span>Feedback</span>
       </a>
       <a href="#" data-view="marketing">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 7.5 15.5 3v14L3 12.5v-5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 12v4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M17 8.5v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -111,10 +115,16 @@
 
             <div class="card">
               <div class="card-head">
-                <h2>Recent orders</h2>
+                <div>
+                  <h2>Orders</h2>
+                  <p class="card-sub" id="ovOrdersSub">What the kitchen still has to make.</p>
+                </div>
                 <button class="btn-quiet" type="button" data-view="orders">See all</button>
               </div>
-              <div class="card-body tight" id="recentOrders"></div>
+              <div class="card-body tight">
+                <div class="ov-stats" id="ovOrderStats"></div>
+                <div id="recentOrders"></div>
+              </div>
             </div>
           </div>
 
@@ -336,6 +346,18 @@
             <p>A copy of every order, even when the WhatsApp message never arrives. Mark one done and the guest moves to Marketing.</p>
           </div>
 
+          <div class="orders-top">
+            <div class="seg seg-state" id="orderStateTabs" role="tablist" aria-label="Open and history"></div>
+            <div class="orders-range" id="ordersRange" hidden>
+              <label for="orFrom">From</label>
+              <input type="date" id="orFrom">
+              <label for="orTo">to</label>
+              <input type="date" id="orTo">
+              <button class="btn-quiet" type="button" id="orToday">Today</button>
+              <button class="btn-quiet" type="button" id="orClear">Clear</button>
+            </div>
+          </div>
+
           <div class="orders-bar">
             <div class="seg" id="orderTabs" role="tablist" aria-label="Order types"></div>
             <div class="orders-sum" id="orderSum" aria-live="polite"></div>
@@ -352,6 +374,33 @@
           </div>
 
           <div id="ordersList"></div>
+        </div>
+      </section>
+
+      <!-- ---------------- feedback ---------------- -->
+      <section class="content-in" data-pane="feedback" hidden>
+        <div class="card fb-card">
+          <div class="card-head">
+            <div>
+              <h2>Feedback</h2>
+              <p>What guests said after they ate. The 1s and 2s are the ones worth a phone call — a guest who scored 4 or 5 was offered the Google review.</p>
+            </div>
+            <span class="pill" id="fbPill">Nothing yet</span>
+          </div>
+          <div class="card-body">
+            <div class="fb-score">
+              <div class="fb-avg"><b id="fbAvg">—</b><span>out of 5</span></div>
+              <div class="fb-bars" id="fbBars"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="orders-top">
+            <div class="seg seg-state" id="fbTabs" role="tablist" aria-label="Filter by rating"></div>
+            <button class="btn-quiet" type="button" id="fbReload">Refresh</button>
+          </div>
+          <div id="fbList"></div>
         </div>
       </section>
 
@@ -822,6 +871,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261112w"></script>
+<script src="/assets/app.js?v=20261112x"></script>
 </body>
 </html>
