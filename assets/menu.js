@@ -71,6 +71,9 @@
   }
 
   /* Arabic where it exists, English where it does not — never a blank row */
+  /* two-word UI strings; the menu data itself comes from the API */
+  function T(en, ar) { return LANG === "ar" ? ar : en; }
+
   function nm(x) {
     return (LANG === "ar" && x && x.arName) ? x.arName : ((x && x.name) || "");
   }
@@ -133,7 +136,9 @@
       <section class="sec${c.featured ? " featured" : ""}" id="c-${c.id}">
         <div class="sec-head">
           <h2>${c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : ""}${esc(nm(c))}</h2>
-          <span>${available === c.items.length ? c.items.length + (c.items.length === 1 ? " dish" : " dishes") : available + " of " + c.items.length + " available"}</span>
+          <span>${available === c.items.length
+            ? (LANG === "ar" ? c.items.length + (c.items.length === 1 ? " \u0637\u0628\u0642" : " \u0623\u0637\u0628\u0627\u0642") : c.items.length + (c.items.length === 1 ? " dish" : " dishes"))
+            : (LANG === "ar" ? available + " \u0645\u0646 " + c.items.length + " \u0645\u062a\u0648\u0641\u0631" : available + " of " + c.items.length + " available")}</span>
         </div>
         <div class="items">
           ${(() => {
@@ -155,8 +160,8 @@
               <div class="right">
                 <div class="pr">${money(it.price)}</div>
                 ${it.soldOut
-                  ? '<span class="sold-tag">Sold out</span>'
-                  : `<button class="add" type="button" data-id="${it.id}" data-cat="${c.id}">Add</button>`}
+                  ? '<span class="sold-tag">' + T("Sold out", "\u0646\u0641\u062f") + '</span>'
+                  : `<button class="add" type="button" data-id="${it.id}" data-cat="${c.id}">${T("Add", "\u0623\u0636\u0641")}</button>`}
               </div>
             </div>`;
             }).join("");
@@ -169,9 +174,9 @@
     b.addEventListener("click", () => {
       addToCart(b.dataset.id);
       b.classList.add("on");
-      b.textContent = "Added";
+      b.textContent = T("Added", "\u062a\u0645\u062a \u0627\u0644\u0625\u0636\u0627\u0641\u0629");
       setTimeout(() => {
-        b.textContent = cart.has(b.dataset.id) ? "Add another" : "Add";
+        b.textContent = cart.has(b.dataset.id) ? T("Add another", "\u0623\u0636\u0641 \u0623\u062e\u0631\u0649") : T("Add", "\u0623\u0636\u0641");
         if (!cart.has(b.dataset.id)) b.classList.remove("on");
       }, 900);
     })
