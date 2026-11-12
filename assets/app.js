@@ -1321,15 +1321,6 @@
     const openRows = ORDERS.filter((o) => o.status !== "confirmed");
     const doneRows = ORDERS.filter((o) => o.status === "confirmed");
 
-    /* the split the shift actually uses: what to cook, and what happened */
-    if (stateTabs) {
-      stateTabs.innerHTML = [["active", "Open", openRows.length], ["history", "History", doneRows.length]]
-        .map(function (t) {
-          return '<button type="button" role="tab" data-ostate="' + t[0] + '" aria-selected="' +
-            (ORDER_STATE === t[0] ? "true" : "false") + '">' + t[1] +
-            ' <span class="n">' + t[2] + '</span></button>';
-        }).join("");
-    }
     if (range) range.hidden = ORDER_STATE !== "history";
 
     let rows, err = "";
@@ -1338,6 +1329,19 @@
       if (!r.ok) { err = r.message; rows = []; } else rows = r.orders;
     } else {
       rows = ORDER_STATE === "history" ? doneRows : openRows;
+    }
+
+    /* Counted after the rows resolve, not from the cache: the cached list stops
+       at the newest hundred, so a badge built from it under-reports a history
+       search that reached further back than that. */
+    if (stateTabs) {
+      const historyCount = ORDER_STATE === "history" ? rows.length : doneRows.length;
+      stateTabs.innerHTML = [["active", "Open", openRows.length], ["history", "History", historyCount]]
+        .map(function (t) {
+          return '<button type="button" role="tab" data-ostate="' + t[0] + '" aria-selected="' +
+            (ORDER_STATE === t[0] ? "true" : "false") + '">' + t[1] +
+            ' <span class="n">' + t[2] + '</span></button>';
+        }).join("");
     }
 
     if (ORDER_STATE === "history") {
