@@ -17,6 +17,7 @@
  */
 
 const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./db");
+const i18n = require("./i18n");
 
 function money(v) {
   const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
@@ -440,6 +441,106 @@ module.exports = async function handler(req, res) {
           createdItems: createdItems,
           updatedItems: updatedItems
         });
+      }
+
+      /* ------------------------------------------------ Arabic drafts
+         translateMenu  → machine drafts for every dish and category
+         setTranslation → the owner's own text, draft or published
+         publishTranslations → every draft becomes visible to guests */
+
+      case "translateMenu": {
+        const locale = "ar";
+        const it = await rest("menu_items?restaurant_id=eq." + rid + "&select=id,name,description&limit=400");
+        const ct = await rest("menu_categories?restaurant_id=eq." + rid + "&select=id,name&limit=100");
+        if (!it.ok || !ct.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+
+        const items = (it.data || []).filter((x) => x.name);
+        const cats = (ct.data || []).filter((x) => x.name);
+
+        let drafted = 0;
+        for (const chunk of i18n.batches(items, 20)) {
+          const t = await i18n.translateChunk(chunk.map((x) => ({ id: x.id, name: x.name, description: x.description || "" })));
+          if (!t.ok) {
+            return res.status(t.code === "NO_KEY" ? 503 : 502).json({
+              ok: false, code: t.code, message: t.message || "The translation did not come back."
+            });
+          }
+          if (!t.items.length) continue;
+          const rows = t.items.map((x) => ({
+            restaurant_id: rid, item_id: x.id, locale: locale,
+            name: x.name, description: x.description || null,
+            status: "draft", source: "machine"
+          }));
+          const w = await rest("menu_item_translations?on_conflict=item_id,locale", {
+            method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: rows
+          });
+          if (!w.ok) return res.status(503).json({ ok: false, code: "NO_I18N", message: "Arabic is not switched on yet." });
+          drafted += rows.length;
+        }
+
+        let catDrafted = 0;
+        for (const chunk of i18n.batches(cats, 20)) {
+          const t = await i18n.translateChunk(chunk.map((x) => ({ id: x.id, name: x.name, description: "" })));
+          if (!t.ok) break;   /* dishes already landed; a category retry is the same button */
+          if (!t.items.length) continue;
+          const rows = t.items.map((x) => ({
+            restaurant_id: rid, category_id: x.id, locale: locale,
+            name: x.name, status: "draft", source: "machine"
+          }));
+          const w = await rest("menu_category_translations?on_conflict=category_id,locale", {
+            method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: rows
+          });
+          if (!w.ok) return res.status(503).json({ ok: false, code: "NO_I18N", message: "Arabic is not switched on yet." });
+          catDrafted += rows.length;
+        }
+
+        return res.status(200).json({ ok: true, items: drafted, categories: catDrafted });
+      }
+
+      case "setTranslation": {
+        const locale = "ar";
+        const kind = body.kind === "category" ? "category" : "item";
+        const id = String(body.id || "").trim();
+        const name = String(body.name || "").trim().slice(0, 200);
+        if (!id) return res.status(400).json({ ok: false, code: "NO_ID", message: "Which one?" });
+        if (!name) return res.status(400).json({ ok: false, code: "NO_NAME", message: "The Arabic name is empty." });
+
+        /* the row has to be this restaurant's before anything is written */
+        const owner = kind === "category" ? "menu_categories" : "menu_items";
+        const own = await rest(owner + "?id=eq." + id + "&restaurant_id=eq." + rid + "&select=id");
+        if (!own.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+        if (!(own.data || []).length) {
+          return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "That row is not yours." });
+        }
+
+        const row = {
+          restaurant_id: rid, locale: locale, name: name,
+          status: body.status === "published" ? "published" : "draft",
+          source: "owner"
+        };
+        const table = kind === "category" ? "menu_category_translations" : "menu_item_translations";
+        const conflict = kind === "category" ? "category_id,locale" : "item_id,locale";
+        row[kind === "category" ? "category_id" : "item_id"] = id;
+        if (kind === "item") row.description = String(body.description || "").trim().slice(0, 600) || null;
+
+        const w = await rest(table + "?on_conflict=" + conflict, {
+          method: "POST", prefer: "resolution=merge-duplicates,return=representation", body: row
+        });
+        if (!w.ok) return res.status(503).json({ ok: false, code: "NO_I18N", message: "Arabic is not switched on yet." });
+        return res.status(200).json({ ok: true, translation: (w.data || [])[0] || row });
+      }
+
+      case "publishTranslations": {
+        const locale = "ar";
+        const out = [];
+        for (const table of ["menu_item_translations", "menu_category_translations"]) {
+          const w = await rest(table + "?restaurant_id=eq." + rid + "&locale=eq." + locale + "&status=eq.draft", {
+            method: "PATCH", prefer: "return=representation", body: { status: "published", updated_at: new Date().toISOString() }
+          });
+          if (!w.ok) return res.status(503).json({ ok: false, code: "NO_I18N", message: "Arabic is not switched on yet." });
+          out.push((w.data || []).length);
+        }
+        return res.status(200).json({ ok: true, published: out[0] + out[1] });
       }
 
       default:

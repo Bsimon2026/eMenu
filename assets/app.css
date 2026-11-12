@@ -1430,3 +1430,17 @@ body[data-role="orders"] #newCatName { display: none !important; }
   color: var(--warn);
 }
 .bulk-confirm span { flex: 1 1 220px; }
+
+/* ---------------- Arabic fields in the dish editor ---------------- */
+
+.ar-fields { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.ar-fields .input { font-family: "Segoe UI", "Noto Naskh Arabic", var(--ui); }
+.ar-pub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.ar-pub input { margin: 0; }

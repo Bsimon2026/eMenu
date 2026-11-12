@@ -1799,6 +1799,11 @@
         <input class="input" data-e="price" placeholder="Price" inputmode="decimal" value="${item.price === "" ? "" : item.price}">
         <input class="input" data-e="desc" placeholder="Description (optional)" value="${esc(item.desc || "")}" maxlength="400">
       </div>
+      ${isNew ? "" : `<div class="edit-fields ar-fields">
+        <input class="input" data-e="arName" dir="rtl" lang="ar" placeholder="الاسم بالعربية" value="${esc(item.arName || "")}" maxlength="120">
+        <input class="input" data-e="arDesc" dir="rtl" lang="ar" placeholder="الوصف بالعربية (اختياري)" value="${esc(item.arDesc || "")}" maxlength="400">
+        <label class="ar-pub"><input type="checkbox" data-e="arPub"> Publish this one now</label>
+      </div>`}
       ${isNew ? "" : `<div class="edit-cats">
         <span class="ec-label">Also listed in</span>
         ${menuSource().categories.map((c) => {
@@ -1855,6 +1860,20 @@
         if (picked.length) {
           await menuEdit({ action: "setItemCategories", id, categoryIds: picked });
         }
+
+        /* the Arabic beside the English: saved in the same press, so a dish
+           never ends up corrected in one language and stale in the other */
+        const arNameIn = row.querySelector('[data-e="arName"]');
+        const arDescIn = row.querySelector('[data-e="arDesc"]');
+        const arPubIn = row.querySelector('[data-e="arPub"]');
+        if (arNameIn && arNameIn.value.trim()) {
+          await menuEdit({
+            action: "setTranslation", kind: "item", id: id,
+            name: arNameIn.value.trim(),
+            description: arDescIn ? arDescIn.value.trim() : "",
+            status: arPubIn && arPubIn.checked ? "published" : "draft"
+          });
+        }
       }
 
       await reloadOwnMenu();
@@ -1862,6 +1881,49 @@
       renderOverview();
     });
   }
+
+  /* ---------------- Arabic, drafted once and reviewed ----------------
+     The model writes the first version and marks it a draft. Publishing is a
+     separate act, per dish or for the whole menu, because "Chicken 65" comes
+     back as something no Arabic menu would print. */
+
+  async function arCall(action, okMessage) {
+    const r = await window.Auth.api("/api/menu?op=edit", {
+      method: "POST", body: JSON.stringify({ action: action })
+    });
+    const d = r.data || {};
+    if (!r.ok || d.ok === false) {
+      const code = d.code || "";
+      if (code === "NO_I18N") return { ok: false, message: "Arabic is not switched on yet — run db/0015_menu_i18n.sql in Supabase." };
+      if (code === "NO_KEY") return { ok: false, message: "No translation key on the server." };
+      return { ok: false, message: d.message || "That did not work." };
+    }
+    if (okMessage) toast(okMessage(d));
+    return { ok: true, data: d };
+  }
+
+  const arTrans = $("#arTranslateBtn");
+  if (arTrans) arTrans.addEventListener("click", async () => {
+    arTrans.disabled = true;
+    const out = await arCall("translateMenu", (d) =>
+      "Drafted " + d.items + " dish" + (d.items === 1 ? "" : "es") + " and " + d.categories +
+      " categor" + (d.categories === 1 ? "y" : "ies") + " in Arabic — open a dish to check it.");
+    arTrans.disabled = false;
+    if (!out.ok) { toast(out.message); return; }
+    await reloadOwnMenu();
+    renderMenuEditor();
+  });
+
+  const arPub = $("#arPublishBtn");
+  if (arPub) arPub.addEventListener("click", async () => {
+    arPub.disabled = true;
+    const out = await arCall("publishTranslations", (d) =>
+      d.published ? "Published " + d.published + " Arabic line" + (d.published === 1 ? "" : "s") + "." : "Nothing was waiting to publish.");
+    arPub.disabled = false;
+    if (!out.ok) { toast(out.message); return; }
+    await reloadOwnMenu();
+    renderMenuEditor();
+  });
 
   function addDishRow(catId) {
     const block = document.querySelector('[data-cat="' + catId + '"]');

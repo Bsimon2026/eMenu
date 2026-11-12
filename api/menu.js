@@ -209,6 +209,21 @@ async function menuHandler(req, res) {
     }
   }
 
+  /* Arabic, if this restaurant has published any. The read is best-effort:
+     a deployment can land before 0015 is run, and a missing table must not
+     take the menu down — the guest simply sees English. */
+  let ar = { items: new Map(), cats: new Map() };
+  if (Array.isArray(restaurant.locales) && restaurant.locales.indexOf("ar") >= 0) {
+    const [ti, tc] = await Promise.all([
+      rest("menu_item_translations?restaurant_id=eq." + restaurant.id +
+        "&locale=eq.ar&status=eq.published&select=item_id,name,description"),
+      rest("menu_category_translations?restaurant_id=eq." + restaurant.id +
+        "&locale=eq.ar&status=eq.published&select=category_id,name")
+    ]);
+    if (ti.ok) (ti.data || []).forEach((x) => ar.items.set(x.item_id, x));
+    if (tc.ok) (tc.data || []).forEach((x) => ar.cats.set(x.category_id, x));
+  }
+
   /* short on purpose: a sold-out switch flipped mid-service must reach
      guests in seconds, not minutes */
   res.setHeader("Cache-Control", "public, s-maxage=15, stale-while-revalidate=45");
@@ -236,10 +251,24 @@ async function menuHandler(req, res) {
       },
       coverUrl: restaurant.cover_url || null
     },
-    categories: built.categories,
+    locales: Array.isArray(restaurant.locales) ? restaurant.locales : ["en"],
+    categories: withArabic(built.categories, ar),
     itemCount: built.itemCount
   });
 };
+
+/* Attach the published Arabic beside the English. The guest page picks a
+   language; nothing here decides for it. */
+function withArabic(categories, ar) {
+  return (categories || []).map((c) => {
+    const ct = ar.cats.get(c.id);
+    const items = (c.items || []).map((it) => {
+      const t = ar.items.get(it.id);
+      return t ? Object.assign({}, it, { arName: t.name || "", arDesc: t.description || "" }) : it;
+    });
+    return ct ? Object.assign({}, c, { arName: ct.name || "", items: items }) : Object.assign({}, c, { items: items });
+  });
+}
 
 /* One function, three jobs. Everything under ?op= is a write to this menu. */
 module.exports = async function route(req, res) {

@@ -47,6 +47,11 @@
   let publicLink = "";
   let whatsapp = "";
   let purposes = ["Dine In", "Take Away"];
+  /* which language the guest reads the menu in, and what is on offer */
+  let LANG = (function () {
+    try { return localStorage.getItem("dm.lang") === "ar" ? "ar" : "en"; } catch (e) { return "en"; }
+  })();
+  let LOCALES = ["en"];
   let cats = [];
 
   /* the restaurant picks its currency once; every price uses it */
@@ -63,6 +68,26 @@
     if (!url) return url;
     if (!/talabat\.dhmedia\.io/i.test(url)) return url;
     return url + (url.indexOf("?") === -1 ? "?" : "&") + "width=" + w;
+  }
+
+  /* Arabic where it exists, English where it does not — never a blank row */
+  function nm(x) {
+    return (LANG === "ar" && x && x.arName) ? x.arName : ((x && x.name) || "");
+  }
+  function ds(x) {
+    return (LANG === "ar" && x && x.arDesc) ? x.arDesc : ((x && x.desc) || "");
+  }
+
+  function setLang(l) {
+    LANG = l === "ar" ? "ar" : "en";
+    try { localStorage.setItem("dm.lang", LANG); } catch (e) { /* private mode */ }
+    document.documentElement.lang = LANG;
+    document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
+    const sw = $("#langSwitch");
+    if (sw) Array.from(sw.querySelectorAll("[data-lang]")).forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === LANG));
+    });
+    paint();
   }
 
   function esc(t) {
@@ -100,14 +125,14 @@
   const rail = $("#rail");
   rail.innerHTML = cats.map((c) =>
     '<a href="#c-' + c.id + '" data-cat="' + c.id + '"' + (c.featured ? ' class="feat"' : "") + ">" +
-    (c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : "") + c.name + "</a>").join("");
+    (c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : "") + esc(nm(c)) + "</a>").join("");
 
   $("#sections").innerHTML = cats.map((c) => {
     const available = c.items.filter((i) => !i.soldOut).length;
     return `
       <section class="sec${c.featured ? " featured" : ""}" id="c-${c.id}">
         <div class="sec-head">
-          <h2>${c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : ""}${c.name}</h2>
+          <h2>${c.featured ? '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg> ' : ""}${esc(nm(c))}</h2>
           <span>${available === c.items.length ? c.items.length + (c.items.length === 1 ? " dish" : " dishes") : available + " of " + c.items.length + " available"}</span>
         </div>
         <div class="items">
@@ -123,9 +148,9 @@
               <div>
                 <div class="nm">
                   ${it.diet ? `<span class="diet ${it.diet === "veg" ? "" : "non"}" title="${it.diet === "veg" ? "Vegetarian" : "Non-vegetarian"}"></span>` : ""}
-                  ${it.name}
+                  ${esc(nm(it))}
                 </div>
-                <div class="ds">${it.desc}</div>
+                <div class="ds">${esc(ds(it))}</div>
               </div>
               <div class="right">
                 <div class="pr">${money(it.price)}</div>
@@ -615,6 +640,7 @@
 
     const r = data.restaurant || {};
     restaurant = { name: r.name, city: r.city, whatsapp: r.whatsapp, purposes: r.purposes };
+    LOCALES = Array.isArray(r.locales) ? r.locales : ["en"];
     docs = { logo: r.logoUrl || null };
     name = r.name || "Menu";
     accent = r.accent || "#f0485f";
@@ -633,11 +659,14 @@
     cats = (data.categories || []).map((c, i) => ({
       id: "c" + i,
       name: c.name,
+      arName: c.arName || "",
       featured: !!c.featured,
       items: (c.items || []).map((it, j) => ({
         id: "i" + i + "x" + j,
         name: it.name,
+        arName: it.arName || "",
         desc: it.description || "",
+        arDesc: it.arDesc || "",
         price: it.price == null ? 0 : it.price,
         image: it.image || null,
         soldOut: !!it.soldOut,
@@ -647,6 +676,21 @@
 
     currency = r.currency || "AED";
     renderHero(r, data);
+
+    /* the switch only exists when the restaurant has published Arabic —
+       showing an EN|AR toggle that flips to nothing is worse than no toggle */
+    const sw = $("#langSwitch");
+    if (sw) {
+      const hasAr = LOCALES.indexOf("ar") >= 0;
+      sw.hidden = !hasAr;
+      if (hasAr) {
+        Array.from(sw.querySelectorAll("[data-lang]")).forEach(function (b) {
+          b.addEventListener("click", function () { setLang(b.getAttribute("data-lang")); });
+        });
+      }
+      if (hasAr && LANG === "ar") setLang("ar");
+      else document.documentElement.dir = "ltr";
+    }
 
     /* most guests are local: start the number with the restaurant's own dial code */
     const phoneInput = $("#guestPhone");
