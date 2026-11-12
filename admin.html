@@ -51,10 +51,36 @@
 
   <table id="tbl" hidden>
     <thead>
-      <tr><th>Restaurant</th><th>Plan</th><th>Paid through</th><th>Status</th><th>Record payment</th></tr>
+      <tr><th>Restaurant</th><th>Plan</th><th>Paid through</th><th>Status</th><th>Domain</th><th>Record payment</th></tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
+
+  <div class="card" id="dom" hidden style="margin-top:18px">
+    <h1 id="domTitle" style="font-size:17px;margin-bottom:2px">Domain</h1>
+    <p class="sub" id="domSub" style="margin-bottom:16px"></p>
+
+    <div class="row">
+      <div>
+        <label for="domInput">Customer's domain</label>
+        <input id="domInput" placeholder="restaurant.com" style="width:300px" autocomplete="off">
+      </div>
+      <button class="primary" id="domAdd">Connect</button>
+      <button id="domCheck">Check status</button>
+      <button id="domRemove">Remove</button>
+    </div>
+
+    <div class="hint" id="domState"></div>
+    <div id="domRecords" hidden style="margin-top:14px">
+      <label>Give the customer these DNS records</label>
+      <table style="margin-top:6px">
+        <thead><tr><th>Type</th><th>Name</th><th>Value</th><th>Why</th></tr></thead>
+        <tbody id="domRows"></tbody>
+      </table>
+      <p class="hint">Once the records are live, Vercel issues the certificate on its own — usually minutes. Press <b>Check status</b> until it says live.</p>
+    </div>
+    <div class="err" id="domErr"></div>
+  </div>
 </div>
 
 <script>
@@ -79,8 +105,12 @@
   }
 
   function tag(text, cls) { return '<span class="tag ' + cls + '">' + text + '</span>'; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
+
+  var DATA = [];
 
   function render(list) {
+    DATA = list;
     $("#rows").innerHTML = list.map(function (r) {
       var planSel = '<select data-h="' + r.handle + '" class="plan">' +
         ['qr', 'order'].map(function (p) {
@@ -96,6 +126,11 @@
         '<td>' + (r.paid_through || "—") + '<br><span style="color:#8a949b;font-size:12.5px">$' + r.price + ' / ' + r.billing + '</span></td>' +
         '<td>' + (r.status === "published" ? tag("published", "ok") : tag(r.status, "draft")) +
           ' ' + (r.active ? tag("paid", "ok") : tag("unpaid", "no")) + '</td>' +
+        '<td>' + (r.custom_domain
+            ? '<b>' + esc(r.custom_domain) + '</b><br><span style="color:#8a949b;font-size:12.5px">' +
+              (r.domain_status === "live" ? tag("live", "ok") : tag(r.domain_status || "pending", "draft")) + '</span>'
+            : '<span style="color:#8a949b">—</span>') +
+          ' <button data-dom="' + esc(r.handle) + '">Set</button></td>' +
         '<td>' + billSel + ' <button class="primary" data-pay="' + r.handle + '">Record</button> ' +
           '<button data-stop="' + r.handle + '">Stop</button></td>' +
         '</tr>';
@@ -131,6 +166,77 @@
       load();
     });
   });
+
+  /* ---------------- domains ---------------- */
+
+  var domHandle = null;
+
+  function domFail(msg) {
+    var e = $("#domErr");
+    e.textContent = msg || "";
+    e.style.display = msg ? "block" : "none";
+  }
+
+  function paintRecords(res) {
+    var host = $("#domRecords");
+    var rows = $("#domRows");
+    if (!res || !res.records || !res.records.length) { host.hidden = true; return; }
+    rows.innerHTML = res.records.map(function (r) {
+      return "<tr><td><b>" + esc(r.type) + "</b></td><td>" + esc(r.name) + "</td>" +
+        '<td style="font-family:ui-monospace,monospace;font-size:12.5px">' + esc(r.value) + "</td>" +
+        '<td style="color:#8a949b;font-size:12.5px">' + esc(r.note || "") + "</td></tr>";
+    }).join("");
+    host.hidden = false;
+  }
+
+  function openDom(handle) {
+    var r = DATA.filter(function (x) { return x.handle === handle; })[0];
+    if (!r) return;
+    domHandle = handle;
+    domFail("");
+    $("#dom").hidden = false;
+    $("#domTitle").textContent = r.name + " — /" + r.handle;
+    $("#domSub").innerHTML = "The menu also lives at <b>digimenu.indubaicity.com/" + esc(r.handle) + "</b> for ever. " +
+      "A domain here is an extra address that points at the same menu — nothing is copied and nothing is deployed.";
+    $("#domInput").value = r.custom_domain || "";
+    $("#domState").innerHTML = r.custom_domain
+      ? "Currently <b>" + esc(r.custom_domain) + "</b> — " + esc(r.domain_status || "pending") +
+        (r.domain_error ? " (" + esc(r.domain_error) + ")" : "")
+      : "No domain connected yet.";
+    $("#domRecords").hidden = true;
+    $("#dom").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function domAction(action) {
+    if (!domHandle) return;
+    var domain = action === "domain-remove" ? "" : $("#domInput").value.trim();
+    if (action !== "domain-remove" && action !== "domain-check" && !domain) {
+      return domFail("Type the domain first, e.g. restaurant.com");
+    }
+    domFail("");
+    call("POST", { handle: domHandle, action: action, domain: domain }).then(function (r) {
+      if (!r.ok) return domFail(r.d.message || "That did not work.");
+      if (action === "domain-remove") {
+        load();
+        $("#dom").hidden = true;
+        return;
+      }
+      $("#domState").innerHTML = action === "domain-check"
+        ? (r.d.live ? "Live — the certificate is issued and DNS is correct." : "Still " + esc(r.d.status) + " — DNS has not caught up yet.")
+        : "Added to the project. Waiting for DNS.";
+      paintRecords(r.d);
+      if (r.d.where) $("#domSub").innerHTML = esc(r.d.where);
+      load();
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var d = e.target.getAttribute && e.target.getAttribute("data-dom");
+    if (d) openDom(d);
+  });
+  $("#domAdd").addEventListener("click", function () { domAction("domain-add"); });
+  $("#domCheck").addEventListener("click", function () { domAction("domain-check"); });
+  $("#domRemove").addEventListener("click", function () { domAction("domain-remove"); });
 
   var saved = localStorage.getItem("digimenu.admin.key");
   if (saved) { key.value = saved; load(); }

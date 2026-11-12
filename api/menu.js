@@ -136,16 +136,30 @@ async function menuHandler(req, res) {
   }
 
   /* ---------------------------------------------------------- the guest menu */
+  /* Two ways to say which restaurant: the address in the path (?handle=), or
+     the domain the request arrived on (?host=). A customer's own domain has no
+     handle in the URL — the host IS the restaurant. */
+  const host = String((req.query && req.query.host) || "")
+    .trim().toLowerCase().replace(/^www\./, "").replace(/:\d+$/, "");
   const handle = String((req.query && req.query.handle) || "").trim().toLowerCase();
-  if (!SAFE_HANDLE.test(handle)) {
-    return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "That is not a valid menu address." });
+
+  let lookup;
+  if (!handle && host) {
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(host)) {
+      return res.status(400).json({ ok: false, code: "BAD_HOST", message: "That is not a valid domain." });
+    }
+    lookup = "custom_domain=eq." + encodeURIComponent(host);
+  } else {
+    if (!SAFE_HANDLE.test(handle)) {
+      return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "That is not a valid menu address." });
+    }
+    lookup = "handle=eq." + encodeURIComponent(handle);
   }
 
   const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
-  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through";
+  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain";
   const query = (cols) =>
-    "restaurants?handle=eq." + encodeURIComponent(handle) +
-    "&status=eq.published&select=" + cols;
+    "restaurants?" + lookup + "&status=eq.published&select=" + cols;
 
   /* 0004 adds the identity columns; a deployment can land before the migration
      is run, so fall back to the original columns instead of failing the page */

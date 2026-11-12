@@ -35,6 +35,164 @@ function extend(from, billing) {
   return d.toISOString().slice(0, 10);
 }
 
+/* --------------------------------------------------------------- domains ---
+ * The deployment serves every restaurant, so a customer's domain is just
+ * another hostname on the same project. Vercel says whether DNS is right yet;
+ * this code only relays it and keeps one column in step.
+ */
+const VERCEL = "https://api.vercel.com";
+
+function vercelEnv() {
+  return {
+    token: process.env.VERCEL_TOKEN || "",
+    project: process.env.VERCEL_PROJECT_ID || "digimenu",
+    team: process.env.VERCEL_TEAM_ID || ""
+  };
+}
+
+/** strip a pasted URL down to the bare domain: no scheme, no www, no path */
+function cleanDomain(raw) {
+  let d = String(raw || "").trim().toLowerCase();
+  d = d.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/\.$/, "");
+  d = d.replace(/^www\./, "");
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(d)) return "";
+  if (d.split(".").length < 2) return "";
+  return d;
+}
+
+async function vercel(path, method, body) {
+  const { token } = vercelEnv();
+  const r = await fetch(VERCEL + path, {
+    method: method || "GET",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(20000)
+  });
+  const text = await r.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+  return { ok: r.ok, status: r.status, data };
+}
+
+/** the records the customer has to create, and what they mean */
+function dnsFor(domain, verification) {
+  const records = [
+    { type: "CNAME", name: "www", value: "cname.vercel-dns.com", note: "www." + domain + " → us" },
+    { type: "A", name: "@", value: "76.76.21.21", note: domain + " itself (apex)" }
+  ];
+  for (const v of verification || []) {
+    if (v && v.type === "TXT") {
+      records.push({ type: "TXT", name: v.domain || "@", value: v.value, note: v.reason || "proves the domain is yours" });
+    }
+  }
+  return records;
+}
+
+async function domainAction(res, action, body, r0) {
+  const env = vercelEnv();
+  if (!env.token) {
+    return res.status(503).json({
+      ok: false, code: "NO_VERCEL_TOKEN",
+      message: "Set VERCEL_TOKEN on the server first — a Vercel access token with access to this project."
+    });
+  }
+
+  const q = env.team ? "?teamId=" + encodeURIComponent(env.team) : "";
+  const current = await rest("restaurants?id=eq." + r0.id + "&select=id,handle,custom_domain,domain_status,domain_error");
+  const row = (current.ok && (current.data || [])[0]) || {};
+
+  /* ---------------------------------------------------------------- remove */
+  if (action === "domain-remove") {
+    const domain = cleanDomain(body.domain || row.custom_domain);
+    if (domain) {
+      await vercel("/v10/projects/" + env.project + "/domains/" + encodeURIComponent(domain) + q, "DELETE");
+      await vercel("/v10/projects/" + env.project + "/domains/" + encodeURIComponent("www." + domain) + q, "DELETE");
+    }
+    await rest("restaurants?id=eq." + r0.id, {
+      method: "PATCH", prefer: "return=minimal",
+      body: { custom_domain: null, domain_status: null, domain_added_at: null, domain_error: null }
+    });
+    return res.status(200).json({ ok: true, removed: domain || null });
+  }
+
+  /* ----------------------------------------------------------------- check */
+  if (action === "domain-check") {
+    const domain = cleanDomain(body.domain || row.custom_domain);
+    if (!domain) return res.status(400).json({ ok: false, code: "NO_DOMAIN", message: "This restaurant has no domain yet." });
+
+    const mine = await vercel("/v9/projects/" + env.project + "/domains/" + encodeURIComponent(domain) + q, "GET");
+    const cfg = await vercel("/v6/domains/" + encodeURIComponent(domain) + "/config" + q, "GET");
+
+    const added = mine.ok;
+    const verified = Boolean(mine.data && mine.data.verified);
+    const misconfigured = Boolean(cfg.ok && cfg.data && cfg.data.misconfigured);
+    const live = added && verified && !misconfigured;
+
+    await rest("restaurants?id=eq." + r0.id, {
+      method: "PATCH", prefer: "return=minimal",
+      body: {
+        domain_status: live ? "live" : (added ? "pending" : "error"),
+        domain_error: live ? null : (added ? (misconfigured ? "DNS is not pointing here yet" : "waiting for the certificate") : "not on the project")
+      }
+    });
+
+    return res.status(200).json({
+      ok: true, domain, added, verified, misconfigured, live,
+      status: live ? "live" : (added ? "pending" : "error"),
+      records: dnsFor(domain, mine.data && mine.data.verification)
+    });
+  }
+
+  /* ------------------------------------------------------------------- add */
+  const domain = cleanDomain(body.domain);
+  if (!domain) {
+    return res.status(400).json({ ok: false, code: "BAD_DOMAIN", message: "That does not look like a domain. Try restaurant.com" });
+  }
+
+  const clash = await rest("restaurants?custom_domain=eq." + encodeURIComponent(domain) + "&id=neq." + r0.id + "&select=handle");
+  if (clash.ok && (clash.data || []).length) {
+    return res.status(409).json({
+      ok: false, code: "DOMAIN_TAKEN",
+      message: "That domain is already connected to /" + clash.data[0].handle + "."
+    });
+  }
+
+  /* the bare domain and www: one certificate covers both, and a guest typing
+     www. should not land on a dead host */
+  const apex = await vercel("/v10/projects/" + env.project + "/domains" + q, "POST", { name: domain });
+  if (!apex.ok) {
+    const msg = (apex.data && apex.data.error && apex.data.error.message) || "Vercel refused that domain.";
+    const already = /already|exists|in use|409/i.test(msg) || apex.status === 409;
+    return res.status(already ? 409 : 502).json({
+      ok: false, code: already ? "DOMAIN_IN_USE" : "VERCEL_ERROR",
+      message: already
+        ? "Vercel says that domain is already attached to another project or account."
+        : msg
+    });
+  }
+  const www = await vercel("/v10/projects/" + env.project + "/domains" + q, "POST", { name: "www." + domain });
+
+  await rest("restaurants?id=eq." + r0.id, {
+    method: "PATCH", prefer: "return=minimal",
+    body: {
+      custom_domain: domain,
+      domain_status: "pending",
+      domain_added_at: new Date().toISOString(),
+      domain_error: null
+    }
+  });
+
+  return res.status(200).json({
+    ok: true,
+    domain,
+    wwwAdded: www.ok,
+    verified: Boolean(apex.data && apex.data.verified),
+    status: "pending",
+    records: dnsFor(domain, apex.data && apex.data.verification),
+    where: "This domain now serves digimenu.indubaicity.com/" + r0.handle + " — the menu loads at the domain's root once DNS resolves and Vercel issues the certificate."
+  });
+}
+
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -48,7 +206,7 @@ module.exports = async function handler(req, res) {
 
   /* ---- list every restaurant with what it is owed ---- */
   if (req.method === "GET") {
-    const r = await rest("restaurants?select=id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,order_email&order=created_at");
+    const r = await rest("restaurants?select=id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,order_email,custom_domain,domain_status,domain_error&order=created_at");
     if (!r.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
     const today = new Date().toISOString().slice(0, 10);
     const rows = (r.data || []).map((x) => ({
@@ -71,6 +229,17 @@ module.exports = async function handler(req, res) {
   if (!r0) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No restaurant with that handle." });
 
   const action = String(body.action || "record-payment");
+
+  /* ------------------------------------------------------------------------
+     A customer's own domain. One Vercel project serves every restaurant, so
+     adding a domain is: add it to the project through the API, tell the owner
+     which DNS records to create, then check back until Vercel says the
+     certificate is issued. Nothing is deployed and nothing is copied.
+     ---------------------------------------------------------------------- */
+  if (action === "domain-add" || action === "domain-check" || action === "domain-remove") {
+    return domainAction(res, action, body, r0);
+  }
+
   const patch = {};
 
   if (action === "set-plan") {

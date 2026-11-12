@@ -23,6 +23,12 @@
   const pathHandle = (seg && !RESERVED[seg.toLowerCase()]) ? seg : (sub || null);
   const urlHandle = String(params.get("r") || pathHandle || "").toLowerCase() || null;
 
+  /* On a restaurant's own domain there is no handle in the URL — the host is
+     the restaurant. Anything that is not one of ours is looked up by domain. */
+  const OUR_HOST = /^(www\.)?(digimenu\.indubaicity\.com|digimenu[-a-z0-9]*\.vercel\.app)$/i;
+  const hostName = location.hostname.replace(/^www\./i, "").toLowerCase();
+  const hostLookup = (!urlHandle && !OUR_HOST.test(location.hostname)) ? hostName : "";
+
   const PUBLIC_BASE = (function () {
     const cfg = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.publicBase) || "";
     if (cfg) return cfg.replace(/\/?$/, "/");
@@ -584,7 +590,7 @@
     const base = cfg.apiBase || "";
     /* only the address decides which menu this is: an unknown URL must show
        "not available", never whatever restaurant this browser saw last */
-    const wanted = urlHandle || "";
+    const wanted = urlHandle || hostLookup || "";
 
     if (!wanted) {
       unavailable("This link has no menu address in it. Scan the restaurant's QR code again.");
@@ -594,7 +600,8 @@
     let res;
     let data;
     try {
-      res = await fetch(base + "/api/menu?handle=" + encodeURIComponent(wanted));
+      res = await fetch(base + "/api/menu?" +
+        (urlHandle ? "handle=" : "host=") + encodeURIComponent(wanted));
       data = await res.json();
     } catch (e) {
       unavailable("We could not reach the menu. Check your connection and try again.");
@@ -613,6 +620,12 @@
     accent = r.accent || "#f0485f";
     handle = r.handle || wanted;
     publicLink = PUBLIC_BASE.replace(/^https?:\/\//i, "") + handle;
+
+    /* on a customer's own domain the address bar should read their domain, not
+     * /menu.html — the hop through the marketing page is ours, not theirs */
+    if (hostLookup && location.pathname === "/menu.html") {
+      try { history.replaceState(null, "", "/"); } catch (e) { /* not fatal */ }
+    }
     whatsapp = String(r.whatsapp || "").replace(/\D/g, "");
     purposes = (r.purposes && r.purposes.length) ? r.purposes : ["Dine In", "Take Away"];
     mode = purposes[0] || "Dine In";
