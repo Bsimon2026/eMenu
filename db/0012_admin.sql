@@ -23,6 +23,10 @@ create table if not exists public.admin_users (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null unique references auth.users (id) on delete cascade,
 
+  -- what the admin types at the door: "dmin" for @dmin. Stored without the @,
+  -- lowercased, unique. The email stays behind it and is only ever used to
+  -- send a temporary password — never to sign in.
+  username    text not null,
   email       text not null,
   name        text,                 -- what the audit line says: "@dmin"
   perms       text[] not null default '{view}',
@@ -37,6 +41,17 @@ alter table public.admin_users add constraint admin_users_perms_check
   check (perms <@ array['view', 'export', 'pay_view', 'pay_entry', 'admins']);
 
 create index if not exists admin_users_user_idx on public.admin_users (user_id);
+
+-- one person, one id: "dmin" cannot be handed to two admins
+create unique index if not exists admin_users_username_key
+  on public.admin_users (lower(username));
+
+create unique index if not exists admin_users_email_key
+  on public.admin_users (lower(email));
+
+alter table public.admin_users drop constraint if exists admin_users_username_check;
+alter table public.admin_users add constraint admin_users_username_check
+  check (username ~ '^[a-z0-9][a-z0-9._-]{1,23}$');
 
 -- Service key only. The API reads this through the caller's token; nothing in
 -- a browser can grant itself a right.

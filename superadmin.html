@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="/assets/favicon.ico" sizes="any">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/base.css?v=20261111r">
+<link rel="stylesheet" href="/assets/base.css?v=20261111s">
 <style>
   body { background: #f6f7f8; font-family: var(--ui); color: #171a1d; margin: 0; }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 26px 20px 70px; }
@@ -47,10 +47,11 @@
     <h1>Superadmin</h1>
     <p class="sub">DigiMenu operator console</p>
     <div style="display:grid;gap:10px">
-      <div><label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" placeholder="you@company.com"></div>
+      <div><label for="lgUser">User id</label><input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="@dmin"></div>
       <div><label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password"></div>
       <button class="primary" id="lgGo" type="button">Sign in</button>
       <button id="lgForgot" type="button" style="border:0;background:none;color:#6a757c;text-align:left;padding:0;height:auto">Forgot your password? Email me a temporary one</button>
+      <p class="hint" style="margin:0">The user id is not an email. A temporary password goes to the address on file.</p>
     </div>
     <div class="err" id="lgErr"></div>
   </div>
@@ -102,8 +103,9 @@
     </table>
     <div style="margin-top:16px;border-top:1px solid #eef1f3;padding-top:14px">
       <div class="row">
-        <div><label for="nuEmail">Email</label><input id="nuEmail" type="email" placeholder="name@company.com" style="width:230px"></div>
-        <div><label for="nuName">Name</label><input id="nuName" placeholder="@dmin" style="width:150px"></div>
+        <div><label for="nuUser">User id</label><input id="nuUser" placeholder="@dmin" style="width:150px" autocapitalize="none" spellcheck="false"></div>
+        <div><label for="nuEmail">Email (for the temporary password)</label><input id="nuEmail" type="email" placeholder="name@company.com" style="width:250px"></div>
+        <div><label for="nuName">Name</label><input id="nuName" placeholder="optional" style="width:150px"></div>
       </div>
       <div style="margin-top:10px" id="nuPerms"></div>
       <div style="margin-top:12px"><button class="primary" id="nuAdd" type="button">Create admin</button></div>
@@ -112,9 +114,9 @@
   </div>
 </div>
 
-<script src="/api/config?v=20261111r"></script>
-<script src="/assets/config.js?v=20261111r"></script>
-<script src="/assets/auth.js?v=20261111r"></script>
+<script src="/api/config?v=20261111s"></script>
+<script src="/assets/config.js?v=20261111s"></script>
+<script src="/assets/auth.js?v=20261111s"></script>
 <script>
 (function () {
   "use strict";
@@ -155,31 +157,39 @@
 
   /* ---------------- sign in ---------------- */
   function signIn() {
-    var email = $("#lgEmail").value.trim(), pass = $("#lgPass").value;
-    if (!email || !pass) { fail("#lgErr", "Email and password, please."); return; }
+    var username = $("#lgUser").value.trim(), pass = $("#lgPass").value;
+    if (!username || !pass) { fail("#lgErr", "User id and password, please."); return; }
     $("#lgGo").disabled = true;
     $("#lgGo").textContent = "Signing in…";
-    window.Auth.signIn(email, pass).then(function (r) {
+    /* the id is resolved to the admin's own email on the server, so the address
+       never appears on this page and never travels from the browser */
+    fetch("/api/superadmin?login=1", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: username, password: pass })
+    }).then(function (r) { return r.json(); }).then(function (d) {
       $("#lgGo").disabled = false;
       $("#lgGo").textContent = "Sign in";
-      if (!r.ok) { fail("#lgErr", r.message || "That did not work."); return; }
+      if (!d || !d.ok) { fail("#lgErr", (d && d.message) || "That did not work."); return; }
+      window.Auth.adopt(d.session);
       fail("#lgErr", "");
       boot();
+    }).catch(function () {
+      $("#lgGo").disabled = false;
+      $("#lgGo").textContent = "Sign in";
+      fail("#lgErr", "Could not reach the server.");
     });
   }
   $("#lgGo").addEventListener("click", signIn);
   $("#lgPass").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
 
   $("#lgForgot").addEventListener("click", function () {
-    var email = $("#lgEmail").value.trim();
-    if (!email) { fail("#lgErr", "Type your email first, then press it again."); return; }
+    var username = $("#lgUser").value.trim();
+    if (!username) { fail("#lgErr", "Type your user id first, then press it again."); return; }
     fail("#lgErr", "");
-    fetch("/api/team?reset=1", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email })
+    fetch("/api/superadmin?forgot=1", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: username })
     }).then(function (r) { return r.json(); }).then(function (d) {
-      fail("#lgErr", d && d.ok
-        ? "A temporary password is on its way to " + email + ". Sign in with it and change it here."
-        : ((d && d.message) || "That did not work."));
+      fail("#lgErr", (d && d.message) || "If that user id exists, a temporary password is on its way.");
       $("#lgErr").style.color = d && d.ok ? "#0f7b4f" : "#b32b3f";
     }).catch(function () { fail("#lgErr", "Could not reach the server."); });
   });
@@ -196,7 +206,7 @@
     }
     PERMS = r.d.perms || [];
     $("#meName").textContent = (r.d.me && r.d.me.name) || "Admin";
-    $("#meEmail").textContent = (r.d.me && r.d.me.email) || "";
+    $("#meEmail").textContent = r.d.me && r.d.me.username ? "@" + r.d.me.username : ((r.d.me && r.d.me.email) || "");
     $("#mePerms").textContent = PERMS.length ? PERMS.join(" · ") : "no rights";
     $("#btnExport").classList.toggle("hidden", PERMS.indexOf("export") === -1);
     $("#adminsCard").classList.toggle("hidden", PERMS.indexOf("admins") === -1);
@@ -303,11 +313,11 @@
     if (!r.ok) { return; }
     var list = r.d.admins || [];
     $("#adminRows").innerHTML = list.map(function (a) {
-      return "<tr><td><b>" + esc(a.name || a.email) + '</b><br><span class="perms">' + esc(a.email) + "</span></td>" +
+      return "<tr><td><b>@" + esc(a.username) + '</b><br><span class="perms">' + esc(a.email) + "</span></td>" +
         "<td>" + (a.perms || []).map(function (p) { return tag(p, "draft"); }).join(" ") + "</td>" +
         '<td class="perms">' + (a.last_seen ? new Date(a.last_seen).toLocaleString() : "never") + "</td>" +
-        '<td><button data-reset="' + esc(a.email) + '">Email temp password</button> ' +
-        '<button data-unadmin="' + esc(a.email) + '">Remove</button></td></tr>';
+        '<td><button data-reset="' + esc(a.username) + '">Email temp password</button> ' +
+        '<button data-unadmin="' + esc(a.username) + '">Remove</button></td></tr>';
     }).join("");
   }
 
@@ -318,25 +328,27 @@
     if (!reset && !un) return;
     el.disabled = true;
     var r = reset
-      ? await api("?reset=1", { method: "POST", body: { email: reset } })
-      : await api("?admins=1", { method: "POST", body: { action: "remove", email: un } });
+      ? await api("?reset=1", { method: "POST", body: { username: reset } })
+      : await api("?admins=1", { method: "POST", body: { action: "remove", username: un } });
     el.disabled = false;
     if (!r.ok) { fail("#nuErr", r.d.message || "That did not work."); return; }
-    fail("#nuErr", reset ? "A temporary password is on its way to " + reset + "." : "");
+    fail("#nuErr", reset ? "A temporary password is on its way for @" + reset + "." : "");
     loadAdmins();
   });
 
   $("#nuAdd").addEventListener("click", async function () {
+    var username = $("#nuUser").value.trim();
     var email = $("#nuEmail").value.trim();
     var perms = Array.prototype.slice.call(document.querySelectorAll("[data-right]:checked")).map(function (b) { return b.dataset.right; });
-    if (!email) { fail("#nuErr", "Type their email."); return; }
+    if (!username) { fail("#nuErr", "Type the user id they will sign in with."); return; }
+    if (!email) { fail("#nuErr", "Type an email — that is where their temporary password goes."); return; }
     if (!perms.length) { fail("#nuErr", "Give them at least one right."); return; }
     $("#nuAdd").disabled = true;
-    var r = await api("?admins=1", { method: "POST", body: { action: "create", email: email, name: $("#nuName").value.trim(), perms: perms } });
+    var r = await api("?admins=1", { method: "POST", body: { action: "create", username: username, email: email, name: $("#nuName").value.trim(), perms: perms } });
     $("#nuAdd").disabled = false;
     if (!r.ok) { fail("#nuErr", r.d.message || "That did not work."); return; }
     fail("#nuErr", "");
-    $("#nuEmail").value = ""; $("#nuName").value = "";
+    $("#nuUser").value = ""; $("#nuEmail").value = ""; $("#nuName").value = "";
     loadAdmins();
   });
 

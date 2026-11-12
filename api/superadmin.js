@@ -52,9 +52,25 @@ function extend(from, billing) {
 }
 
 async function adminRow(userId) {
-  const r = await rest("admin_users?user_id=eq." + userId + "&select=user_id,email,name,perms,last_seen");
+  const r = await rest("admin_users?user_id=eq." + userId + "&select=user_id,username,email,name,perms,last_seen");
   if (!r.ok) return { ok: false, row: null };
   return { ok: true, row: (r.data || [])[0] || null };
+}
+
+const hits = new Map();
+function over(key, max) {
+  const now = Date.now();
+  const seen = (hits.get(key) || []).filter((t) => now - t < 60 * 60 * 1000);
+  seen.push(now);
+  hits.set(key, seen);
+  if (hits.size > 500) hits.clear();
+  return seen.length > max;
+}
+
+/** "  @Dmin " -> "dmin": what is typed at the door, stored without the @ */
+function cleanUser(raw) {
+  const u = String(raw || "").trim().replace(/^@+/, "").toLowerCase();
+  return /^[a-z0-9][a-z0-9._-]{1,23}$/.test(u) ? u : "";
 }
 
 function can(perms, what) {
@@ -110,6 +126,65 @@ module.exports = async function handler(req, res) {
 
   const q = req.query || {};
 
+  /* ---- the door ----
+     An admin types a USER ID and a password; the email behind that id never
+     appears on the page and is only ever used to send a temporary password. */
+  if (q.login !== undefined) {
+    if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
+    let body = req.body;
+    if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
+    const username = cleanUser(body && body.username);
+    const password = String((body && body.password) || "");
+    if (!username || password.length < 6) {
+      return res.status(400).json({ ok: false, code: "BAD_LOGIN", message: "Enter your user id and password." });
+    }
+    const ip = String((req.headers["x-forwarded-for"] || "").split(",")[0] || "local");
+    if (over("adm:" + ip + "/" + username, 12)) {
+      return res.status(429).json({ ok: false, code: "SLOW_DOWN", message: "Too many tries. Wait an hour." });
+    }
+
+    const found = await rest("admin_users?username=eq." + encodeURIComponent(username) + "&select=username,email,name,perms");
+    if (!found.ok) {
+      return res.status(503).json({ ok: false, code: "NO_TABLE", message: "Run db/0012_admin.sql first." });
+    }
+    const row = (found.data || [])[0];
+    if (!row) return res.status(401).json({ ok: false, code: "NO_LOGIN", message: "That user id and password do not match." });
+
+    const tok = await fetch((process.env.SUPABASE_URL || "").replace(/\/+$/, "") + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { apikey: process.env.SUPABASE_ANON_KEY || "", "Content-Type": "application/json" },
+      body: JSON.stringify({ email: row.email, password }),
+      signal: AbortSignal.timeout(20000)
+    });
+    const text = await tok.text();
+    let data = null; try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+    if (!tok.ok) return res.status(401).json({ ok: false, code: "NO_LOGIN", message: "That user id and password do not match." });
+
+    return res.status(200).json({
+      ok: true, session: data,
+      me: { username: row.username, name: row.name || "@" + row.username, perms: row.perms || [] }
+    });
+  }
+
+  /* forgot: always the same answer, so this cannot be used to find out which
+     admin ids exist. The mail goes to the address stored against the id. */
+  if (q.forgot !== undefined) {
+    if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
+    let body = req.body;
+    if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
+    const username = cleanUser(body && body.username);
+    if (!username) return res.status(400).json({ ok: false, code: "BAD_USER", message: "Type your user id." });
+
+    const found = await rest("admin_users?username=eq." + encodeURIComponent(username) + "&select=email");
+    const row = (found.ok && (found.data || [])[0]) || null;
+    if (row) {
+      const reset = require("./_lib/reset-password");
+      const shim = { setHeader() {}, status() { return shim; }, json() { return shim; }, end() { return shim; } };
+      await reset({ method: "POST", headers: req.headers || {}, query: {}, body: { email: row.email } }, shim);
+    }
+    return res.status(200).json({ ok: true, message: "If that user id exists, a temporary password is on its way." });
+  }
+
   /* ---- who is asking, and what may they do ---- */
   let perms = [];
   let me = null;
@@ -132,7 +207,13 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ ok: false, code: "NOT_ADMIN", message: "This account is not an admin." });
     }
     perms = Array.isArray(a.row.perms) ? a.row.perms : [];
-    me = { email: a.row.email, name: a.row.name || a.row.email, perms: perms.slice(), breakGlass: false };
+    me = {
+      username: a.row.username,
+      email: a.row.email,
+      name: a.row.name || "@" + (a.row.username || ""),
+      perms: perms.slice(),
+      breakGlass: false
+    };
     /* a quiet "last seen", best effort */
     await rest("admin_users?user_id=eq." + user.id, {
       method: "PATCH", prefer: "return=minimal", body: { last_seen: new Date().toISOString() }
@@ -149,7 +230,7 @@ module.exports = async function handler(req, res) {
     if (!can(perms, "admins")) return res.status(403).json({ ok: false, code: "NO_RIGHT", message: "You cannot manage admins." });
 
     if (req.method === "GET") {
-      const r = await rest("admin_users?select=user_id,email,name,perms,created_at,last_seen&order=created_at");
+      const r = await rest("admin_users?select=user_id,username,email,name,perms,created_at,last_seen&order=created_at");
       if (!r.ok) return res.status(503).json({ ok: false, code: "NO_TABLE", message: "Run db/0012_admin.sql first." });
       return res.status(200).json({ ok: true, admins: r.data || [], all: ALL });
     }
@@ -160,18 +241,27 @@ module.exports = async function handler(req, res) {
 
     const action = String(body.action || "create");
     const email = String(body.email || "").trim().toLowerCase();
+    const username = cleanUser(body.username);
+    const byUser = (u) => "admin_users?username=eq." + encodeURIComponent(u);
 
     /* --------------------------------------------------- create an admin */
     if (action === "create") {
-      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) {
-        return res.status(400).json({ ok: false, code: "BAD_EMAIL", message: "That email does not look complete." });
+      if (!username) {
+        return res.status(400).json({ ok: false, code: "BAD_USER", message: "Give them a user id: 2-24 characters, letters numbers dot dash underscore." });
       }
-      const name = String(body.name || "").trim().slice(0, 60) || email.split("@")[0];
+      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) {
+        return res.status(400).json({ ok: false, code: "BAD_EMAIL", message: "An email is needed behind the id — that is where a temporary password goes." });
+      }
+      const name = String(body.name || "").trim().slice(0, 60) || "@" + username;
       const want = Array.isArray(body.perms) ? body.perms.filter((p) => ALL.indexOf(p) !== -1) : ["view"];
 
-      const exists = await rest("admin_users?email=eq." + encodeURIComponent(email) + "&select=user_id");
+      const exists = await rest(byUser(username) + "&select=user_id");
       if (exists.ok && (exists.data || []).length) {
-        return res.status(409).json({ ok: false, code: "ALREADY_ADMIN", message: "That email is already an admin." });
+        return res.status(409).json({ ok: false, code: "USER_TAKEN", message: "@" + username + " is already an admin." });
+      }
+      const mailTaken = await rest("admin_users?email=eq." + encodeURIComponent(email) + "&select=user_id");
+      if (mailTaken.ok && (mailTaken.data || []).length) {
+        return res.status(409).json({ ok: false, code: "EMAIL_TAKEN", message: "That email is already behind another admin id." });
       }
 
       /* a random password nobody knows: the first way in is the emailed
@@ -195,20 +285,20 @@ module.exports = async function handler(req, res) {
 
       const row = await rest("admin_users", {
         method: "POST", prefer: "return=representation",
-        body: { user_id: userId, email, name, perms: want.length ? want : ["view"] }
+        body: { user_id: userId, username, email, name, perms: want.length ? want : ["view"] }
       });
       if (!row.ok) {
         await adminAuthJson("/users/" + userId, "DELETE");
         return res.status(502).json({ ok: false, code: "SAVE_FAILED", message: "Created the login but not the admin row. Try again." });
       }
-      return res.status(200).json({ ok: true, admin: { email, name, perms: want }, next: "Send them a temporary password with Reset." });
+      return res.status(200).json({ ok: true, admin: { username, email, name, perms: want }, next: "Send them a temporary password with Reset." });
     }
 
     /* --------------------------------------------------- change the rights */
     if (action === "perms") {
       const want = (Array.isArray(body.perms) ? body.perms : []).filter((p) => ALL.indexOf(p) !== -1);
       if (!want.length) return res.status(400).json({ ok: false, code: "NO_PERMS", message: "Give them at least one right." });
-      const upd = await rest("admin_users?email=eq." + encodeURIComponent(email), {
+      const upd = await rest(byUser(username), {
         method: "PATCH", prefer: "return=minimal", body: { perms: want }
       });
       if (!upd.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED" });
@@ -217,14 +307,14 @@ module.exports = async function handler(req, res) {
 
     /* --------------------------------------------------------- remove */
     if (action === "remove") {
-      const r = await rest("admin_users?email=eq." + encodeURIComponent(email) + "&select=user_id");
+      const r = await rest(byUser(username) + "&select=user_id");
       const gone = (r.ok && (r.data || [])[0]) || null;
       if (!gone) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
       const others = await rest("admin_users?select=user_id");
       if ((others.data || []).length <= 1) {
         return res.status(409).json({ ok: false, code: "LAST_ADMIN", message: "That is the only admin left. Make another first." });
       }
-      await rest("admin_users?email=eq." + encodeURIComponent(email), { method: "DELETE" });
+      await rest(byUser(username), { method: "DELETE" });
       await adminAuthJson("/users/" + gone.user_id, "DELETE");
       return res.status(200).json({ ok: true });
     }
@@ -237,8 +327,11 @@ module.exports = async function handler(req, res) {
     if (!can(perms, "admins")) return res.status(403).json({ ok: false, code: "NO_RIGHT" });
     let body = req.body;
     if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
-    const email = String((body && body.email) || "").trim().toLowerCase();
-    if (!email) return res.status(400).json({ ok: false, code: "NO_EMAIL" });
+    const uname = cleanUser(body && (body.username || body.email));
+    if (!uname) return res.status(400).json({ ok: false, code: "NO_USER" });
+    const who = await rest("admin_users?username=eq." + encodeURIComponent(uname) + "&select=email");
+    const email = (who.ok && (who.data || [])[0] && who.data[0].email) || "";
+    if (!email) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No admin with that user id." });
 
     const reset = require("./_lib/reset-password");
     const out = { code: 500, body: null };
