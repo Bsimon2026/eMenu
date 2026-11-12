@@ -177,7 +177,12 @@
     const topImport = $('.topbar [data-view="import"]');
     if (topImport) topImport.style.display = name === "import" ? "none" : "";
     location.hash = name === "overview" ? "" : name;
-    if (name === "menu") renderMenuEditor();
+    if (name === "menu") {
+      renderMenuEditor();
+      /* the menu in memory can predate Arabic (or a price changed on another
+         device); refresh from the server and repaint rather than trusting it */
+      Promise.resolve(reloadOwnMenu()).then(() => renderMenuEditor()).catch(() => {});
+    }
     if (name === "orders") renderOrders();
     if (name === "feedback") renderFeedback();
     if (name === "marketing") renderMarketing();
