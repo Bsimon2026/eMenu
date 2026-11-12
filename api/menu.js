@@ -126,11 +126,22 @@ async function menuHandler(req, res) {
       return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
     }
 
+    /* the owner edits the Arabic as well as the English, so the editor must
+       carry both — drafts included, because a draft is exactly what needs a
+       second pair of eyes before it is published */
+    let ownAr = { items: new Map(), cats: new Map() };
+    const [oi, oc] = await Promise.all([
+      rest("menu_item_translations?restaurant_id=eq." + mineRest.id + "&locale=eq.ar&select=item_id,name,description"),
+      rest("menu_category_translations?restaurant_id=eq." + mineRest.id + "&locale=eq.ar&select=category_id,name")
+    ]);
+    if (oi.ok) (oi.data || []).forEach((x) => ownAr.items.set(x.item_id, x));
+    if (oc.ok) (oc.data || []).forEach((x) => ownAr.cats.set(x.category_id, x));
+
     return res.status(200).json({
       ok: true,
       restaurant: mineRest,
       role: actor.role,
-      categories: builtOwn.categories,
+      categories: withArabic(builtOwn.categories, ownAr),
       itemCount: builtOwn.itemCount
     });
   }
