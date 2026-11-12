@@ -72,7 +72,7 @@
     <div class="who">
       <div>
         <h1 id="meName">Admin</h1>
-        <p class="sub" style="margin:0"><span id="meEmail"></span> · <span class="perms" id="mePerms"></span></p>
+        <p class="sub" style="margin:0"><span id="meEmail"></span><span id="meSep"> · </span><span class="perms" id="mePerms"></span></p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button id="btnExport" class="hidden" type="button">Export CSV</button>
@@ -262,6 +262,7 @@
     $("#meName").textContent = (r.d.me && r.d.me.name) || "Admin";
     var id = r.d.me && r.d.me.username ? "@" + r.d.me.username : ((r.d.me && r.d.me.email) || "");
     $("#meEmail").textContent = id === $("#meName").textContent ? "" : id;
+    $("#meSep").style.display = $("#meEmail").textContent ? "" : "none";
     $("#mePerms").textContent = PERMS.length ? PERMS.join(" · ") : "no rights";
     $("#btnExport").classList.toggle("hidden", PERMS.indexOf("export") === -1);
     $("#adminsCard").classList.toggle("hidden", PERMS.indexOf("admins") === -1);
