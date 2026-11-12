@@ -1353,6 +1353,8 @@
         btn.setAttribute("aria-pressed", String(next));
         btn.classList.toggle("is-off", next);
         btn.innerHTML = '<span class="d"></span>' + (next ? "Sold out" : "Available");
+        const row = btn.closest(".mrow");
+        if (row) row.classList.toggle("is-sold", next);
         item.soldOut = next;
         save();
         const saved = await menuEdit({ action: "updateItem", id, soldOut: next });

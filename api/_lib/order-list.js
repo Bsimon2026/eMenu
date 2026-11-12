@@ -23,10 +23,24 @@ module.exports = async function listOrders(req, res) {
   const restaurant = actor && actor.restaurant;
   if (!restaurant) return res.status(200).json({ ok: true, orders: [], currency: "AED" });
 
+  /* Optional server-side filters, used by the dashboard's History tab: without
+     them the list stops at the newest 100 and a six-month-old order cannot be
+     found by any date search. Everything is validated, never interpolated raw. */
+  const q = req.query || {};
+  const state = q.state === "done" ? "eq.confirmed" : q.state === "active" ? "neq.confirmed" : "";
+  const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : "");
+  const from = day(q.from), to = day(q.to);
+
+  let filters = "";
+  if (state) filters += "&status=" + state;
+  if (from) filters += "&created_at=gte." + from + "T00:00:00";
+  if (to) filters += "&created_at=lte." + to + "T23:59:59";
+
   const list = await rest(
     "orders?restaurant_id=eq." + restaurant.id +
     "&select=id,mode,table_no,pickup_at,address,guest_name,guest_phone,total,status,created_at" +
-    "&order=created_at.desc&limit=100"
+    filters +
+    "&order=created_at.desc&limit=" + (from || to || state === "eq.confirmed" ? 500 : 100)
   );
   if (!list.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
 
