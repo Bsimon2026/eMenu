@@ -849,8 +849,8 @@ body.view-only #sheet, body.view-only #sheetBack { display: none !important; }
 /* a single hero photo should fill the band, not stretch */
 .hero-media.one img { object-position: center 45%; }
 
-/* the category rail scrolls; fade the edge so a cut chip looks intentional */
-.rail { position: relative; }
+/* the rail keeps its sticky positioning: an earlier rule set
+   position: relative here and quietly made it scroll away with the page */
 .rail::after {
   content: "";
   position: absolute;
@@ -960,3 +960,9 @@ html[dir="rtl"] .lang-switch { margin-inline-start: auto; }
   }
   .cat-pick select:focus-visible { outline: none; box-shadow: var(--focus); }
 }
+
+/* The chips stay pinned while the menu scrolls, so a guest can jump to another
+   category from anywhere. On a page with a hero the header is hidden, so the
+   rail pins to the very top; otherwise it sits under the header. */
+.rail { top: 0; }
+body:not(.has-hero) .rail { top: 64px; }
