@@ -2536,9 +2536,10 @@
       if (m.ok && m.data.categories) {
         state.menu = {
           categories: m.data.categories.map((c) => ({
-            id: c.id, name: c.name, featured: !!c.featured,
+            id: c.id, name: c.name, arName: c.arName || "", featured: !!c.featured,
             items: (c.items || []).map((it) => ({
               id: it.id, name: it.name, desc: it.description || "",
+              arName: it.arName || "", arDesc: it.arDesc || "",
               price: it.price == null ? 0 : it.price, diet: null,
               image: it.image || null, soldOut: !!it.soldOut
             }))
@@ -2792,11 +2793,14 @@
         categories: m.data.categories.map((c) => ({
           id: c.id,
           name: c.name,
+          arName: c.arName || "",
           featured: !!c.featured,
           items: c.items.map((it) => ({
             id: it.id,
             name: it.name,
+            arName: it.arName || "",
             desc: it.description || "",
+            arDesc: it.arDesc || "",
             price: it.price == null ? 0 : it.price,
             diet: it.diet || null,
             image: it.image || null,
