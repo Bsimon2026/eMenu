@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Superadmin — DigiMenu</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/assets/favicon.ico" sizes="any">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/base.css?v=20261111r">
+<style>
+  body { background: #f6f7f8; font-family: var(--ui); color: #171a1d; margin: 0; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 26px 20px 70px; }
+  h1 { font-family: var(--display); font-size: 21px; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #6a757c; margin: 0 0 20px; }
+  .card { background: #fff; border: 1px solid #e3e7ea; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  label { display: block; font-size: 11.5px; color: #6a757c; margin-bottom: 4px; letter-spacing: .02em; }
+  input, select { height: 36px; padding: 0 10px; border: 1px solid #d7dde1; border-radius: 8px; font: inherit; font-size: 13.5px; background: #fff; }
+  button { height: 36px; padding: 0 15px; border-radius: 8px; border: 1px solid #d7dde1; background: #fff; font: inherit; font-size: 13.5px; cursor: pointer; }
+  button.primary { background: #f0485f; border-color: #f0485f; color: #fff; font-weight: 600; }
+  button:disabled { opacity: .55; cursor: default; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #eef1f3; vertical-align: middle; }
+  th { font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: #8a949b; font-weight: 500; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; }
+  .tag.ok { background: #e7f5ee; color: #0f7b4f; }
+  .tag.no { background: #fdecef; color: #b32b3f; }
+  .tag.draft { background: #eef1f3; color: #5c6166; }
+  .hint { font-size: 12.5px; color: #6a757c; margin-top: 8px; }
+  .err { color: #b32b3f; font-size: 13px; margin-top: 10px; display: none; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .login { max-width: 380px; margin: 12vh auto 0; }
+  .login h1 { font-size: 20px; }
+  .login input { width: 100%; }
+  .who { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .perms { font-size: 12px; color: #8a949b; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 13px; color: #171a1d; }
+  .chk input { height: auto; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- sign in -->
+<div class="wrap login" id="loginView">
+  <div class="card">
+    <h1>Superadmin</h1>
+    <p class="sub">DigiMenu operator console</p>
+    <div style="display:grid;gap:10px">
+      <div><label for="lgEmail">Email</label><input id="lgEmail" type="email" autocomplete="username" placeholder="you@company.com"></div>
+      <div><label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password"></div>
+      <button class="primary" id="lgGo" type="button">Sign in</button>
+      <button id="lgForgot" type="button" style="border:0;background:none;color:#6a757c;text-align:left;padding:0;height:auto">Forgot your password? Email me a temporary one</button>
+    </div>
+    <div class="err" id="lgErr"></div>
+  </div>
+</div>
+
+<!-- console -->
+<div class="wrap hidden" id="appView">
+  <div class="card">
+    <div class="who">
+      <div>
+        <h1 id="meName">Admin</h1>
+        <p class="sub" style="margin:0"><span id="meEmail"></span> · <span class="perms" id="mePerms"></span></p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="btnExport" class="hidden" type="button">Export CSV</button>
+        <button id="btnPass" type="button">Change password</button>
+        <button id="btnOut" type="button">Sign out</button>
+      </div>
+    </div>
+    <div id="passBox" class="hidden" style="margin-top:14px;max-width:420px">
+      <div class="row">
+        <div style="flex:1"><label for="np1">New password</label><input id="np1" type="password" style="width:100%" autocomplete="new-password"></div>
+        <div style="flex:1"><label for="np2">Again</label><input id="np2" type="password" style="width:100%" autocomplete="new-password"></div>
+        <button class="primary" id="npSave" type="button">Save</button>
+      </div>
+      <div class="hint" id="npHint">At least 8 characters.</div>
+    </div>
+    <div class="err" id="appErr"></div>
+  </div>
+
+  <div class="card" id="listCard">
+    <h1 style="font-size:16px">Restaurants <span class="perms" id="count"></span></h1>
+    <p class="sub" style="margin-bottom:8px">Payments are taken outside this page — this keeps the books straight and switches the rights on.</p>
+    <table>
+      <thead><tr>
+        <th>Restaurant</th><th>Status</th><th>Plan</th><th id="thPaid">Paid through</th><th>Domain</th><th id="thAct"></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="err" id="listErr"></div>
+  </div>
+
+  <div class="card hidden" id="adminsCard">
+    <h1 style="font-size:16px">Admins</h1>
+    <p class="sub" style="margin-bottom:8px">Anyone here can sign in at this address. Rights are checked on the server, not just hidden here.</p>
+    <table>
+      <thead><tr><th>Who</th><th>Rights</th><th>Last seen</th><th></th></tr></thead>
+      <tbody id="adminRows"></tbody>
+    </table>
+    <div style="margin-top:16px;border-top:1px solid #eef1f3;padding-top:14px">
+      <div class="row">
+        <div><label for="nuEmail">Email</label><input id="nuEmail" type="email" placeholder="name@company.com" style="width:230px"></div>
+        <div><label for="nuName">Name</label><input id="nuName" placeholder="@dmin" style="width:150px"></div>
+      </div>
+      <div style="margin-top:10px" id="nuPerms"></div>
+      <div style="margin-top:12px"><button class="primary" id="nuAdd" type="button">Create admin</button></div>
+      <div class="err" id="nuErr"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/api/config?v=20261111r"></script>
+<script src="/assets/config.js?v=20261111r"></script>
+<script src="/assets/auth.js?v=20261111r"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var RIGHTS = [
+    ["view", "View restaurants"],
+    ["export", "Export CSV"],
+    ["pay_view", "See payment details"],
+    ["pay_entry", "Record payments"],
+    ["admins", "Manage admins"]
+  ];
+  var PERMS = [];
+
+  function fail(el, msg) { var e = $(el); e.textContent = msg || ""; e.style.display = msg ? "block" : "none"; }
+
+  async function api(path, opts) {
+    var t = await window.Auth.token();
+    if (!t) { showLogin(); throw new Error("NO_SESSION"); }
+    var r = await fetch("/api/superadmin" + path, {
+      method: (opts && opts.method) || "GET",
+      headers: Object.assign({ "Content-Type": "application/json", Authorization: "Bearer " + t }, (opts && opts.headers) || {}),
+      body: opts && opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    if (r.status === 401) { showLogin(); throw new Error("NO_SESSION"); }
+    var d = null;
+    try { d = await r.json(); } catch (e) { d = null; }
+    return { ok: r.ok, status: r.status, d: d || {} };
+  }
+
+  function showLogin() {
+    $("#loginView").classList.remove("hidden");
+    $("#appView").classList.add("hidden");
+  }
+  function showApp() {
+    $("#loginView").classList.add("hidden");
+    $("#appView").classList.remove("hidden");
+  }
+
+  /* ---------------- sign in ---------------- */
+  function signIn() {
+    var email = $("#lgEmail").value.trim(), pass = $("#lgPass").value;
+    if (!email || !pass) { fail("#lgErr", "Email and password, please."); return; }
+    $("#lgGo").disabled = true;
+    $("#lgGo").textContent = "Signing in…";
+    window.Auth.signIn(email, pass).then(function (r) {
+      $("#lgGo").disabled = false;
+      $("#lgGo").textContent = "Sign in";
+      if (!r.ok) { fail("#lgErr", r.message || "That did not work."); return; }
+      fail("#lgErr", "");
+      boot();
+    });
+  }
+  $("#lgGo").addEventListener("click", signIn);
+  $("#lgPass").addEventListener("keydown", function (e) { if (e.key === "Enter") signIn(); });
+
+  $("#lgForgot").addEventListener("click", function () {
+    var email = $("#lgEmail").value.trim();
+    if (!email) { fail("#lgErr", "Type your email first, then press it again."); return; }
+    fail("#lgErr", "");
+    fetch("/api/team?reset=1", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      fail("#lgErr", d && d.ok
+        ? "A temporary password is on its way to " + email + ". Sign in with it and change it here."
+        : ((d && d.message) || "That did not work."));
+      $("#lgErr").style.color = d && d.ok ? "#0f7b4f" : "#b32b3f";
+    }).catch(function () { fail("#lgErr", "Could not reach the server."); });
+  });
+
+  /* ---------------- the console ---------------- */
+  async function boot() {
+    if (!window.Auth || !window.Auth.session()) { showLogin(); return; }
+    var r;
+    try { r = await api("?me=1"); } catch (e) { return; }
+    if (!r.ok) {
+      showLogin();
+      fail("#lgErr", r.d.message || "This account is not an admin.");
+      return;
+    }
+    PERMS = r.d.perms || [];
+    $("#meName").textContent = (r.d.me && r.d.me.name) || "Admin";
+    $("#meEmail").textContent = (r.d.me && r.d.me.email) || "";
+    $("#mePerms").textContent = PERMS.length ? PERMS.join(" · ") : "no rights";
+    $("#btnExport").classList.toggle("hidden", PERMS.indexOf("export") === -1);
+    $("#adminsCard").classList.toggle("hidden", PERMS.indexOf("admins") === -1);
+    $("#thPaid").classList.toggle("hidden", PERMS.indexOf("pay_view") === -1);
+    $("#thAct").classList.toggle("hidden", PERMS.indexOf("pay_entry") === -1);
+    showApp();
+    loadList();
+    if (PERMS.indexOf("admins") !== -1) { loadAdmins(); paintPerms(); }
+  }
+
+  function tag(text, cls) { return '<span class="tag ' + cls + '">' + text + "</span>"; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
+
+  async function loadList() {
+    fail("#listErr", "");
+    var r;
+    try { r = await api(""); } catch (e) { return; }
+    if (!r.ok) { fail("#listErr", r.d.message || "Could not load."); return; }
+
+    var canPay = PERMS.indexOf("pay_entry") !== -1;
+    var canSeeMoney = PERMS.indexOf("pay_view") !== -1;
+    var rows = r.d.restaurants || [];
+    $("#count").textContent = "· " + rows.length;
+
+    $("#rows").innerHTML = rows.map(function (x) {
+      var status = x.onTrial
+        ? tag("trial · " + x.trialDaysLeft + "d", "draft")
+        : (x.status === "published" ? tag("published", "ok") : tag(x.status, "draft"));
+      var money = x.active ? tag("live", "ok") : tag("not live", "no");
+      return "<tr>" +
+        "<td><b>" + esc(x.name) + '</b><br><span class="perms">/' + esc(x.handle) + "</span></td>" +
+        "<td>" + status + "</td>" +
+        "<td>" + esc(x.plan === "order" ? "QR + Ordering" : "QR Menu") + '<br><span class="perms">' + esc(x.billing || "") + "</span></td>" +
+        (canSeeMoney ? "<td>" + (x.onTrial ? '<span class="perms">free week</span>' : esc(x.paid_through || "—")) + "</td>" : "") +
+        "<td>" + (x.custom_domain ? esc(x.custom_domain) + ' <span class="perms">' + esc(x.domain_status || "") + "</span>" : '<span class="perms">—</span>') + "</td>" +
+        (canPay ? '<td><select data-plan="' + esc(x.handle) + '"><option value="qr"' + (x.plan === "qr" ? " selected" : "") + ">QR Menu</option><option value=\"order\"" + (x.plan === "order" ? " selected" : "") + ">QR + Ordering</option></select> " +
+          '<select data-bill="' + esc(x.handle) + '"><option value="monthly">monthly</option><option value="yearly"' + (x.billing === "yearly" ? " selected" : "") + ">yearly</option></select> " +
+          '<button class="primary" data-pay="' + esc(x.handle) + '">Record</button> <button data-stop="' + esc(x.handle) + '">Stop</button></td>' : "") +
+        "</tr>";
+    }).join("");
+  }
+
+  document.addEventListener("click", async function (e) {
+    var el = e.target;
+    var pay = el.getAttribute && el.getAttribute("data-pay");
+    var stop = el.getAttribute && el.getAttribute("data-stop");
+    if (!pay && !stop) return;
+    var handle = pay || stop;
+    var tr = el.closest("tr");
+    var body = { handle: handle };
+    if (pay) {
+      body.plan = tr.querySelector("[data-plan]").value;
+      body.billing = tr.querySelector("[data-bill]").value;
+      body.payRef = "offline";
+    }
+    el.disabled = true;
+    var r = await api(stop ? "?stop=1" : "?payment=1", { method: "POST", body: body });
+    el.disabled = false;
+    if (!r.ok) { fail("#listErr", r.d.message || "That did not work."); return; }
+    fail("#listErr", "");
+    loadList();
+  });
+
+  $("#btnExport").addEventListener("click", async function () {
+    var t = await window.Auth.token();
+    var r = await fetch("/api/superadmin?export=1", { headers: { Authorization: "Bearer " + t } });
+    if (!r.ok) { var d = await r.json().catch(function () { return {}; }); fail("#appErr", d.message || "Export failed."); return; }
+    var blob = await r.blob();
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "digimenu-restaurants.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  $("#btnPass").addEventListener("click", function () { $("#passBox").classList.toggle("hidden"); });
+  $("#npSave").addEventListener("click", async function () {
+    var a = $("#np1").value, b = $("#np2").value;
+    if (a.length < 8) { $("#npHint").textContent = "Use at least 8 characters."; return; }
+    if (a !== b) { $("#npHint").textContent = "Both passwords must match."; return; }
+    $("#npSave").disabled = true;
+    var r = await window.Auth.changePassword(a, false);
+    $("#npSave").disabled = false;
+    if (!r.ok) { $("#npHint").textContent = r.message || "That did not work."; return; }
+    $("#np1").value = ""; $("#np2").value = "";
+    $("#npHint").textContent = "Password changed.";
+  });
+
+  $("#btnOut").addEventListener("click", function () {
+    window.Auth.signOut();
+    location.reload();
+  });
+
+  /* ---------------- admins ---------------- */
+  function paintPerms() {
+    $("#nuPerms").innerHTML = RIGHTS.map(function (r) {
+      return '<label class="chk"><input type="checkbox" data-right="' + r[0] + '"' + (r[0] === "view" ? " checked" : "") + "> " + r[1] + "</label>";
+    }).join("");
+  }
+
+  async function loadAdmins() {
+    var r;
+    try { r = await api("?admins=1"); } catch (e) { return; }
+    if (!r.ok) { return; }
+    var list = r.d.admins || [];
+    $("#adminRows").innerHTML = list.map(function (a) {
+      return "<tr><td><b>" + esc(a.name || a.email) + '</b><br><span class="perms">' + esc(a.email) + "</span></td>" +
+        "<td>" + (a.perms || []).map(function (p) { return tag(p, "draft"); }).join(" ") + "</td>" +
+        '<td class="perms">' + (a.last_seen ? new Date(a.last_seen).toLocaleString() : "never") + "</td>" +
+        '<td><button data-reset="' + esc(a.email) + '">Email temp password</button> ' +
+        '<button data-unadmin="' + esc(a.email) + '">Remove</button></td></tr>';
+    }).join("");
+  }
+
+  document.addEventListener("click", async function (e) {
+    var el = e.target;
+    var reset = el.getAttribute && el.getAttribute("data-reset");
+    var un = el.getAttribute && el.getAttribute("data-unadmin");
+    if (!reset && !un) return;
+    el.disabled = true;
+    var r = reset
+      ? await api("?reset=1", { method: "POST", body: { email: reset } })
+      : await api("?admins=1", { method: "POST", body: { action: "remove", email: un } });
+    el.disabled = false;
+    if (!r.ok) { fail("#nuErr", r.d.message || "That did not work."); return; }
+    fail("#nuErr", reset ? "A temporary password is on its way to " + reset + "." : "");
+    loadAdmins();
+  });
+
+  $("#nuAdd").addEventListener("click", async function () {
+    var email = $("#nuEmail").value.trim();
+    var perms = Array.prototype.slice.call(document.querySelectorAll("[data-right]:checked")).map(function (b) { return b.dataset.right; });
+    if (!email) { fail("#nuErr", "Type their email."); return; }
+    if (!perms.length) { fail("#nuErr", "Give them at least one right."); return; }
+    $("#nuAdd").disabled = true;
+    var r = await api("?admins=1", { method: "POST", body: { action: "create", email: email, name: $("#nuName").value.trim(), perms: perms } });
+    $("#nuAdd").disabled = false;
+    if (!r.ok) { fail("#nuErr", r.d.message || "That did not work."); return; }
+    fail("#nuErr", "");
+    $("#nuEmail").value = ""; $("#nuName").value = "";
+    loadAdmins();
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>

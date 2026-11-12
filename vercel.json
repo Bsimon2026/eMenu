@@ -9,6 +9,10 @@
       "destination": "/api/order"
     },
     {
+      "source": "/superadmin",
+      "destination": "/superadmin.html"
+    },
+    {
       "source": "/favicon.ico",
       "destination": "/assets/favicon.ico"
     },
