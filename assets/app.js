@@ -2696,6 +2696,12 @@
     set("#setTagline", state.restaurant.tagline);
     set("#setAddress", state.restaurant.address);
     set("#setCurrency", state.currency || "AED");
+    const waSplit = DigiPhone.split(state.restaurant.whatsapp || "");
+    if (waSplit.dial) {
+      const cc = $("#setWaCC"), num = $("#setWaNum");
+      if (cc) cc.value = waSplit.dial;
+      if (num) num.value = waSplit.national || "";
+    }
     const prev = $("#coverPreview");
     if (prev) {
       const url = state.restaurant.coverUrl;
@@ -2761,6 +2767,13 @@
       tiktok: $("#setTt").value.trim(),
       website: $("#setWeb").value.trim()
     };
+
+    /* only send the number when one was typed: an empty box must not wipe the
+       line the orders already go to */
+    const waNum = ($("#setWaNum").value || "").trim();
+    if (waNum.replace(/\D/g, "").length >= 6) {
+      payload.whatsapp_e164 = DigiPhone.toE164($("#setWaCC").value, waNum);
+    }
 
     const r = await window.Auth.api("/api/restaurant", { method: "POST", body: JSON.stringify(payload) });
 
