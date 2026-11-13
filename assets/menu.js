@@ -140,6 +140,9 @@
       b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === LANG));
     });
     paint();
+    /* paint() rebuilds every card, so each switch hands over a fresh set of
+       thumbs that nobody is watching — the photos would simply not come back */
+    wireThumbs();
     chrome();
   }
 
