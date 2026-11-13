@@ -1275,3 +1275,15 @@ body.t-clay .rail { background: var(--paper); }
 .cat-pick { box-shadow: 0 10px 18px -14px rgba(0, 0, 0, .55); }
 .rail { box-shadow: 0 10px 18px -16px rgba(0, 0, 0, .35); }
 
+/* On a wide screen the shelf's negative margin reached into the cart column and
+   the cards ran under the order panel. Inside a column, a shelf scrolls within
+   that column only. */
+@media (min-width: 1024px) {
+  .items,
+  .sec.featured .items {
+    margin: 0;
+    padding-inline: 0;
+    scroll-padding-inline-start: 0;
+  }
+}
+
