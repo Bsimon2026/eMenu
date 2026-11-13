@@ -372,6 +372,8 @@
     $("#mkTemplate").value = d.template || "";
     $("#mkLang").value = d.lang || "en";
     $("#mkGoogle").value = d.google || "";
+    const wo = $("#mkWaOrder");
+    if (wo) wo.value = d.waOrderNumber || "";
     $("#mkTokenHint").textContent = d.tokenHint ? "Saved token " + d.tokenHint : "No token saved yet";
   }
 
@@ -562,6 +564,7 @@
     save.addEventListener("click", async () => {
       const patch = {
         google: $("#mkGoogle").value.trim(),
+        waOrderNumber: (($("#mkWaOrder") || {}).value || "").trim(),
         template: $("#mkTemplate").value.trim(),
         lang: $("#mkLang").value.trim() || "en",
         phoneNumberId: $("#mkPhoneId").value.trim()

@@ -168,7 +168,7 @@ async function menuHandler(req, res) {
   }
 
   const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
-  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends,locales";
+  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends,locales,sender_mode,wa_phone_number_id,wa_order_e164";
   const query = (cols) =>
     "restaurants?" + lookup + "&status=eq.published&select=" + cols;
 
@@ -247,6 +247,13 @@ async function menuHandler(req, res) {
       ordering,
       plan: planSeen,
       whatsapp: restaurant.whatsapp_e164,
+      /* When the restaurant takes orders on its API number, that is where the
+         guest must send the order: their own message is what opens the 24-hour
+         window, and everything we send after it stops being a paid template.
+         Otherwise it is the number in their pocket, as before. */
+      orderWhatsapp: (restaurant.sender_mode === "cloud" && restaurant.wa_phone_number_id && restaurant.wa_order_e164)
+        ? restaurant.wa_order_e164
+        : restaurant.whatsapp_e164,
       city: restaurant.city || "",
       accent: restaurant.accent || "#f7941d",
       logoUrl: restaurant.logo_url || null,

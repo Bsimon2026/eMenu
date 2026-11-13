@@ -29,7 +29,7 @@ const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = requi
 
 const GRAPH = (process.env.WHATSAPP_API_VERSION || "v21.0");
 const SETTINGS_COLS =
-  "sender_mode,wa_phone_number_id,wa_access_token,wa_template,wa_template_lang,google_review_url";
+  "sender_mode,wa_phone_number_id,wa_access_token,wa_template,wa_template_lang,google_review_url,wa_order_e164";
 
 /* asking the same person twice on the same order is prevented by the index;
    asking twice in a month is prevented here */
@@ -193,6 +193,7 @@ async function owner(req, res) {
         lang: s.wa_template_lang || "en",
         google: s.google_review_url || "",
         phoneNumberId: s.wa_phone_number_id || "",
+        waOrderNumber: s.wa_order_e164 || "",
         tokenHint: mask(s.wa_access_token),
         cloudReady: Boolean(s.wa_phone_number_id && s.wa_access_token && s.wa_template),
         dial: String(dial).replace(/[^\d]/g, "")
@@ -222,6 +223,12 @@ async function owner(req, res) {
     if (body.phoneNumberId !== undefined) {
       patch.wa_phone_number_id = String(body.phoneNumberId).replace(/[^\d]/g, "").slice(0, 40) || null;
     }
+    /* the API number that should take the orders, so a guest's message opens
+       the 24-hour window on the number we send from */
+    if (body.waOrderNumber !== undefined) {
+      const w = String(body.waOrderNumber).replace(/[^\d]/g, "").slice(0, 20);
+      patch.wa_order_e164 = w.length >= 7 ? w : null;
+    }
     /* the token is write-only: an empty field keeps the one already stored */
     if (body.token !== undefined) {
       const t = String(body.token).trim();
@@ -241,6 +248,7 @@ async function owner(req, res) {
       lang: f.wa_template_lang || "en",
       google: f.google_review_url || "",
       phoneNumberId: f.wa_phone_number_id || "",
+      waOrderNumber: f.wa_order_e164 || "",
       tokenHint: mask(f.wa_access_token),
       cloudReady: Boolean(f.wa_phone_number_id && f.wa_access_token && f.wa_template)
     });

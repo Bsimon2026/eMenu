@@ -682,7 +682,9 @@
     if (hostLookup && location.pathname === "/menu.html") {
       try { history.replaceState(null, "", "/"); } catch (e) { /* not fatal */ }
     }
-    whatsapp = String(r.whatsapp || "").replace(/\D/g, "");
+    /* the API number takes the order when there is one: the guest messaging it
+       is what unlocks the free replies that follow */
+    whatsapp = String(r.orderWhatsapp || r.whatsapp || "").replace(/\D/g, "");
     purposes = (r.purposes && r.purposes.length) ? r.purposes : ["Dine In", "Take Away"];
     mode = purposes[0] || "Dine In";
 
