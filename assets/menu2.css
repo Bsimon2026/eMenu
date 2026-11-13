@@ -1044,10 +1044,12 @@ textarea.input { resize: vertical; min-height: 68px; }
   border-top: 1px solid var(--rule-2);
   position: sticky;
   bottom: 0;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom));
-  /* the footer is the last child and the panel has bottom padding: without this
-     the order lines showed through the strip underneath the buttons */
-  margin-bottom: calc(-16px - env(safe-area-inset-bottom));
+  /* the footer is the last child and the panel has 26px of bottom padding:
+     without this the order lines showed through the strip under the buttons.
+     The footer carries that padding itself, and a negative margin reaches the
+     panel's edge, so the background covers the whole band. */
+  padding-bottom: calc(26px + env(safe-area-inset-bottom));
+  margin-bottom: calc(-26px - env(safe-area-inset-bottom));
   background: var(--paper);
 }
 .sheet-actions .btn { flex: 1; }

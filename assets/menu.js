@@ -406,7 +406,7 @@
       const times = ["15 min", "30 min", "45 min", "1 hour"];
       host.innerHTML = `
         <div class="field">
-          <label>Ready for pickup <span style="color:var(--danger)">*</span></label>
+          <label>When will you Pick Up <span style="color:var(--danger)">*</span></label>
           <div class="chips" id="pickChips">
             ${times.map((t) => `<button type="button" data-t="${t}" aria-pressed="${pickup === t}">${t}</button>`).join("")}
           </div>
