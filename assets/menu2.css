@@ -1648,11 +1648,15 @@ html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
 .sheet-actions .btn-brand span { font-size: 15.5px; font-weight: 600; letter-spacing: -.012em; }
 .sheet-actions .btn-brand small {
   margin: 0;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 600;
-  letter-spacing: .11em;
+  letter-spacing: .09em;
   text-transform: uppercase;
   opacity: .55;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* one small line above the label, one below: the tap is an invitation, the
    second line is what the guest gets for making it */
