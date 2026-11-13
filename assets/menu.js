@@ -64,6 +64,33 @@
     const v = Number.isInteger(raw) ? String(raw) : raw.toFixed(2);
     return /^[A-Z]{3}$/.test(sym) ? sym + " " + v : sym + v;
   }
+  /* Thumbs load when their card comes near the viewport. `loading="lazy"` was
+     not enough: inside a horizontal shelf the browser counted every card as
+     close, asked for all 114 at once, and the first shelf waited behind them. */
+  let thumbIO = null;
+  function wireThumbs() {
+    const imgs = Array.prototype.slice.call(document.querySelectorAll(".item .thumb[data-src]"));
+    if (!imgs.length) return;
+    if (!("IntersectionObserver" in window)) {
+      imgs.forEach(function (i) { i.src = i.dataset.src; i.removeAttribute("data-src"); });
+      return;
+    }
+    if (!thumbIO) {
+      thumbIO = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          const img = e.target;
+          if (img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute("data-src");
+          }
+          thumbIO.unobserve(img);
+        });
+      }, { rootMargin: "320px 320px" });
+    }
+    imgs.forEach(function (i) { thumbIO.observe(i); });
+  }
+
   /* the CDN serves the original unless asked for a width: a menu page with 40
      dishes would pull tens of megabytes on mobile data without this */
   function sized(url, w) {
@@ -185,7 +212,7 @@
               return `
             <div class="item ${it.soldOut ? "sold" : ""} ${col}" data-id="${it.id}">
               ${it.image
-                ? `<img class="thumb loading" src="${sized(it.image, 320)}" alt="" loading="${cats[0] && cats[0].id === c.id ? "eager" : "lazy"}" fetchpriority="${cats[0] && cats[0].id === c.id ? "high" : "auto"}" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.classList.add('ph'); this.removeAttribute('src')">`
+                ? `<img class="thumb loading" data-src="${sized(it.image, 320)}" alt="" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.classList.add('ph'); this.removeAttribute('src')">`
                 : sectionHasImg ? `<div class="thumb ph" aria-hidden="true"></div>` : ""}
               <div>
                 <div class="nm">
@@ -781,6 +808,7 @@
     }
 
     chrome();
+    wireThumbs();
     hero.hidden = false;
     document.body.classList.add("has-hero");
   }
