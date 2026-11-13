@@ -21,7 +21,7 @@ const MAX_JSON_BYTES = 4 * 1024 * 1024; /* upload.js allows a 2.5 MB base64 payl
    .env, db/, tools/, _preview/ and .git unreachable even though they sit in the
    deployed folder. */
 const STATIC_FILES = new Set([
-  "index.html", "login.html", "app.html", "menu.html", "admin.html",
+  "index.html", "login.html", "app.html", "menu.html",
   "favicon.ico", "site.webmanifest", "robots.txt",
 ]);
 const STATIC_DIRS = ["assets"];
