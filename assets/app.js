@@ -1455,7 +1455,7 @@
         .map(function (t) {
           return '<button type="button" role="tab" data-ostate="' + t[0] + '" aria-selected="' +
             (ORDER_STATE === t[0] ? "true" : "false") + '">' + t[1] +
-            ' <span class="n">' + t[2] + '</span></button>';
+            (t[2] === null || t[2] === undefined ? '' : ' <span class="n">' + t[2] + '</span>') + '</button>';
         }).join("");
     }
 
