@@ -210,8 +210,8 @@ async function thankYou(s, row) {
   }
 
   const text = name
-    ? "Thanks " + name + " — your order at " + s.name + " is with us. We will message you the moment it moves."
-    : "Thanks — your order at " + s.name + " is with us. We will message you the moment it moves.";
+    ? "Thanks " + name + " — your order is in. We'll confirm it here in a moment."
+    : "Thanks — your order is in. We'll confirm it here in a moment.";
 
   const sent = await sendText(s, row.from, text);
   if (!sent.ok) return { ok: false, error: sent.error };
