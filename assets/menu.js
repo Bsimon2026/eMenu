@@ -842,16 +842,24 @@
     hero.hidden = false;
     document.body.classList.add("has-hero");
 
-    /* the sticky bar takes over from the hero: it holds the language switch and
-       the category picker, so it starts the moment the landing leaves */
-    if ("IntersectionObserver" in window && !window.__headWatch) {
-      window.__headWatch = new IntersectionObserver(
-        function (entries) {
-          document.body.classList.toggle("scrolled", !entries[0].isIntersecting);
-        },
-        { rootMargin: "-64px 0px 0px 0px" }
-      );
-      window.__headWatch.observe(hero);
+    /* The bar takes over from the hero: it holds the language switch and the
+       category picker for the rest of the page. A scroll listener rather than an
+       observer — the observer fired once at load and then never again, so the
+       bar stayed hidden however far the page was scrolled. */
+    if (!window.__headWatch) {
+      window.__headWatch = true;
+      var syncHead = function () {
+        var r = hero.getBoundingClientRect();
+        document.body.classList.toggle("scrolled", r.bottom < 72);
+      };
+      var ticking = false;
+      window.addEventListener("scroll", function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () { ticking = false; syncHead(); });
+      }, { passive: true });
+      window.addEventListener("resize", syncHead, { passive: true });
+      syncHead();
     }
   }
 

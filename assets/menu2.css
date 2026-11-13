@@ -301,6 +301,14 @@ body.menu-body::before {
    picker can never slide under the switch the way it did while it floated. */
 .mhead-txt { min-width: 0; flex: 1; }
 .mhead-txt h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the meta line wrapped to three lines in the narrow name column and made the
+   bar 133px tall on a phone */
+.mhead-txt .mmeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
 .mhead .lang-switch {
   position: static;
   inset: auto;
