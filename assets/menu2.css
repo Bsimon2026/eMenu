@@ -1320,3 +1320,34 @@ body.t-dark .sold-tag { color: var(--ink-3); border-color: var(--rule); }
 /* a chip that carries the accent needs its own ink: white on a light accent is
    the same class of bug as cream on cream, and only the accent knows */
 
+/* ---------------------------------------------------------------------------
+   Explicit ink for the sheet on charcoal. The variables resolve inconsistently
+   inside this subtree (a button's --ink came back as the light value while its
+   parent's was dark), so on a fixed dark ground the colours are stated, not
+   inherited. Everything here is measured by the contrast audit. */
+body.t-dark .mode button { color: #B9C1C8; }
+body.t-dark .mode button[aria-pressed="true"] { background: #F3EFE7; color: #14171A; }
+body.t-dark .btn,
+body.t-dark .btn-outline { color: #F3EFE7; border-color: rgba(243, 239, 231, .45); background: transparent; }
+body.t-dark .btn-outline:hover { background: rgba(243, 239, 231, .10); }
+body.t-dark .btn-brand { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
+body.t-dark .btn-brand:hover { background: #FFFFFF; border-color: #FFFFFF; }
+body.t-dark .checkout-btn { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
+body.t-dark .ol-row { color: #D5CFC4; }
+body.t-dark .ol-row span { color: inherit; }
+body.t-dark .ol-row.total,
+body.t-dark .ol-row.total span { color: #F3EFE7; }
+body.t-dark .sheet h2, body.t-dark .sheet .sub { color: #F3EFE7; }
+body.t-dark .field > label { color: #B9C1C8; }
+body.t-dark .hint { color: #B9C1C8; }
+body.t-dark .hint.bad, body.t-dark .err { color: #E8776A; }
+body.t-dark .hint.good { color: #6FBF8F; }
+body.t-dark .chips button { color: #D5CFC4; border-color: rgba(243, 239, 231, .28); }
+body.t-dark .chips button[aria-pressed="true"] { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
+body.t-dark .crow .cn, body.t-dark .crow > span:last-child { color: #F3EFE7; }
+body.t-dark .qty button { color: #D5CFC4; }
+body.t-dark .cart-total { color: #B9C1C8; }
+body.t-dark .cart-total b { color: #F3EFE7; }
+body.t-dark .next-steps { color: #D5CFC4; }
+body.t-dark .done-mark { background: #6FBF8F; color: #0F1412; }
+
