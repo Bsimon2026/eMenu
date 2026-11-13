@@ -432,8 +432,20 @@
   function renderSheetTotals() {
     const { sum } = totals();
     const d = discountNow();
-    const lines = Array.from(cart.values())
-      .map((r) => `<div class="ol-row"><span>${r.qty} × ${r.item.name}</span><span>${money(r.qty * r.item.price)}</span></div>`)
+    /* Every line carries its own quantity and a way out of the order: a guest
+       who tapped Add twice should not have to go back and find the dish. */
+    const lines = Array.from(cart.entries())
+      .map(([id, r]) => `
+        <div class="ol-row line">
+          <span class="ol-nm">${esc(r.item.name)}</span>
+          <span class="ol-qty">
+            <button class="sstep" type="button" data-sheet-minus="${id}" aria-label="${T("One less", "\u0648\u0627\u062d\u062f \u0623\u0642\u0644")}">−</button>
+            <b>${r.qty}</b>
+            <button class="sstep" type="button" data-sheet-plus="${id}" aria-label="${T("One more", "\u0648\u0627\u062d\u062f \u0623\u0643\u062b\u0631")}">+</button>
+          </span>
+          <span class="ol-pr">${money(r.qty * r.item.price)}</span>
+          <button class="ol-del" type="button" data-sheet-del="${id}" aria-label="${T("Remove this dish", "\u0625\u0632\u0627\u0644\u0629 \u0647\u0630\u0627 \u0627\u0644\u0637\u0628\u0642")}">×</button>
+        </div>`)
       .join("");
     const off = applied && d.amount > 0
       ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% off</span><span>− ${money(d.amount)}</span></div>`
@@ -441,6 +453,21 @@
     $("#sheetTotals").innerHTML = lines + off +
       `<div class="ol-row total"><span>Total</span><span>${money(d.total)}</span></div>`;
   }
+
+  /* the sheet's lines are redrawn on every change, so the clicks are handled
+     once on the container rather than bound to each button */
+  $("#sheetTotals").addEventListener("click", (e) => {
+    const plus = e.target.closest("[data-sheet-plus]");
+    const minus = e.target.closest("[data-sheet-minus]");
+    const drop = e.target.closest("[data-sheet-del]");
+    if (plus) changeQty(plus.getAttribute("data-sheet-plus"), 1);
+    else if (minus) changeQty(minus.getAttribute("data-sheet-minus"), -1);
+    else if (drop) { cart.delete(drop.getAttribute("data-sheet-del")); renderCart(); }
+    else return;
+    /* an empty order has nothing to confirm: put the sheet away */
+    if (!totals().count) { renderSheetTotals(); closeSheet(); return; }
+    renderSheetTotals();
+  });
 
   /* Applying a code is a question for the server: it knows the percentage, the
      cap, whether the code is still running and whether this number used it. */

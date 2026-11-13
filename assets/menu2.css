@@ -1416,9 +1416,74 @@ html.t-dark .hero-meta { text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
 /* a disabled control still has to be readable: it says what it is waiting for */
 html.t-dark .checkout-btn:disabled,
 html.t-dark #sheet .checkout-btn:disabled {
-  background: #262C33;
-  border-color: #262C33;
-  color: #B9C1C8;
+  background: rgba(243, 239, 231, .12);
+  border: 1px solid rgba(243, 239, 231, .38);
+  color: #E7E2D8;
   opacity: 1;
 }
+
+/* ---------------------------------------------------------------------------
+   On a wide screen a shelf is the wrong shape: it is a horizontal scroller, so
+   a category showed four dishes and the rest sat past the right edge with no
+   scrollbar to say so. Above 1024px a category becomes a wrapping list, the way
+   a printed menu reads. */
+@media (min-width: 1024px) {
+  .items, .sec.featured .items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    column-gap: clamp(24px, 3vw, 44px);
+    row-gap: 0;
+    margin: 0;
+    padding: 6px 0 14px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+  .items .item { width: auto; scroll-snap-align: none; }
+}
+
+/* the order lines carry their own quantity and a way out of the order */
+.ol-row.line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+.ol-row.line .ol-nm { overflow-wrap: anywhere; }
+.ol-qty { display: inline-flex; align-items: center; gap: 2px; }
+.ol-qty b { min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.sstep {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sstep:hover { border-color: var(--ink); }
+.ol-del {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-4);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ol-del:hover { background: rgba(180, 35, 24, .12); color: var(--danger); }
+.ol-row.line .ol-pr { font-variant-numeric: tabular-nums; white-space: nowrap; }
+html.t-dark #sheet .sstep { border-color: rgba(243, 239, 231, .35); color: #F3EFE7; }
+html.t-dark #sheet .sstep:hover { border-color: #F3EFE7; background: rgba(243, 239, 231, .10); }
+html.t-dark #sheet .ol-del { color: #B9C1C8; }
+html.t-dark #sheet .ol-del:hover { background: rgba(232, 119, 106, .18); color: #E8776A; }
+html.t-dark #sheet .ol-qty b { color: #F3EFE7; }
 
