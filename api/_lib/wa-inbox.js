@@ -233,6 +233,63 @@ async function thankYou(s, row) {
   return { ok: true, via: sent.via };
 }
 
+/* A guest taps "Cancel Order" on the confirmation template. The tap is an
+   inbound message, which is what opens the 24-hour window, so the reply costs
+   nothing. The order is ARCHIVED, never deleted: the row is the only record of
+   what was almost ordered, and an archive can be undone from the panel. */
+async function cancelOrder(s, row) {
+  if (!s || !s.wa_phone_number_id || !s.wa_access_token || !row.from) return null;
+
+  const ord = await rest(
+    "orders?restaurant_id=eq." + s.id +
+    "&select=id,guest_name,guest_phone,status,archived_at&order=created_at.desc&limit=20"
+  );
+  let hit = null;
+  if (ord.ok && ord.data) {
+    /* the newest order from this number that is still in the working list */
+    hit = ord.data.find(function (o) {
+      return !o.archived_at && digits(o.guest_phone) === row.from;
+    });
+  }
+  if (!hit) return { ok: false, error: "no open order for that number" };
+
+  const first = String(hit.guest_name || "").trim().split(/\s+/)[0].slice(0, 40);
+  const place = String(s.name || "").slice(0, 60);
+  const lead = first ? "Hello " + first + ", " : "Hello, ";
+  const body = lead + "your order at " + place +
+    " was not confirmed and has been released. You're welcome to place it again anytime.";
+
+  const sent = await sendText(s, row.from, body);
+
+  const upd = await rest("orders?id=eq." + encodeURIComponent(hit.id), {
+    method: "PATCH",
+    prefer: "return=minimal",
+    body: { archived_at: new Date().toISOString(), archive_reason: "Cancelled by guest" }
+  });
+
+  await rest("wa_messages", {
+    method: "POST",
+    prefer: "return=minimal",
+    body: [{
+      restaurant_id: s.id,
+      order_id: hit.id,
+      wamid: (sent && sent.id) || null,
+      direction: "out",
+      phone_number_id: s.wa_phone_number_id,
+      customer_number: row.from,
+      type: "cancel",
+      body: body
+    }]
+  });
+
+  return { ok: !!(sent && sent.ok), orderId: hit.id, archived: upd.ok, sent: sent };
+}
+
+/* The quick reply the guest taps, and anything that clearly means the same. */
+function isCancel(text) {
+  return /^\s*cancel(\s+order)?\s*[.!]?\s*$/i.test(String(text || ""));
+}
+
 async function receive(req, res) {
   if (req.method === "GET") return res.status(200).send("digimenu wa inbox");
   if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
@@ -280,8 +337,18 @@ async function receive(req, res) {
 
   /* one automatic message only, and only for a guest's inbound */
   let thanks = 0;
+  let cancelled = 0;
   for (const m of stored) {
     if (m.dir !== "in" || !m.restaurant) continue;
+
+    /* a cancel tap is not a greeting: it gets the release message, and the
+       thank-you would only confuse someone who just backed out */
+    if (isCancel(m.body)) {
+      const c = await cancelOrder(m.restaurant, m);
+      if (c && c.ok) cancelled++;
+      continue;
+    }
+
     const t = await thankYou(m.restaurant, m);
     if (t && t.ok) thanks++;
   }
@@ -290,8 +357,9 @@ async function receive(req, res) {
     ok: true,
     stored: rows.length,
     insert: ins.ok ? "ok" : (ins.error || "failed").slice(0, 120),
-    thankYou: thanks
+    thankYou: thanks,
+    cancelled: cancelled
   });
 }
 
-module.exports = { receive, post, sendText, sendTemplate, thankYou, normalise, digits };
+module.exports = { receive, post, sendText, sendTemplate, thankYou, cancelOrder, isCancel, normalise, digits };
