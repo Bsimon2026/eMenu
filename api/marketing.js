@@ -465,17 +465,20 @@ async function owner(req, res) {
           token = made.ok && made.data && made.data[0] ? made.data[0].token : null;
         }
         if (!token) return res.status(502).json({ ok: false, code: "DB_ERROR", message: "Could not build the review link." });
-        text = "Hi " + first + ", thanks for eating at " + place + ". How was it? " + GUEST_BASE + "/f/" + token;
+        text = "Hi " + first + ", thanks for eating at " + place +
+          ". Two taps to say how it went: " + GUEST_BASE + "/f/" + token;
         await rest("review_requests?token=eq." + encodeURIComponent(token), {
           method: "PATCH", prefer: "return=minimal",
           body: { status: "sent", sent_at: new Date().toISOString(), error: null }
         });
       } else {
+        /* Written as a person at the counter would say it: one fact and what
+           happens next. No "we are pleased to inform", no exclamation marks. */
         const say = {
-          accept: "Order accepted — " + place + " is preparing it now. We will message you the moment it moves.",
-          ready: "Your order is ready for pickup at " + place + ".",
-          delivery: "Your order is out for delivery.",
-          meal: "Enjoy your meal at " + place + "!"
+          accept: "Confirmed — your order is with the kitchen. We'll message you the moment it moves.",
+          ready: "Ready when you are — collect it at the counter at " + place + ".",
+          delivery: "On its way — your order has left the kitchen.",
+          meal: "Enjoy your meal. If anything isn't right, reply here and we'll fix it."
         };
         text = say[kind] || "";
       }

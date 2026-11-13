@@ -59,9 +59,38 @@
   let currency = "AED";
   function money(n) {
     const sym = SYMBOL[currency] || currency;
-    const v = Math.round((Number(n) || 0) * 100) / 100;
+    const raw = Math.round((Number(n) || 0) * 100) / 100;
+    /* a price is money, not a number: 41.6 prints as "41.60", 60 stays "60" */
+    const v = Number.isInteger(raw) ? String(raw) : raw.toFixed(2);
     return /^[A-Z]{3}$/.test(sym) ? sym + " " + v : sym + v;
   }
+  /* Thumbs load when their card comes near the viewport. `loading="lazy"` was
+     not enough: inside a horizontal shelf the browser counted every card as
+     close, asked for all 114 at once, and the first shelf waited behind them. */
+  let thumbIO = null;
+  function wireThumbs() {
+    const imgs = Array.prototype.slice.call(document.querySelectorAll(".item .thumb[data-src]"));
+    if (!imgs.length) return;
+    if (!("IntersectionObserver" in window)) {
+      imgs.forEach(function (i) { i.src = i.dataset.src; i.removeAttribute("data-src"); });
+      return;
+    }
+    if (!thumbIO) {
+      thumbIO = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          const img = e.target;
+          if (img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute("data-src");
+          }
+          thumbIO.unobserve(img);
+        });
+      }, { rootMargin: "320px 320px" });
+    }
+    imgs.forEach(function (i) { thumbIO.observe(i); });
+  }
+
   /* the CDN serves the original unless asked for a width: a menu page with 40
      dishes would pull tens of megabytes on mobile data without this */
   function sized(url, w) {
@@ -73,6 +102,26 @@
   /* Arabic where it exists, English where it does not — never a blank row */
   /* two-word UI strings; the menu data itself comes from the API */
   function T(en, ar) { return LANG === "ar" ? ar : en; }
+
+  /* The static shell — headings, the picker's label, the two hero buttons that
+     are words rather than brands — swapped once per paint. */
+  function chrome() {
+    const pick = document.querySelector(".cat-pick > span");
+    if (pick) pick.textContent = T("Jump to", "انتقل إلى");
+
+    const cartH = document.querySelector(".cart h3");
+    if (cartH) {
+      const em = cartH.querySelector("em");
+      cartH.textContent = T("Your order ", "طلبك ");
+      if (em) cartH.appendChild(em);
+    }
+    const call = document.querySelector("#heroCall span");
+    if (call) call.textContent = T("Call", "اتصال");
+    const web = document.querySelector("#heroWeb span");
+    if (web) web.textContent = T("Website", "الموقع");
+    const catLabel = document.querySelector('label.cat-pick');
+    if (catLabel) catLabel.setAttribute("aria-label", T("Menu categories", "أقسام القائمة"));
+  }
 
   function nm(x) {
     return (LANG === "ar" && x && x.arName) ? x.arName : ((x && x.name) || "");
@@ -91,6 +140,10 @@
       b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === LANG));
     });
     paint();
+    /* paint() rebuilds every card, so each switch hands over a fresh set of
+       thumbs that nobody is watching — the photos would simply not come back */
+    wireThumbs();
+    chrome();
   }
 
   function esc(t) {
@@ -104,6 +157,12 @@
 
   function paint() {
   /* ---------- head ---------- */
+
+  /* The ground the shelves sit on. Charcoal by default: the menu is mostly
+     photographs and a dark page stops the paper competing with them. The
+     marketing page embeds this menu in a phone frame, and there it stays light
+     so the landing hero does not turn black. */
+  if (!document.body.classList.contains("embed")) document.documentElement.classList.add("t-dark");
 
   document.title = name + " — menu";
   $("#restName").textContent = name;
@@ -156,7 +215,7 @@
               return `
             <div class="item ${it.soldOut ? "sold" : ""} ${col}" data-id="${it.id}">
               ${it.image
-                ? `<img class="thumb loading" src="${sized(it.image, 320)}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.closest('.item').classList.remove('has-img'); this.remove()">`
+                ? `<img class="thumb loading" data-src="${sized(it.image, 320)}" alt="" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.classList.add('ph'); this.removeAttribute('src')">`
                 : sectionHasImg ? `<div class="thumb ph" aria-hidden="true"></div>` : ""}
               <div>
                 <div class="nm">
@@ -165,12 +224,7 @@
                 </div>
                 <div class="ds">${esc(ds(it))}</div>
               </div>
-              <div class="right">
-                <div class="pr">${money(it.price)}</div>
-                ${it.soldOut
-                  ? '<span class="sold-tag">' + T("Sold out", "\u0646\u0641\u062f") + '</span>'
-                  : `<button class="add" type="button" data-id="${it.id}" data-cat="${c.id}">${T("Add", "\u0623\u0636\u0641")}</button>`}
-              </div>
+              <div class="right">${rightCell(it, c.id)}</div>
             </div>`;
             }).join("");
           })()}
@@ -178,17 +232,14 @@
       </section>`;
   }).join("");
 
-  $$(".add").forEach((b) =>
-    b.addEventListener("click", () => {
-      addToCart(b.dataset.id);
-      b.classList.add("on");
-      b.textContent = T("Added", "\u062a\u0645\u062a \u0627\u0644\u0625\u0636\u0627\u0641\u0629");
-      setTimeout(() => {
-        b.textContent = cart.has(b.dataset.id) ? T("Add another", "\u0623\u0636\u0641 \u0623\u062e\u0631\u0649") : T("Add", "\u0623\u0636\u0641");
-        if (!cart.has(b.dataset.id)) b.classList.remove("on");
-      }, 900);
-    })
-  );
+  document.getElementById("sections").addEventListener("click", (e) => {
+    const add = e.target.closest("[data-id].add");
+    if (add) { addToCart(add.dataset.id); syncItemRow(add.dataset.id); return; }
+    const plus = e.target.closest("[data-step-plus]");
+    if (plus) { changeQty(plus.getAttribute("data-step-plus"), 1); syncItemRow(plus.getAttribute("data-step-plus")); return; }
+    const minus = e.target.closest("[data-step-minus]");
+    if (minus) { changeQty(minus.getAttribute("data-step-minus"), -1); syncItemRow(minus.getAttribute("data-step-minus")); }
+  });
 
   /* ---------- cart ---------- */
 
@@ -198,6 +249,35 @@
       if (it) return { item: it, cat: c };
     }
     return null;
+  }
+
+  /* The right of a dish row answers one question: how many of this did I add?
+     It used to say "Add" forever, so a mis-tap twice could only be undone from
+     the cart — on a phone, behind another tap. It becomes a stepper the moment
+     the count is above zero, and the count is on the row. */
+  function rightCell(it, catId) {
+    const q = (cart.get(it.id) || {}).qty || 0;
+    const price = '<div class="pr">' + money(it.price) + '</div>';
+    if (it.soldOut) return price + '<span class="sold-tag">' + T("Sold out", "\u0646\u0641\u062f") + '</span>';
+    if (!q) {
+      return price + '<button class="add" type="button" data-id="' + it.id +
+        '" data-cat="' + catId + '">' + T("Add", "\u0623\u0636\u0641") + '</button>';
+    }
+    return price +
+      '<div class="steps" role="group" aria-label="' + esc(it.name) + '">' +
+        '<button class="step" type="button" data-step-minus="' + it.id + '" aria-label="' + T("One less", "\u0648\u0627\u062d\u062f \u0623\u0642\u0644") + '">\u2212</button>' +
+        '<b class="qn" aria-live="polite">' + q + '</b>' +
+        '<button class="step on" type="button" data-step-plus="' + it.id + '" aria-label="' + T("One more", "\u0648\u0627\u062d\u062f \u0623\u0643\u062b\u0631") + '">+</button>' +
+      '</div>';
+  }
+
+  /* repaint one row's cell without touching the rest of the list */
+  function syncItemRow(id) {
+    const row = document.querySelector('.item[data-id="' + id + '"]');
+    const found = findItem(id);
+    if (!row || !found) return;
+    const cell = row.querySelector(".right");
+    if (cell) cell.innerHTML = rightCell(found.item, found.cat.id);
   }
 
   function addToCart(id) {
@@ -213,12 +293,9 @@
     const row = cart.get(id);
     if (!row) return;
     row.qty += delta;
-    if (row.qty <= 0) {
-      cart.delete(id);
-      const btn = $('.add[data-id="' + id + '"]');
-      if (btn) { btn.classList.remove("on"); btn.textContent = "Add"; }
-    }
+    if (row.qty <= 0) cart.delete(id);
     renderCart();
+    syncItemRow(id);
   }
 
   function totals() {
@@ -247,8 +324,9 @@
     const foot = $("#cartFoot");
 
     if (!count) {
-      body.innerHTML = '<p class="cart-empty">Nothing added yet. Tap Add on a dish and it appears here.</p>';
-      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>Review order</button>';
+      body.innerHTML = '<p class="cart-empty">' +
+        T("Nothing added yet. Tap Add on a dish and it appears here.", "لم تُضف شيئاً بعد. اضغط أضف على أي طبق.") + '</p>';
+      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>' + T("Review order", "مراجعة الطلب") + '</button>';
     } else {
       body.innerHTML = Array.from(cart.entries()).map(([id, r]) => `
         <div class="crow">
@@ -258,19 +336,22 @@
             <span>${r.qty}</span>
             <button type="button" data-inc="${id}" aria-label="Add one ${r.item.name}">+</button>
           </span>
-          <span style="font-variant-numeric:tabular-nums">${r.qty * r.item.price}</span>
+          <span style="font-variant-numeric:tabular-nums">${money(r.qty * r.item.price)}</span>
         </div>`).join("");
       foot.innerHTML =
-        '<div class="cart-total"><span>Total</span><b>AED ' + sum + "</b></div>" +
-        '<button class="checkout-btn" type="button" id="goCheckout">Review order</button>';
+        '<div class="cart-total"><span>Total</span><b>' + money(sum) + "</b></div>" +
+        '<button class="checkout-btn" type="button" id="goCheckout">' + T("Review order", "مراجعة الطلب") + '</button>';
       $$("[data-inc]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.inc, 1)));
       $$("[data-dec]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.dec, -1)));
       $("#goCheckout").addEventListener("click", openSheet);
     }
 
-    $("#cartCount").textContent = count + (count === 1 ? " item" : " items");
-    $("#barCount").textContent = count + (count === 1 ? " item" : " items");
-    $("#barTotal").textContent = "AED " + sum;
+    const countWords = LANG === "ar"
+      ? (count + " \u0639\u0646\u0635\u0631")
+      : (count + (count === 1 ? " item" : " items"));
+    $("#cartCount").textContent = countWords;
+    $("#barCount").textContent = countWords;
+    $("#barTotal").textContent = money(sum);
     $("#mobileBar").classList.toggle("on", count > 0);
   }
 
@@ -351,15 +432,42 @@
   function renderSheetTotals() {
     const { sum } = totals();
     const d = discountNow();
-    const lines = Array.from(cart.values())
-      .map((r) => `<div class="ol-row"><span>${r.qty} × ${r.item.name}</span><span>AED ${r.qty * r.item.price}</span></div>`)
+    /* Every line carries its own quantity and a way out of the order: a guest
+       who tapped Add twice should not have to go back and find the dish. */
+    const lines = Array.from(cart.entries())
+      .map(([id, r]) => `
+        <div class="ol-row line">
+          <span class="ol-nm">${esc(r.item.name)}</span>
+          <span class="ol-qty">
+            <button class="sstep" type="button" data-sheet-minus="${id}" aria-label="${T("One less", "\u0648\u0627\u062d\u062f \u0623\u0642\u0644")}">−</button>
+            <b>${r.qty}</b>
+            <button class="sstep" type="button" data-sheet-plus="${id}" aria-label="${T("One more", "\u0648\u0627\u062d\u062f \u0623\u0643\u062b\u0631")}">+</button>
+          </span>
+          <span class="ol-pr">${money(r.qty * r.item.price)}</span>
+          <button class="ol-del" type="button" data-sheet-del="${id}" aria-label="${T("Remove this dish", "\u0625\u0632\u0627\u0644\u0629 \u0647\u0630\u0627 \u0627\u0644\u0637\u0628\u0642")}">×</button>
+        </div>`)
       .join("");
     const off = applied && d.amount > 0
-      ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% off</span><span>− AED ${d.amount}</span></div>`
+      ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% off</span><span>− ${money(d.amount)}</span></div>`
       : "";
     $("#sheetTotals").innerHTML = lines + off +
-      `<div class="ol-row total"><span>Total</span><span>AED ${d.total}</span></div>`;
+      `<div class="ol-row total"><span>Total</span><span>${money(d.total)}</span></div>`;
   }
+
+  /* the sheet's lines are redrawn on every change, so the clicks are handled
+     once on the container rather than bound to each button */
+  $("#sheetTotals").addEventListener("click", (e) => {
+    const plus = e.target.closest("[data-sheet-plus]");
+    const minus = e.target.closest("[data-sheet-minus]");
+    const drop = e.target.closest("[data-sheet-del]");
+    if (plus) changeQty(plus.getAttribute("data-sheet-plus"), 1);
+    else if (minus) changeQty(minus.getAttribute("data-sheet-minus"), -1);
+    else if (drop) { cart.delete(drop.getAttribute("data-sheet-del")); renderCart(); }
+    else return;
+    /* an empty order has nothing to confirm: put the sheet away */
+    if (!totals().count) { renderSheetTotals(); closeSheet(); return; }
+    renderSheetTotals();
+  });
 
   /* Applying a code is a question for the server: it knows the percentage, the
      cap, whether the code is still running and whether this number used it. */
@@ -402,7 +510,7 @@
         if (msg) {
           msg.className = "hint good";
           const d = discountNow();
-          msg.textContent = applied.code + " applied — you save AED " + d.amount + ".";
+          msg.textContent = applied.code + " applied — you save " + money(d.amount) + ".";
         }
         input.value = applied.code;
       }
@@ -430,12 +538,12 @@
     lines.push("Guest: " + guest);
     if (phone) lines.push("Mobile: " + phone);
     lines.push("");
-    cart.forEach((r) => lines.push(r.qty + " × " + r.item.name + " — AED " + r.qty * r.item.price));
+    cart.forEach((r) => lines.push(r.qty + " × " + r.item.name + " — " + money(r.qty * r.item.price)));
     const d = discountNow();
     if (applied && d.amount > 0) {
-      lines.push("", "Discount " + applied.code + " (" + applied.percent + "%): − AED " + d.amount);
+      lines.push("", "Discount " + applied.code + " (" + applied.percent + "%): − " + money(d.amount));
     }
-    lines.push("", "Total: AED " + d.total, "", "Sent from " + publicLink);
+    lines.push("", "Total: " + money(d.total), "", "Sent from " + publicLink);
     return lines.join("\n");
   }
 
@@ -504,6 +612,24 @@
     if (e.key === "Enter") { e.preventDefault(); applyCode(); }
   });
 
+  /* ---------- reading progress: one throttled handler, one property ----
+     The hairline at the top of the page is scaleX(--py); nothing else on the
+     page listens to scroll. */
+  let scrollQueued = false;
+  function onScroll() {
+    if (scrollQueued) return;
+    scrollQueued = true;
+    requestAnimationFrame(function () {
+      scrollQueued = false;
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      const y = h > 0 ? Math.min(1, Math.max(0, window.scrollY / h)) : 0;
+      document.documentElement.style.setProperty("--py", y.toFixed(4));
+    });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  onScroll();
+
   $("#confirmOrder").addEventListener("click", async () => {
     let ok = true;
     ok = err("#nameErr", !$("#guestName").value.trim()) && ok;
@@ -525,7 +651,7 @@
     const place = mode === "Dine In" ? "table " + table : mode === "Take Away" ? pickup : "Delivery";
     $("#doneWa").href = url;
     $("#doneReceipt").innerHTML =
-      `<div class="ol-row"><span>${mode} · ${place}</span><span>AED ${totals().sum}</span></div>` +
+      `<div class="ol-row"><span>${mode} · ${place}</span><span>${money(totals().sum)}</span></div>` +
       `<div class="ol-row"><span>${totals().count} item${totals().count === 1 ? "" : "s"} for ${guest}</span><span>${name}</span></div>`;
     if (saved && saved.ok === false) {
       $("#doneNext").textContent = "WhatsApp is ready — but we could not save a copy for the restaurant. Send the message so they get it.";
@@ -619,13 +745,18 @@
     if (note) note.hidden = false;
   }
 
-  const bits = [];
-    if (r.address) bits.push(r.address);
-    else if (r.city) bits.push(r.city);
-    (r.purposes || []).forEach((p) => {
-      bits.push(p === "Dine In" ? "Dine in" : p === "Take Away" ? "Takeaway" : p);
-    });
-    $("#heroMeta").innerHTML = bits.map(esc).join('<span class="sep" aria-hidden="true">·</span>');
+  /* The place and the service modes are two different facts: the address gets
+     its own line so it never wraps into "· Delivery" on a phone. */
+  const place = r.address || r.city || "";
+    const modeWord = (p) =>
+      LANG === "ar"
+        ? ({ "Dine In": "داخل المطعم", "Take Away": "استلام", Delivery: "توصيل" }[p] || p)
+        : (p === "Dine In" ? "Dine in" : p === "Take Away" ? "Takeaway" : p);
+    const modes = (r.purposes || []).map(modeWord);
+    const metaHtml =
+      (place ? esc(place) + '<span class="break" aria-hidden="true"></span>' : "") +
+      modes.map(esc).join('<span class="sep" aria-hidden="true">·</span>');
+    $("#heroMeta").innerHTML = metaHtml;
 
     $("#heroWa").href = "https://wa.me/" + whatsapp + "?text=" +
       encodeURIComponent("Hello " + rn + ", I have a question about the menu.");
@@ -642,7 +773,7 @@
       : "");
     if (mapHref) {
       $("#heroMap").href = mapHref;
-      $("#heroAddress").textContent = r.address ? "Directions" : "Open in Maps";
+      $("#heroAddress").textContent = r.address ? T("Directions", "الاتجاهات") : T("Open in Maps", "افتح الخريطة");
       $("#heroMap").hidden = false;
     }
 
@@ -706,6 +837,8 @@
       hero.classList.add("has-media");
     }
 
+    chrome();
+    wireThumbs();
     hero.hidden = false;
     document.body.classList.add("has-hero");
   }
@@ -759,6 +892,25 @@
     docs = { logo: r.logoUrl || null };
     name = r.name || "Menu";
     accent = r.accent || "#f0485f";
+    /* the restaurant's own colour becomes the accent: buttons, the active chip,
+       the star, the progress hairline. Until now it was fetched and never used. */
+    document.documentElement.style.setProperty("--brand", accent);
+
+    /* Whatever sits ON the accent has to be readable on it. White on this
+       orange measured 2.3:1; the ink is chosen by contrast, not by taste,
+       because the accent is different for every restaurant. */
+    (function readableInk(value) {
+      const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(value || "").trim());
+      if (!m) return;
+      let h = m[1];
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      const rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+      const lin = rgb.map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+      const L = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      const onWhite = 1.05 / (L + 0.05);
+      const onInk = (L + 0.05) / (0.013 + 0.05);
+      document.documentElement.style.setProperty("--accent-ink", onInk >= onWhite ? "#14120E" : "#FFFFFF");
+    })(accent);
     handle = r.handle || wanted;
     publicLink = PUBLIC_BASE.replace(/^https?:\/\//i, "") + handle;
 
@@ -817,5 +969,8 @@
     }
 
     paint();
+    /* paint() is what renders the shelves, so the thumbs can only be observed
+       once it has finished — wiring them from the hero ran too early. */
+    wireThumbs();
   })();
 })();
