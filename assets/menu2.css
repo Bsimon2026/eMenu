@@ -318,6 +318,10 @@ body.menu-body::before {
   background: var(--paper-2);
   border-color: var(--rule);
 }
+/* the bar is 114px tall and sticky: a section scrolled to must stop under it,
+   not behind it */
+.sec { scroll-margin-top: 122px; }
+
 /* line two: where you are in the menu, tinted with the house colour */
 .mhead-pick {
   border-top: 1px solid var(--rule-2);
