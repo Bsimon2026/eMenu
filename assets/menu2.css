@@ -1480,3 +1480,10 @@ html.t-dark .mbar button:disabled {
 }
 html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
 
+/* `.mbar` sets `color: var(--paper)` — under the charcoal palette that is the
+   bar's own colour, so the amount in the bar was dark ink on a near-black
+   surface: present, correct, and invisible. */
+html.t-dark .mbar { color: #F6F2EA; }
+html.t-dark .mbar .bt { color: #F6F2EA; }
+html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
+
