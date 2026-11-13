@@ -465,7 +465,7 @@ async function owner(req, res) {
         const say = {
           accept: "Order accepted — " + place + " is preparing it now. We will message you the moment it moves.",
           ready: "Your order is ready for pickup at " + place + ".",
-          delivery: "Your order has left " + place + " — it will reach you shortly.",
+          delivery: "Your order is out for delivery.",
           meal: "Enjoy your meal at " + place + "!"
         };
         text = say[kind] || "";
