@@ -15,6 +15,22 @@ const listOrders = require("./_lib/order-list");
 const discount = require("./_lib/discounts");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
+
+/* The guest picks "15 min", "30 min", "45 min" or "1 hour" — a label, not a date.
+   `new Date("30 min").toISOString()` throws RangeError, and because that ran while
+   the order row was being built, EVERY Take Away order died before it was saved:
+   the guest pressed order and nothing reached the kitchen. Turn the label into a
+   real time, and fall back to null rather than throwing. */
+function pickupWhen(value) {
+  const text = String(value == null ? "" : value).trim();
+  if (!text) return null;
+  const mins = /^(\d{1,4})\s*(m|min|mins|minute|minutes)$/i.exec(text);
+  if (mins) return new Date(Date.now() + Number(mins[1]) * 60e3);
+  const hours = /^(\d{1,2})\s*(h|hr|hrs|hour|hours)$/i.exec(text);
+  if (hours) return new Date(Date.now() + Number(hours[1]) * 3600e3);
+  const when = new Date(text);
+  return isNaN(when.getTime()) ? null : when;
+}
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 
 function clean(v, max) {
@@ -144,12 +160,13 @@ module.exports = async function handler(req, res) {
     applied = verdict;
   }
   total = applied ? applied.total : subtotal;
+  const pickupTime = mode === "Take Away" ? pickupWhen(body.pickupAt) : null;
 
   const order = {
     restaurant_id: restaurant.id,
     mode,
     table_no: mode === "Dine In" ? clean(body.table, 20) || null : null,
-    pickup_at: mode === "Take Away" && body.pickupAt ? new Date(body.pickupAt).toISOString() : null,
+    pickup_at: mode === "Take Away" && pickupTime ? pickupTime.toISOString() : null,
     address: mode === "Delivery" ? clean(body.address, 300) || null : null,
     guest_name: guestName,
     guest_phone: clean(body.phone, 30),
@@ -219,7 +236,7 @@ module.exports = async function handler(req, res) {
   const when = new Date().toLocaleString("en-AE", { timeZone: "Asia/Dubai", hour12: true });
   const detail =
     mode === "Dine In" ? "Dine In · table " + (order.table_no || "—")
-    : mode === "Take Away" ? "Take Away · collect at " + (body.pickup || "as soon as ready")
+    : mode === "Take Away" ? "Take Away · collect in " + (clean(body.pickupAt, 20) || "as soon as ready")
     : "Delivery · " + (order.address || "address on the phone");
   const itemLines = rows.map((r) => "  " + r.qty + " × " + r.name + "  —  AED " + (r.unit_price * r.qty).toFixed(2)).join("\n");
   const text = [
