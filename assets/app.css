@@ -1054,7 +1054,8 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .orders-head,
 .orow {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1.45fr) 108px 100px 96px 104px;
+  /* the action column holds two buttons and was overflowing onto State */
+  grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1.45fr) 108px 100px 92px 136px;
   gap: 14px;
   align-items: center;
 }
@@ -1115,7 +1116,8 @@ body[data-role="orders"] #newCatName { display: none !important; }
 }
 
 /* a small gap so the state reads as its own column, not as part of the total */
-.orow .ostate { display: flex; align-items: center; padding-left: 10px; }
+.orow .ostate { display: flex; align-items: center; padding-left: 6px; }
+.orow .ostate .st { white-space: nowrap; }
 .orders-head span:nth-child(6) { padding-left: 10px; }
 .orow .ostate .st {
   display: inline-flex;
@@ -1131,7 +1133,7 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .orow.is-done .ostate .dot { background: var(--ok); }
 .orow.is-done .ototal { color: var(--ink-2); font-weight: 500; }
 
-.orow .oact { display: flex; justify-content: flex-end; }
+.orow .oact { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
 .orow .oact button {
   height: 30px;
   padding: 0 12px;
