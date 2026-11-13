@@ -427,7 +427,8 @@ async function owner(req, res) {
       const lines = ((items.ok && items.data) || [])
         .map(function (i) { return (i.qty || 1) + " x " + i.name; })
         .join("\n").slice(0, 800) || "Your order";
-      text = "Order confirmation: " + lines + " — " + total;
+      text = "Hello " + first + ", your order at " + place + " is " + lines +
+        " — " + total + ". Tap CONFIRM below and we'll take it from here.";
       sent = await waSend.sendTemplate(
         s, to, "order_confirm",
         [first, place, lines, total], "CONFIRM"
@@ -475,10 +476,10 @@ async function owner(req, res) {
         /* Written as a person at the counter would say it: one fact and what
            happens next. No "we are pleased to inform", no exclamation marks. */
         const say = {
-          accept: "Confirmed — your order is with the kitchen. We'll message you the moment it moves.",
-          ready: "Ready when you are — collect it at the counter at " + place + ".",
-          delivery: "On its way — your order has left the kitchen.",
-          meal: "Enjoy your meal. If anything isn't right, reply here and we'll fix it."
+          accept: "Confirmed. Your order is now in the hands of our kitchen, and we'll update you at every step.",
+          ready: "Your order is ready. Please collect it at the counter at " + place + ". We look forward to seeing you.",
+          delivery: "Your order is on its way. It has just left our kitchen and will be with you shortly.",
+          meal: "Enjoy your meal. If there's anything we can make better, just reply here and we'll take care of it."
         };
         text = say[kind] || "";
       }
