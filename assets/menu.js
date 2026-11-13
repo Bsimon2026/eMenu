@@ -654,19 +654,22 @@
       `<div class="ol-row"><span>${mode} · ${place}</span><span>${money(totals().sum)}</span></div>` +
       `<div class="ol-row"><span>${totals().count} item${totals().count === 1 ? "" : "s"} for ${guest}</span><span>${name}</span></div>`;
     if (saved && saved.ok === false) {
-      $("#doneNext").textContent = "WhatsApp is ready — but we could not save a copy for the restaurant. Send the message so they get it.";
+      $("#doneNext").textContent = "We could not save a copy for the restaurant just now — send the message below so they still get your order.";
     } else {
     $("#doneNext").textContent =
       mode === "Dine In"
-        ? "The restaurant confirms your table order on WhatsApp. Payment stays at the table."
+        ? "Your table order is saved. The restaurant confirms it on WhatsApp; payment stays at the table."
         : mode === "Take Away"
-        ? "The restaurant confirms the pickup time on WhatsApp. Nothing is charged online."
-        : "The restaurant confirms the address and delivery charge on WhatsApp before sending.";
+        ? "Your order is saved. The restaurant confirms the pickup time on WhatsApp; nothing is charged online."
+        : "Your order is saved. The restaurant confirms the address and delivery charge on WhatsApp before sending.";
     }
 
+    /* No window.open here: it fires after an await, so the popup blocker eats it
+       on some phones, and the guest was then asked to send twice. The order is
+       already saved above — the send is one deliberate tap on the next screen,
+       which no blocker can refuse because it comes from a real gesture. */
     $("#sheetForm").hidden = true;
     $("#sheetDone").hidden = false;
-    window.open(url, "_blank", "noopener");
   });
 
   $("#doneClose").addEventListener("click", () => {

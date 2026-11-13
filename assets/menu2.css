@@ -1631,7 +1631,9 @@ html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
   letter-spacing: .02em;
   opacity: .8;
 }
-#confirmOrder {
+/* Both steps of the order are the same button: "Order on WhatsApp" in the form,
+   "Send on WhatsApp" on the confirmation screen. */
+.sheet-actions .btn-brand {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1643,8 +1645,8 @@ html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
   line-height: 1.12;
   border-radius: 14px;
 }
-#confirmOrder span { font-size: 15.5px; font-weight: 600; letter-spacing: -.012em; }
-#confirmOrder small {
+.sheet-actions .btn-brand span { font-size: 15.5px; font-weight: 600; letter-spacing: -.012em; }
+.sheet-actions .btn-brand small {
   margin: 0;
   font-size: 9px;
   font-weight: 600;
@@ -1654,8 +1656,8 @@ html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
 }
 /* one small line above the label, one below: the tap is an invitation, the
    second line is what the guest gets for making it */
-#confirmOrder .cta-lead { margin-bottom: 2px; opacity: .6; }
-#confirmOrder .cta-sub { margin-top: 3px; }
+.sheet-actions .btn-brand .cta-lead { margin-bottom: 2px; opacity: .6; }
+.sheet-actions .btn-brand .cta-sub { margin-top: 3px; }
 
 /* the sheet's two actions: equal halves, one quiet and one decisive */
 .sheet-actions { gap: 10px; align-items: stretch; margin-top: 22px; padding-top: 16px; }
