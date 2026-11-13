@@ -1208,7 +1208,7 @@ html[dir="rtl"] .item .ds { line-height: 1.75; }
    The shelves are photographs, so the paper is a choice rather than a given.
    Two alternates: a charcoal board that makes food photos glow, and a clay
    ground that keeps the warm paper feel with more depth. */
-body.menu-body.t-dark {
+html.t-dark {
   --danger:   #E8776A;
   --ok:       #6FBF8F;
   --paper:   #14171A;
@@ -1222,7 +1222,7 @@ body.menu-body.t-dark {
   --rule-2:  #1E242A;
   --shadow-1: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px -18px rgba(0,0,0,.8);
 }
-body.menu-body.t-clay {
+html.t-clay {
   --paper:   #EFE2D0;
   --paper-2: #E6D6BE;
   --paper-3: #DCCAB0;
@@ -1236,45 +1236,45 @@ body.menu-body.t-clay {
 
 /* The light surfaces that were hardcoded: a dark ground has to carry them too,
    or the picker arrives as a white pill on a charcoal page. */
-body.t-dark .cat-pick {
+html.t-dark .cat-pick {
   background: linear-gradient(to bottom, var(--paper) 78%, rgba(20, 23, 26, .86));
   border-bottom-color: var(--rule-2);
 }
-body.t-dark .cat-pick > span { color: var(--ink-4); }
-body.t-dark .cat-pick select {
+html.t-dark .cat-pick > span { color: var(--ink-4); }
+html.t-dark .cat-pick select {
   background: var(--paper-2);
   color: var(--ink);
   border-color: var(--rule);
 }
-body.t-dark .lang-switch {
+html.t-dark .lang-switch {
   background: rgba(20, 23, 26, .84);
   border-color: rgba(243, 239, 231, .14);
 }
-body.t-dark .lang-switch button { color: var(--ink-3); }
-body.t-dark .lang-switch button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-body.t-dark .cart { background: var(--paper-2); border-color: var(--rule); }
-body.t-dark .sheet { background: var(--paper); }
-body.t-dark .sheet-back { background: rgba(0, 0, 0, .62); }
-body.t-dark .input { background: var(--paper-2); color: var(--ink); border-color: var(--rule); }
-body.t-dark .input:focus { border-color: var(--ink-3); box-shadow: 0 0 0 3px rgba(243, 239, 231, .08); }
-body.t-dark .mode { background: var(--paper-2); border-color: var(--rule); }
-body.t-dark .mode button[aria-pressed="true"] { background: var(--ink); color: var(--paper); box-shadow: none; }
-body.t-dark .btn-outline { border-color: var(--ink-4); color: var(--ink); }
-body.t-dark .btn-brand { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-body.t-dark .checkout-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-body.t-dark .checkout-btn:hover:not([disabled]) { background: var(--accent); border-color: var(--accent); }
-body.t-dark .cart-empty, body.t-dark .hint { color: var(--ink-3); }
+html.t-dark .lang-switch button { color: var(--ink-3); }
+html.t-dark .lang-switch button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+html.t-dark .cart { background: var(--paper-2); border-color: var(--rule); }
+html.t-dark .sheet { background: var(--paper); }
+html.t-dark .sheet-back { background: rgba(0, 0, 0, .62); }
+html.t-dark .input { background: var(--paper-2); color: var(--ink); border-color: var(--rule); }
+html.t-dark .input:focus { border-color: var(--ink-3); box-shadow: 0 0 0 3px rgba(243, 239, 231, .08); }
+html.t-dark .mode { background: var(--paper-2); border-color: var(--rule); }
+html.t-dark .mode button[aria-pressed="true"] { background: var(--ink); color: var(--paper); box-shadow: none; }
+html.t-dark .btn-outline { border-color: var(--ink-4); color: var(--ink); }
+html.t-dark .btn-brand { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+html.t-dark .checkout-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+html.t-dark .checkout-btn:hover:not([disabled]) { background: var(--accent); border-color: var(--accent); }
+html.t-dark .cart-empty, html.t-dark .hint { color: var(--ink-3); }
 
 /* The sticky bar had a translucent tail, so the shelf scrolling under it showed
    through as a band of orphaned dish names. Opaque reads cleaner and costs
    nothing: the content is meant to disappear underneath, not bleed through. */
 .cat-pick,
-body.t-dark .cat-pick,
-body.t-clay .cat-pick { background: var(--paper); }
+html.t-dark .cat-pick,
+html.t-clay .cat-pick { background: var(--paper); }
 
 .rail,
-body.t-dark .rail,
-body.t-clay .rail { background: var(--paper); }
+html.t-dark .rail,
+html.t-clay .rail { background: var(--paper); }
 
 /* A shelf passing under the sticky bar gets cut mid-card. A hairline shadow
    under the bar makes that read as "scrolled under" rather than a broken row. */
@@ -1296,26 +1296,26 @@ body.t-clay .rail { background: var(--paper); }
 /* ---------------------------------------------------------------------------
    The dark ground inherited the light theme's pills and tints: cream text on a
    cream pill measured 1.1:1, which is invisible rather than low-contrast. */
-body.t-dark .hero-social {
+html.t-dark .hero-social {
   background: rgba(243, 239, 231, .10);
   border-color: rgba(243, 239, 231, .22);
   color: var(--ink);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
 }
-body.t-dark .hero-social:hover {
+html.t-dark .hero-social:hover {
   background: rgba(243, 239, 231, .18);
   border-color: rgba(243, 239, 231, .40);
   color: var(--ink);
 }
-body.t-dark .hero-logo {
+html.t-dark .hero-logo {
   background: rgba(20, 23, 26, .55);
   border-color: rgba(243, 239, 231, .28);
   color: var(--ink);
 }
-body.t-dark .sec.featured {
+html.t-dark .sec.featured {
   background: linear-gradient(180deg, var(--paper-2) 0%, rgba(27, 31, 36, .45) 100%);
 }
-body.t-dark .sold-tag { color: var(--ink-3); border-color: var(--rule); }
+html.t-dark .sold-tag { color: var(--ink-3); border-color: var(--rule); }
 
 /* a chip that carries the accent needs its own ink: white on a light accent is
    the same class of bug as cream on cream, and only the accent knows */
@@ -1325,29 +1325,29 @@ body.t-dark .sold-tag { color: var(--ink-3); border-color: var(--rule); }
    inside this subtree (a button's --ink came back as the light value while its
    parent's was dark), so on a fixed dark ground the colours are stated, not
    inherited. Everything here is measured by the contrast audit. */
-body.t-dark .mode button { color: #B9C1C8; }
-body.t-dark .mode button[aria-pressed="true"] { background: #F3EFE7; color: #14171A; }
-body.t-dark .btn,
-body.t-dark .btn-outline { color: #F3EFE7; border-color: rgba(243, 239, 231, .45); background: transparent; }
-body.t-dark .btn-outline:hover { background: rgba(243, 239, 231, .10); }
-body.t-dark .btn-brand { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
-body.t-dark .btn-brand:hover { background: #FFFFFF; border-color: #FFFFFF; }
-body.t-dark .checkout-btn { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
-body.t-dark .ol-row { color: #D5CFC4; }
-body.t-dark .ol-row span { color: inherit; }
-body.t-dark .ol-row.total,
-body.t-dark .ol-row.total span { color: #F3EFE7; }
-body.t-dark .sheet h2, body.t-dark .sheet .sub { color: #F3EFE7; }
-body.t-dark .field > label { color: #B9C1C8; }
-body.t-dark .hint { color: #B9C1C8; }
-body.t-dark .hint.bad, body.t-dark .err { color: #E8776A; }
-body.t-dark .hint.good { color: #6FBF8F; }
-body.t-dark .chips button { color: #D5CFC4; border-color: rgba(243, 239, 231, .28); }
-body.t-dark .chips button[aria-pressed="true"] { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
-body.t-dark .crow .cn, body.t-dark .crow > span:last-child { color: #F3EFE7; }
-body.t-dark .qty button { color: #D5CFC4; }
-body.t-dark .cart-total { color: #B9C1C8; }
-body.t-dark .cart-total b { color: #F3EFE7; }
-body.t-dark .next-steps { color: #D5CFC4; }
-body.t-dark .done-mark { background: #6FBF8F; color: #0F1412; }
+html.t-dark .mode button { color: #B9C1C8; }
+html.t-dark .mode button[aria-pressed="true"] { background: #F3EFE7; color: #14171A; }
+html.t-dark .btn,
+html.t-dark .btn-outline { color: #F3EFE7; border-color: rgba(243, 239, 231, .45); background: transparent; }
+html.t-dark .btn-outline:hover { background: rgba(243, 239, 231, .10); }
+html.t-dark .btn-brand { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
+html.t-dark .btn-brand:hover { background: #FFFFFF; border-color: #FFFFFF; }
+html.t-dark .checkout-btn { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
+html.t-dark .ol-row { color: #D5CFC4; }
+html.t-dark .ol-row span { color: inherit; }
+html.t-dark .ol-row.total,
+html.t-dark .ol-row.total span { color: #F3EFE7; }
+html.t-dark .sheet h2, html.t-dark .sheet .sub { color: #F3EFE7; }
+html.t-dark .field > label { color: #B9C1C8; }
+html.t-dark .hint { color: #B9C1C8; }
+html.t-dark .hint.bad, html.t-dark .err { color: #E8776A; }
+html.t-dark .hint.good { color: #6FBF8F; }
+html.t-dark .chips button { color: #D5CFC4; border-color: rgba(243, 239, 231, .28); }
+html.t-dark .chips button[aria-pressed="true"] { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
+html.t-dark .crow .cn, html.t-dark .crow > span:last-child { color: #F3EFE7; }
+html.t-dark .qty button { color: #D5CFC4; }
+html.t-dark .cart-total { color: #B9C1C8; }
+html.t-dark .cart-total b { color: #F3EFE7; }
+html.t-dark .next-steps { color: #D5CFC4; }
+html.t-dark .done-mark { background: #6FBF8F; color: #0F1412; }
 

@@ -132,7 +132,7 @@
      photographs and a dark page stops the paper competing with them. The
      marketing page embeds this menu in a phone frame, and there it stays light
      so the landing hero does not turn black. */
-  if (!document.body.classList.contains("embed")) document.body.classList.add("t-dark");
+  if (!document.body.classList.contains("embed")) document.documentElement.classList.add("t-dark");
 
   document.title = name + " — menu";
   $("#restName").textContent = name;
