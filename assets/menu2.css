@@ -1639,28 +1639,32 @@ html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
   align-items: center;
   justify-content: center;
   gap: 0;
-  height: 54px;
-  min-height: 54px;
+  height: 66px;
+  min-height: 66px;
   padding: 0 14px;
-  line-height: 1.15;
+  line-height: 1.12;
   border-radius: 14px;
 }
-#confirmOrder span { font-size: 15px; font-weight: 600; letter-spacing: -.012em; }
+#confirmOrder span { font-size: 15.5px; font-weight: 600; letter-spacing: -.012em; }
 #confirmOrder small {
-  margin-top: 3px;
-  font-size: 9.5px;
+  margin: 0;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: .11em;
   text-transform: uppercase;
   opacity: .55;
 }
+/* one small line above the label, one below: the tap is an invitation, the
+   second line is what the guest gets for making it */
+#confirmOrder .cta-lead { margin-bottom: 2px; opacity: .6; }
+#confirmOrder .cta-sub { margin-top: 3px; }
 
 /* the sheet's two actions: equal halves, one quiet and one decisive */
 .sheet-actions { gap: 10px; align-items: stretch; margin-top: 22px; padding-top: 16px; }
 .sheet-actions .btn {
   flex: 1 1 0;
-  height: 54px;
-  min-height: 54px;
+  height: 66px;
+  min-height: 66px;
   padding: 0 14px;
   border-radius: 14px;
   display: inline-flex;
