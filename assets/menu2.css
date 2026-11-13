@@ -340,7 +340,14 @@ body.menu-body::before {
   background: transparent;
   box-shadow: none;
 }
-.mhead-pick .cat-pick select { height: 44px; font-size: 14.5px; }
+.mhead-pick .cat-pick select option {
+  background: #FFFFFF;
+  color: #17140F;
+  font-family: var(--font-ui);
+}
+html.t-dark { color-scheme: dark; }
+html.t-dark .cat-pick select option { background: #1B1F24; color: #F3EFE7; }
+.cat-pick select { height: 44px; font-size: 14.5px; }
 @media (max-width: 599px) {
   /* a phone has room for the name and the language, not for three more controls */
   .mhead .mwa { display: none; }
@@ -887,15 +894,20 @@ html[dir="rtl"] .cat-pick::after { margin-inline-start: 2px; transform: rotate(4
   box-shadow: var(--shadow-2);
   transform: translate(-50%, 102%);
   opacity: 0;
-  transition: transform .42s var(--ease), opacity .26s var(--ease);
+  /* opacity alone leaves the panel in the hit-test tree: on a wide screen its
+     sticky footer sat over the dish list and every Add landed on
+     "Send on WhatsApp" instead of the dish. */
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .42s var(--ease), opacity .26s var(--ease), visibility 0s linear .42s;
 }
 .sheet::-webkit-scrollbar { width: 0; height: 0; }
 .sheet { scrollbar-width: none; }
 @media (min-width: 720px) {
   .sheet { top: 50%; bottom: auto; max-height: 86dvh; border-radius: var(--r-lg); transform: translate(-50%, -46%) scale(.985); }
 }
-.sheet.on { transform: translate(-50%, 0); opacity: 1; }
-@media (min-width: 720px) { .sheet.on { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+.sheet.on { transform: translate(-50%, 0); opacity: 1; visibility: visible; pointer-events: auto; transition: transform .42s var(--ease), opacity .26s var(--ease), visibility 0s; }
+@media (min-width: 720px) { .sheet.on { transform: translate(-50%, -50%) scale(1); opacity: 1; visibility: visible; pointer-events: auto; } }
 
 .sheet h2 {
   margin: 0 0 6px;
@@ -1031,7 +1043,8 @@ textarea.input { resize: vertical; min-height: 68px; }
   padding-top: 14px;
   border-top: 1px solid var(--rule-2);
   position: sticky;
-  bottom: calc(-22px - env(safe-area-inset-bottom));
+  bottom: 0;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
   background: var(--paper);
 }
 .sheet-actions .btn { flex: 1; }
@@ -1488,40 +1501,31 @@ html.t-dark #sheet .checkout-btn:disabled {
 @media (min-width: 1024px) {
   .items, .sec.featured .items {
     display: grid;
-    /* One column, full width. Two 354px columns left the dish name three
-       words wide and the description truncated to "Your Selection Between…". */
-    grid-template-columns: minmax(0, 1fr);
-    column-gap: clamp(24px, 3vw, 44px);
-    row-gap: 0;
+    /* Cards beside each other, sized so nothing is hidden and nothing has to be
+       dragged sideways: a wide screen shows two or three dishes per row. */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 22px 18px;
     margin: 0;
-    padding: 6px 0 14px;
+    padding: 6px 0 16px;
     overflow: visible;
     scroll-snap-type: none;
   }
-  /* The shelf card is 146px wide because a phone shows one at a time. In a
-     two-column list that left each card's right half empty and the photo at a
-     thumbnail's width, so the card becomes a row again: photo, text, price. */
   .items .item,
   .items .item.has-img {
-    flex: none;
+    display: block;
     width: auto;
-    display: grid;
-    grid-template-columns: 132px minmax(0, 1fr) auto;
-    column-gap: 18px;
-    align-items: start;
-    padding: 16px 0;
-    border-bottom: 1px solid var(--rule-2);
+    flex: none;
+    padding: 0;
+    border-bottom: 0;
     scroll-snap-align: none;
   }
-  .items .item:last-child { border-bottom: 0; }
   .items .item .thumb,
   .items .item.has-img > .thumb {
-    width: 132px;
-    height: 100px;
-    margin-bottom: 0;
+    width: 100%;
+    height: 158px;
+    margin-bottom: 10px;
   }
   .items .item .nm { font-size: 14.5px; }
-  .items .item .right { padding-top: 2px; }
 }
 
 /* the order lines carry their own quantity and a way out of the order */
