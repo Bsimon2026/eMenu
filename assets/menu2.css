@@ -1252,7 +1252,7 @@ body.t-dark .sheet-back { background: rgba(0, 0, 0, .62); }
 body.t-dark .input { background: var(--paper-2); color: var(--ink); border-color: var(--rule); }
 body.t-dark .input:focus { border-color: var(--ink-3); box-shadow: 0 0 0 3px rgba(243, 239, 231, .08); }
 body.t-dark .mode { background: var(--paper-2); border-color: var(--rule); }
-body.t-dark .mode button[aria-pressed="true"] { background: var(--paper-3); color: var(--ink); box-shadow: none; }
+body.t-dark .mode button[aria-pressed="true"] { background: var(--ink); color: var(--paper); box-shadow: none; }
 body.t-dark .btn-outline { border-color: var(--ink-4); color: var(--ink); }
 body.t-dark .btn-brand { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 body.t-dark .checkout-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); }
@@ -1269,4 +1269,9 @@ body.t-clay .cat-pick { background: var(--paper); }
 .rail,
 body.t-dark .rail,
 body.t-clay .rail { background: var(--paper); }
+
+/* A shelf passing under the sticky bar gets cut mid-card. A hairline shadow
+   under the bar makes that read as "scrolled under" rather than a broken row. */
+.cat-pick { box-shadow: 0 10px 18px -14px rgba(0, 0, 0, .55); }
+.rail { box-shadow: 0 10px 18px -16px rgba(0, 0, 0, .35); }
 
