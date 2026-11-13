@@ -834,6 +834,22 @@
     /* the restaurant's own colour becomes the accent: buttons, the active chip,
        the star, the progress hairline. Until now it was fetched and never used. */
     document.documentElement.style.setProperty("--brand", accent);
+
+    /* Whatever sits ON the accent has to be readable on it. White on this
+       orange measured 2.3:1; the ink is chosen by contrast, not by taste,
+       because the accent is different for every restaurant. */
+    (function readableInk(value) {
+      const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(value || "").trim());
+      if (!m) return;
+      let h = m[1];
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      const rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+      const lin = rgb.map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+      const L = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      const onWhite = 1.05 / (L + 0.05);
+      const onInk = (L + 0.05) / (0.013 + 0.05);
+      document.documentElement.style.setProperty("--accent-ink", onInk >= onWhite ? "#14120E" : "#FFFFFF");
+    })(accent);
     handle = r.handle || wanted;
     publicLink = PUBLIC_BASE.replace(/^https?:\/\//i, "") + handle;
 

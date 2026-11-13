@@ -1209,6 +1209,8 @@ html[dir="rtl"] .item .ds { line-height: 1.75; }
    Two alternates: a charcoal board that makes food photos glow, and a clay
    ground that keeps the warm paper feel with more depth. */
 body.menu-body.t-dark {
+  --danger:   #E8776A;
+  --ok:       #6FBF8F;
   --paper:   #14171A;
   --paper-2: #1B1F24;
   --paper-3: #242A30;
@@ -1290,4 +1292,32 @@ body.t-clay .rail { background: var(--paper); }
     scroll-padding-inline-start: 0;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The dark ground inherited the light theme's pills and tints: cream text on a
+   cream pill measured 1.1:1, which is invisible rather than low-contrast. */
+body.t-dark .hero-social {
+  background: rgba(243, 239, 231, .10);
+  border-color: rgba(243, 239, 231, .22);
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+body.t-dark .hero-social:hover {
+  background: rgba(243, 239, 231, .18);
+  border-color: rgba(243, 239, 231, .40);
+  color: var(--ink);
+}
+body.t-dark .hero-logo {
+  background: rgba(20, 23, 26, .55);
+  border-color: rgba(243, 239, 231, .28);
+  color: var(--ink);
+}
+body.t-dark .sec.featured {
+  background: linear-gradient(180deg, var(--paper-2) 0%, rgba(27, 31, 36, .45) 100%);
+}
+body.t-dark .sold-tag { color: var(--ink-3); border-color: var(--rule); }
+
+/* a chip that carries the accent needs its own ink: white on a light accent is
+   the same class of bug as cream on cream, and only the accent knows */
+body.menu-body { --accent-ink: #FFFFFF; }
 
