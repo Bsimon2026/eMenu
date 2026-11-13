@@ -1603,3 +1603,45 @@ html.t-dark .mbar { color: #F6F2EA; }
 html.t-dark .mbar .bt { color: #F6F2EA; }
 html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
 
+/* The primary action says what the guest is about to do, and the line under it
+   says what happens next: on WhatsApp the restaurant confirms, so "send" was
+   describing our plumbing rather than their experience. */
+.btn-brand small,
+.checkout-btn small {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  opacity: .8;
+}
+#confirmOrder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: auto;
+  min-height: 46px;
+  padding: 8px 18px;
+  line-height: 1.2;
+}
+
+/* The cart panel is sticky and the button sits at its foot: on a laptop with a
+   few dishes the panel grew past the viewport and "Review order" fell below the
+   fold where it could not be reached at all. The panel is now capped and the
+   order lines scroll inside it, so the foot stays where it can be pressed. */
+@media (min-width: 1024px) {
+  .cart {
+    display: flex;
+    flex-direction: column;
+    top: 24px;
+    max-height: calc(100dvh - 48px);
+    overflow: hidden;
+  }
+  body.scrolled .cart { top: 132px; max-height: calc(100dvh - 156px); }
+  #cartBody { overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+  #cartFoot { position: sticky; bottom: 0; background: var(--paper); padding-top: 10px; margin-top: auto; }
+}
+
