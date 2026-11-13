@@ -1582,6 +1582,11 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .es-row .es-qty b { min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
 .es-row .es-amt { text-align: right; font-variant-numeric: tabular-nums; }
 .es-row .es-x { border: none; background: none; color: var(--ink-4, #9a9488); cursor: pointer; font-size: 16px; line-height: 1; }
+/* an input with no min-width pushes the Apply button out of the sheet */
+.edit-sheet .code-row { display: flex; gap: 8px; }
+.edit-sheet .code-row .input { flex: 1; min-width: 0; }
+.edit-sheet .code-row .btn { flex: 0 0 auto; padding-inline: 12px; }
+
 .es-add { display: flex; gap: 8px; margin-top: 10px; }
 .es-add select { flex: 1; }
 .es-totals { margin-top: 14px; border-top: 1px solid var(--line, #ece9e3); padding-top: 10px; font-size: 13.5px; }
