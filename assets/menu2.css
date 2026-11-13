@@ -1487,3 +1487,24 @@ html.t-dark #sheet .ol-del { color: #B9C1C8; }
 html.t-dark #sheet .ol-del:hover { background: rgba(232, 119, 106, .18); color: #E8776A; }
 html.t-dark #sheet .ol-qty b { color: #F3EFE7; }
 
+/* ---------------------------------------------------------------------------
+   The bar paints itself dark in every theme, but its button took --paper as a
+   background: under the charcoal palette that made the button the same colour as
+   the bar, so "Review order" floated as loose text. The primary action carries
+   the accent here, which is the one colour that survives both themes. */
+html.t-dark .mbar button {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+html.t-dark .mbar button:hover { filter: brightness(1.06); }
+html.t-dark .mbar button:active { transform: scale(.96); }
+html.t-dark .mbar button:disabled {
+  background: rgba(243, 239, 231, .14);
+  border-color: rgba(243, 239, 231, .40);
+  color: #E7E2D8;
+  opacity: 1;
+}
+html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
+
