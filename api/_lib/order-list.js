@@ -37,10 +37,10 @@ module.exports = async function listOrders(req, res) {
   if (from) filters += "&created_at=gte." + from + "T00:00:00";
   if (to) filters += "&created_at=lte." + to + "T23:59:59";
 
-  /* archived rows are out of the shift unless they are what was asked for */
-  let archFilter = "";
-  if (wantArchived) archFilter = "&archived_at=not.is.null";
-  else if (q.state) archFilter = "&archived_at=is.null";
+  /* archived rows are out of the shift unless they are what was asked for —
+     including the plain list, which is what the Overview, the Open/History tabs
+     and the Marketing customer list all read */
+  const archFilter = wantArchived ? "&archived_at=not.is.null" : "&archived_at=is.null";
 
   const COLS = "id,mode,table_no,pickup_at,address,guest_name,guest_phone,total,status,created_at";
   const base = "orders?restaurant_id=eq." + restaurant.id;
