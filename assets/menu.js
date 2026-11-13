@@ -125,6 +125,12 @@
   function paint() {
   /* ---------- head ---------- */
 
+  /* The ground the shelves sit on. Charcoal by default: the menu is mostly
+     photographs and a dark page stops the paper competing with them. The
+     marketing page embeds this menu in a phone frame, and there it stays light
+     so the landing hero does not turn black. */
+  if (!document.body.classList.contains("embed")) document.body.classList.add("t-dark");
+
   document.title = name + " — menu";
   $("#restName").textContent = name;
   $("#restMeta").textContent =
@@ -176,7 +182,7 @@
               return `
             <div class="item ${it.soldOut ? "sold" : ""} ${col}" data-id="${it.id}">
               ${it.image
-                ? `<img class="thumb loading" src="${sized(it.image, 320)}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.closest('.item').classList.remove('has-img'); this.remove()">`
+                ? `<img class="thumb loading" src="${sized(it.image, 320)}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.classList.add('ph'); this.removeAttribute('src')">`
                 : sectionHasImg ? `<div class="thumb ph" aria-hidden="true"></div>` : ""}
               <div>
                 <div class="nm">
