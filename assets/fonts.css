@@ -1,0 +1,44 @@
+/* ==========================================================================
+   Self-hosted faces for the dashboard.
+   No third-party font CDN is contacted at runtime: Satoshi (Fontshare, free
+   licence) and Geist Mono (Google, OFL) are served from this folder, so first
+   paint does not wait on a request to a host we do not run.
+
+   Base path: this sheet sits at /assets/fonts.css, so url("fonts/x.woff2")
+   resolves to /assets/fonts/x.woff2 — and it keeps resolving if the whole site
+   is served from a subfolder.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("fonts/satoshi-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("fonts/satoshi-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("fonts/satoshi-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Geist Mono ships one variable file that covers 400 and 500 — Google hands the
+   same URL to both weights — so declare the range and let the file answer. */
+@font-face {
+  font-family: "Geist Mono";
+  src: url("fonts/geist-mono.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}

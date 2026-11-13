@@ -160,14 +160,15 @@
   /* ---------------- routing ---------------- */
 
   const VIEW_TITLES = {
-    overview: "Overview",
+    overview: "Today",
     menu: "Menu",
     import: "Import menu",
     qr: "QR & link",
     orders: "Orders",
     feedback: "Feedback",
     marketing: "Marketing",
-    docs: "Documents"
+    docs: "Settings",
+    more: "More"
   };
 
   function showView(name) {
@@ -199,11 +200,17 @@
     })
   );
 
-  $("#signOut").addEventListener("click", () => {
-    const staff = state.role && state.role !== "owner";
-    const handle = state.handle;
-    window.Auth.signOut();
-    location.href = staff && handle ? "/" + handle + "/login" : "/login.html";
+  // one sign-out action, reachable from the rail on a desktop and from the
+  // More screen on a phone
+  ["#signOut", "#signOutMore"].forEach((sel) => {
+    const el = $(sel);
+    if (!el) return;
+    el.addEventListener("click", () => {
+      const staff = state.role && state.role !== "owner";
+      const handle = state.handle;
+      window.Auth.signOut();
+      location.href = staff && handle ? "/" + handle + "/login" : "/login.html";
+    });
   });
 
   /* ---------------- team logins (owner only) ----------------
@@ -1518,7 +1525,7 @@
      page only collects it — the server recomputes every figure. */
   const EDIT = { id: null, items: [], fee: 0, code: "", disc: null, phone: "", place: "" };
 
-  function esMoney(n) { return "AED " + (Math.round((Number(n) || 0) * 100) / 100); }
+  function esMoney(n) { return (state.currency || "AED") + " " + (Math.round((Number(n) || 0) * 100) / 100).toFixed(2); }
 
   function esSubtotal() {
     return Math.round(EDIT.items.reduce((a, i) => a + i.price * i.qty, 0) * 100) / 100;
@@ -1575,7 +1582,7 @@
       (c.items || []).forEach(function (i) {
         if (i.soldOut) return;
         opts.push('<option value="' + esc(i.id || "") + '" data-name="' + esc(i.name) + '" data-price="' + (Number(i.price) || 0) + '">' +
-          esc(i.name) + ' \u00b7 AED ' + (Number(i.price) || 0) + '</option>');
+          esc(i.name) + ' \u00b7 ' + (state.currency || "AED") + ' ' + (Number(i.price) || 0).toFixed(2) + '</option>');
       });
     });
     sel.innerHTML = opts.length ? opts.join("") : '<option value="">The menu is not loaded</option>';
@@ -2119,7 +2126,9 @@
   function priceLabel(n) {
     const code = state.currency || "AED";
     const sym = CUR_SYMBOL[code] || code;
-    const v = Math.round((Number(n) || 0) * 100) / 100;
+    /* two decimals at the point of display: a price that reads 41.6 next to one
+       that reads 59.20 looks like a data bug to the person paying */
+    const v = (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
     return /^[A-Z]{3}$/.test(sym) ? sym + " " + v : sym + v;
   }
 
@@ -3221,7 +3230,7 @@
      QR encodes, /<handle>, and never at the bare page. */
   function renderGuestLinks() {
     const href = state.handle ? "/" + encodeURIComponent(state.handle) : "/menu.html";
-    ["#guestViewLink", "#guestViewTop"].forEach((sel) => {
+    ["#guestViewLink", "#guestViewTop", "#guestViewMore"].forEach((sel) => {
       const el = $(sel);
       if (el) el.href = href;
     });
