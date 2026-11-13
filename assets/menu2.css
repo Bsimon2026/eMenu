@@ -1351,3 +1351,45 @@ html.t-dark .cart-total b { color: #F3EFE7; }
 html.t-dark .next-steps { color: #D5CFC4; }
 html.t-dark .done-mark { background: #6FBF8F; color: #0F1412; }
 
+/* ---------------------------------------------------------------------------
+   The sheet, stated by id. Scoping these by class left the buttons resolving
+   the light palette on a dark ground — dark ink on a dark panel, which is the
+   "cannot even read it" the owner reported. An id outranks the cascade, so
+   these win wherever the sheet is rendered. */
+html.t-dark #sheet { background: #14171A; color: #F3EFE7; }
+html.t-dark #sheet h2 { color: #F3EFE7; }
+html.t-dark #sheet .sub { color: #B9C1C8; }
+html.t-dark #sheet .field > label { color: #B9C1C8; }
+html.t-dark #sheet .input {
+  background: #1B1F24;
+  color: #F3EFE7;
+  border-color: #262C33;
+}
+html.t-dark #sheet .input::placeholder { color: #7A838C; }
+html.t-dark #sheet .mode { background: #1B1F24; border-color: #262C33; }
+html.t-dark #sheet .mode button { background: transparent; color: #B9C1C8; }
+html.t-dark #sheet .mode button[aria-pressed="true"] { background: #F3EFE7; color: #14171A; }
+html.t-dark #sheet .btn,
+html.t-dark #sheet .btn-outline {
+  background: transparent;
+  color: #F3EFE7;
+  border-color: rgba(243, 239, 231, .45);
+}
+html.t-dark #sheet .btn-brand {
+  background: #F3EFE7;
+  border-color: #F3EFE7;
+  color: #14171A;
+}
+html.t-dark #sheet .hint { color: #B9C1C8; }
+html.t-dark #sheet .hint.bad, html.t-dark #sheet .err { color: #E8776A; }
+html.t-dark #sheet .hint.good { color: #6FBF8F; }
+html.t-dark #sheet .chips button { background: transparent; color: #D5CFC4; border-color: rgba(243, 239, 231, .28); }
+html.t-dark #sheet .chips button[aria-pressed="true"] { background: #F3EFE7; border-color: #F3EFE7; color: #14171A; }
+html.t-dark #sheet .order-lines { border-top-color: #262C33; }
+html.t-dark #sheet .ol-row { color: #D5CFC4; }
+html.t-dark #sheet .ol-row span { color: inherit; }
+html.t-dark #sheet .ol-row.total,
+html.t-dark #sheet .ol-row.total span { color: #F3EFE7; border-top-color: #3A424B; }
+html.t-dark #sheet .ol-row.disc, html.t-dark #sheet .ol-row.disc span { color: #6FBF8F; }
+html.t-dark #sheet .sheet-actions { background: #14171A; border-top-color: #262C33; }
+
