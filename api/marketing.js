@@ -195,7 +195,8 @@ async function owner(req, res) {
         phoneNumberId: s.wa_phone_number_id || "",
         waOrderNumber: s.wa_order_e164 || "",
         tokenHint: mask(s.wa_access_token),
-        cloudReady: Boolean(s.wa_phone_number_id && s.wa_access_token && s.wa_template),
+        cloudReady: Boolean(s.wa_phone_number_id && s.wa_access_token),
+        templateReady: Boolean(s.wa_template),
         dial: String(dial).replace(/[^\d]/g, "")
       });
     }
@@ -250,7 +251,8 @@ async function owner(req, res) {
       phoneNumberId: f.wa_phone_number_id || "",
       waOrderNumber: f.wa_order_e164 || "",
       tokenHint: mask(f.wa_access_token),
-      cloudReady: Boolean(f.wa_phone_number_id && f.wa_access_token && f.wa_template)
+      cloudReady: Boolean(f.wa_phone_number_id && f.wa_access_token),
+      templateReady: Boolean(f.wa_template)
     });
   }
 
@@ -362,10 +364,13 @@ async function owner(req, res) {
   /* --------------------------------------------- cloud: send a paced batch */
   if (q.cloud !== undefined) {
     if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
-    if (!s.wa_phone_number_id || !s.wa_access_token || !s.wa_template) {
+    /* a template is no longer required to send: inside the 24-hour window a
+       plain text message is allowed and free. The template is the fallback for
+       guests whose window has closed. */
+    if (!s.wa_phone_number_id || !s.wa_access_token) {
       return res.status(400).json({
         ok: false, code: "NOT_CONNECTED",
-        message: "Connect the Cloud API first: phone number id, access token and an approved template name."
+        message: "Connect the Cloud API first: phone number id and access token. A template is only needed for guests outside the 24-hour window."
       });
     }
 
@@ -381,6 +386,16 @@ async function owner(req, res) {
     const results = [];
     for (const row of batch.data || []) {
       const link = "https://digimenu.indubaicity.com/f/" + row.token;
+      const first = String(row.guest_name || "there").split(" ")[0].slice(0, 40);
+      const restaurantName = String(actor.restaurant.name || "").slice(0, 60);
+
+      /* Inside the 24-hour window a plain text message is allowed and costs
+         nothing; outside it, only an approved template gets through. So try the
+         free form first and fall back to the template — the guest who messaged
+         their order is the common case, and they should not cost a template. */
+      const freeText = "Hi " + first + ", thanks for eating at " + restaurantName +
+        ". How was it? " + link;
+
       const payload = {
         messaging_product: "whatsapp",
         to: row.phone,
@@ -393,44 +408,71 @@ async function owner(req, res) {
           components: [{
             type: "body",
             parameters: [
-              { type: "text", text: String(row.guest_name || "there").split(" ")[0].slice(0, 40) },
-              { type: "text", text: String(actor.restaurant.name || "").slice(0, 60) },
+              { type: "text", text: first },
+              { type: "text", text: restaurantName },
               { type: "text", text: link }
             ]
           }]
         }
       };
 
-      let ok = false, err = "", via = "";
-      /* Two doors to the same API. A number registered straight with Meta
-         answers on graph.facebook.com; one connected through Kapso answers on
-         Kapso's Meta-compatible proxy, which takes the project API key as the
-         bearer. The token is not something we can inspect to tell them apart,
-         so an auth refusal on one door is retried on the other — and a bad
-         template (the other common failure) is not retried, because it is bad
-         on both. */
+      /* Two doors to the same API, and two ways to say the same thing.
+         - door: a number registered with Meta answers on graph.facebook.com;
+           one connected through Kapso answers on Kapso's Meta proxy, which takes
+           a bearer or an X-API-Key. A refused credential is retried on the other
+           door; anything else is not, because it fails on both.
+         - form: inside the 24-hour window a plain text message is free and
+           allowed; outside it only an approved template gets through. So the
+           text goes first and the template catches what it cannot reach. */
       const routes = [
-        { name: "meta", base: "https://graph.facebook.com/" + GRAPH },
-        { name: "kapso", base: (process.env.WA_API_BASE || "https://api.kapso.ai/meta/whatsapp/v24.0") }
-      ];
-      for (const route of routes) {
-        try {
-          const r = await fetch(route.base + "/" + s.wa_phone_number_id + "/messages", {
-            method: "POST",
-            headers: { Authorization: "Bearer " + s.wa_access_token, "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(15000)
-          });
-          const text = await r.text();
-          let d = null; try { d = text ? JSON.parse(text) : null; } catch (e) { d = null; }
-          ok = r.ok;
-          if (ok) { via = route.name; err = ""; break; }
-          err = String((d && d.error && (d.error.message || d.error.code)) || text).slice(0, 200);
-          /* only a refused credential is worth asking the other door */
-          if (r.status !== 401 && r.status !== 403) break;
-        } catch (e) {
-          err = String(e && e.message || "network").slice(0, 120);
+        {
+          name: "meta",
+          base: "https://graph.facebook.com/" + GRAPH,
+          headers: { Authorization: "Bearer " + s.wa_access_token }
+        },
+        {
+          name: "kapso",
+          base: (process.env.WA_API_BASE || "https://api.kapso.ai/meta/whatsapp/v24.0"),
+          headers: { Authorization: "Bearer " + s.wa_access_token, "X-API-Key": s.wa_access_token }
         }
+      ];
+
+      const attempts = [{
+        kind: "text",
+        body: {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: row.phone,
+          type: "text",
+          text: { preview_url: false, body: freeText }
+        }
+      }];
+      if (s.wa_template) attempts.push({ kind: "template", body: payload });
+
+      let ok = false, err = "", via = "", sentAs = "";
+      for (const attempt of attempts) {
+        for (const route of routes) {
+          try {
+            const r = await fetch(route.base + "/" + s.wa_phone_number_id + "/messages", {
+              method: "POST",
+              headers: Object.assign({ "Content-Type": "application/json" }, route.headers),
+              body: JSON.stringify(attempt.body),
+              signal: AbortSignal.timeout(15000)
+            });
+            const text = await r.text();
+            let d = null; try { d = text ? JSON.parse(text) : null; } catch (e) { d = null; }
+            if (r.ok) { ok = true; via = route.name; sentAs = attempt.kind; err = ""; break; }
+            const code = d && d.error ? (d.error.code || "") : "";
+            err = String((d && d.error && (d.error.message || d.error.code)) || text).slice(0, 200);
+            /* a refused credential is worth the other door; a closed window or a
+               bad template is not — move on to the next form instead */
+            if (r.status === 401 || r.status === 403) continue;
+            break;
+          } catch (e) {
+            err = String(e && e.message || "network").slice(0, 120);
+          }
+        }
+        if (ok) break;
       }
 
       await rest("review_requests?id=eq." + row.id, {
@@ -440,7 +482,7 @@ async function owner(req, res) {
           : { status: "failed", error: err }
       });
 
-      results.push({ id: row.id, phone: row.phone, ok, error: ok ? null : err, via: via || null });
+      results.push({ id: row.id, phone: row.phone, ok, error: ok ? null : err, via: via || null, as: sentAs || null });
       /* slow on purpose: pacing is what keeps a number healthy */
       await new Promise((r) => setTimeout(r, 700));
     }
