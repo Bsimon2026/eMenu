@@ -1536,3 +1536,23 @@ body[data-role="orders"] #newCatName { display: none !important; }
 }
 .arch-btn:hover { border-color: var(--ink-3); color: var(--ink); }
 .arch-btn:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* ---------------- discount codes ---------------- */
+.dc-list { margin-top: 12px; border-top: 1px solid var(--line, #ece9e3); }
+.dc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 110px 76px 92px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 2px;
+  border-bottom: 1px solid #f3f1ec;
+  font-size: 13px;
+}
+.dc-row:last-child { border-bottom: none; }
+.dc-row .dc-code { font-weight: 600; letter-spacing: .04em; }
+.dc-row .dc-code small { display: block; font-weight: 400; letter-spacing: 0; color: var(--ink-4, #9a9488); font-size: 11.5px; margin-top: 2px; }
+.dc-row .dc-num { font-variant-numeric: tabular-nums; }
+.dc-row.off .dc-code { color: var(--ink-4, #9a9488); text-decoration: line-through; }
+.dc-row .dc-act { display: flex; justify-content: flex-end; gap: 6px; }
+.dc-empty { padding: 14px 2px; color: var(--ink-4, #9a9488); font-size: 13px; }
+

@@ -538,9 +538,95 @@
       f.value = new Date(now.getTime() - 29 * 86400000).toISOString().slice(0, 10);
     }
     await mkLoadSettings();
+    dcWireOnce();
+    await dcLoad();
     await mkLoadDone();
     await mkLoadQueue();
     await mkLoadReviews();
+  }
+
+  /* ------------------------------------------------------- discount codes
+     A code is a percentage with a cap and a once-per-number rule; the server
+     owns all three. This only draws what it returns. */
+  async function dcLoad() {
+    const list = $("#dcList");
+    if (!list) return;
+    list.innerHTML = '<div class="dc-empty">Loading…</div>';
+    const r = await window.Auth.api("/api/marketing?discounts=1");
+    if (!r.ok) {
+      const d = r.data || {};
+      list.innerHTML = '<div class="dc-empty">' +
+        esc(d.code === "NO_DISCOUNTS"
+          ? "Discount codes are not switched on yet."
+          : (d.message || "Could not load the codes.")) + '</div>';
+      return;
+    }
+    const d = r.data || {};
+    const given = $("#dcGiven");
+    if (given) given.textContent = "AED " + (d.givenAway || 0) + " given away";
+
+    const codes = d.codes || [];
+    if (!codes.length) {
+      list.innerHTML = '<div class="dc-empty">No codes yet. The first one you make is live immediately.</div>';
+      return;
+    }
+    list.innerHTML = codes.map(function (c) {
+      const cap = c.maxAmount ? "max AED " + c.maxAmount : "no cap";
+      const min = c.minOrder ? "min AED " + c.minOrder : "no minimum";
+      return '<div class="dc-row ' + (c.active ? "" : "off") + '" data-id="' + esc(c.id) + '">' +
+        '<div class="dc-code">' + esc(c.code) +
+          '<small>' + esc(min) + ' · used ' + c.uses + ' time' + (c.uses === 1 ? "" : "s") + '</small></div>' +
+        '<div class="dc-num">' + c.percent + '%</div>' +
+        '<div class="dc-num">' + esc(cap) + '</div>' +
+        '<div class="dc-num">' + (c.active ? "Live" : "Paused") + '</div>' +
+        '<div class="dc-act">' +
+          '<button class="btn btn-sm btn-quiet" type="button" data-dc-toggle="' + esc(c.id) + '" data-on="' + (c.active ? "0" : "1") + '">' +
+            (c.active ? "Pause" : "Resume") + '</button>' +
+          '<button class="btn btn-sm btn-quiet" type="button" data-dc-del="' + esc(c.id) + '">Delete</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function dcMsg(text, bad) {
+    const el = $("#dcMsg");
+    if (!el) return;
+    el.textContent = text || "";
+    el.className = "hint" + (bad ? " bad" : "");
+  }
+
+  async function dcCreate() {
+    const code = ($("#dcCode") || {}).value || "";
+    const percent = ($("#dcPercent") || {}).value || "";
+    const maxAmount = ($("#dcMax") || {}).value || "";
+    const minOrder = ($("#dcMin") || {}).value || "";
+
+    if (!code.trim() || !percent) { dcMsg("A code needs a name and a percentage.", true); return; }
+    const btn = $("#dcCreate");
+    if (btn) btn.disabled = true;
+    const r = await window.Auth.api("/api/marketing?discounts=1", {
+      method: "POST",
+      body: JSON.stringify({ action: "create", code: code, percent: percent, maxAmount: maxAmount, minOrder: minOrder })
+    });
+    if (btn) btn.disabled = false;
+
+    if (!r.ok) {
+      const d = r.data || {};
+      dcMsg(d.code === "NO_DISCOUNTS"
+        ? "Discount codes are not switched on yet — run db/0019_discounts.sql."
+        : (d.message || "That code did not save."), true);
+      return;
+    }
+    $("#dcCode").value = ""; $("#dcPercent").value = ""; $("#dcMax").value = ""; $("#dcMin").value = "";
+    dcMsg("Created — guests can use it now.", false);
+    await dcLoad();
+  }
+
+  function dcWireOnce() {
+    const create = $("#dcCreate");
+    if (!create || create.dataset.wired) return;
+    create.dataset.wired = "1";
+    create.addEventListener("click", dcCreate);
   }
 
   function mkWireOnce() {
@@ -1663,6 +1749,51 @@
       ordersFetchedAt = 0;
       await renderOrders();
       toast((r.data && r.data.via ? "Sent via " + r.data.via + "." : "Sent."));
+      return;
+    }
+
+    const dcToggle = e.target.closest && e.target.closest("[data-dc-toggle]");
+    if (dcToggle) {
+      e.preventDefault();
+      dcToggle.disabled = true;
+      const r = await window.Auth.api("/api/marketing?discounts=1", {
+        method: "POST",
+        body: JSON.stringify({ action: "toggle", id: dcToggle.getAttribute("data-dc-toggle"), active: dcToggle.getAttribute("data-on") === "1" })
+      });
+      if (!r.ok) { dcToggle.disabled = false; toast((r.data && r.data.message) || "That did not save."); return; }
+      await dcLoad();
+      return;
+    }
+
+    /* deleting is its own decision, with its own words — arming the button you
+       just pressed reads as a button that does nothing */
+    const dcDel = e.target.closest && e.target.closest("[data-dc-del]");
+    if (dcDel) {
+      e.preventDefault();
+      const row = dcDel.closest(".dc-row");
+      const act = row && row.querySelector(".dc-act");
+      if (act) {
+        act.innerHTML =
+          '<button class="btn btn-sm btn-outline" type="button" data-dc-yes="' + esc(dcDel.getAttribute("data-dc-del")) + '">Delete it</button>' +
+          '<button class="btn btn-sm btn-quiet" type="button" data-dc-no="1">Keep it</button>';
+      }
+      return;
+    }
+
+    const dcNo = e.target.closest && e.target.closest("[data-dc-no]");
+    if (dcNo) { e.preventDefault(); await dcLoad(); return; }
+
+    const dcYes = e.target.closest && e.target.closest("[data-dc-yes]");
+    if (dcYes) {
+      e.preventDefault();
+      dcYes.disabled = true;
+      const r = await window.Auth.api("/api/marketing?discounts=1", {
+        method: "POST",
+        body: JSON.stringify({ action: "delete", id: dcYes.getAttribute("data-dc-yes") })
+      });
+      if (!r.ok) { dcYes.disabled = false; toast((r.data && r.data.message) || "That did not save."); return; }
+      await dcLoad();
+      toast("Code deleted.");
       return;
     }
 

@@ -227,6 +227,20 @@
     return { count, sum };
   }
 
+  /* The code the guest applied. The percentage and the cap come from the
+     server; the amount is recomputed here whenever the cart changes, so adding
+     a dish after applying a code never discounts more than the code allows. */
+  let applied = null;
+
+  function discountNow() {
+    if (!applied) return { amount: 0, total: totals().sum };
+    const { sum } = totals();
+    let amount = sum * (applied.percent / 100);
+    if (applied.maxAmount) amount = Math.min(amount, applied.maxAmount);
+    amount = Math.min(Math.round(amount * 100) / 100, sum);
+    return { amount, total: Math.round((sum - amount) * 100) / 100 };
+  }
+
   function renderCart() {
     const { count, sum } = totals();
     const body = $("#cartBody");
@@ -336,10 +350,69 @@
 
   function renderSheetTotals() {
     const { sum } = totals();
-    $("#sheetTotals").innerHTML =
-      Array.from(cart.values())
-        .map((r) => `<div class="ol-row"><span>${r.qty} × ${r.item.name}</span><span>AED ${r.qty * r.item.price}</span></div>`)
-        .join("") + `<div class="ol-row total"><span>Total</span><span>AED ${sum}</span></div>`;
+    const d = discountNow();
+    const lines = Array.from(cart.values())
+      .map((r) => `<div class="ol-row"><span>${r.qty} × ${r.item.name}</span><span>AED ${r.qty * r.item.price}</span></div>`)
+      .join("");
+    const off = applied && d.amount > 0
+      ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% off</span><span>− AED ${d.amount}</span></div>`
+      : "";
+    $("#sheetTotals").innerHTML = lines + off +
+      `<div class="ol-row total"><span>Total</span><span>AED ${d.total}</span></div>`;
+  }
+
+  /* Applying a code is a question for the server: it knows the percentage, the
+     cap, whether the code is still running and whether this number used it. */
+  async function applyCode() {
+    const input = $("#discCode");
+    const btn = $("#applyCode");
+    const msg = $("#codeMsg");
+    const code = (input.value || "").trim().toUpperCase();
+    if (!code) { if (msg) { msg.className = "hint bad"; msg.textContent = "Type the code first."; } return; }
+
+    const before = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Checking…";
+    try {
+      const res = await fetch(API_BASE + "/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discountCheck: true,
+          handle: handle,
+          code: code,
+          subtotal: totals().sum,
+          phone: ($("#guestPhone") || {}).value || ""
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        applied = null;
+        if (msg) {
+          msg.className = "hint bad";
+          msg.textContent = data.message || (data.code === "NO_DISCOUNTS"
+            ? "Discounts are not switched on for this restaurant."
+            : "That code did not work.");
+        }
+      } else {
+        applied = {
+          code: data.code, percent: data.percent,
+          amount: data.amount, maxAmount: data.maxAmount || null
+        };
+        if (msg) {
+          msg.className = "hint good";
+          const d = discountNow();
+          msg.textContent = applied.code + " applied — you save AED " + d.amount + ".";
+        }
+        input.value = applied.code;
+      }
+      renderSheetTotals();
+    } catch (e) {
+      if (msg) { msg.className = "hint bad"; msg.textContent = "Could not check that code. Try again."; }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = before;
+    }
   }
 
   function err(id, bad) {
@@ -358,7 +431,11 @@
     if (phone) lines.push("Mobile: " + phone);
     lines.push("");
     cart.forEach((r) => lines.push(r.qty + " × " + r.item.name + " — AED " + r.qty * r.item.price));
-    lines.push("", "Total: AED " + sum, "", "Sent from " + publicLink);
+    const d = discountNow();
+    if (applied && d.amount > 0) {
+      lines.push("", "Discount " + applied.code + " (" + applied.percent + "%): − AED " + d.amount);
+    }
+    lines.push("", "Total: AED " + d.total, "", "Sent from " + publicLink);
     return lines.join("\n");
   }
 
@@ -405,6 +482,7 @@
           name: guest,
           phone: phone,
           total: totals().sum,
+          discountCode: applied ? applied.code : null,
           items: Array.from(cart.values()).map((r) => ({
             id: r.item.id, name: r.item.name, qty: r.qty, price: r.item.price
           }))
@@ -418,6 +496,13 @@
       sending = false;
     }
   }
+
+  const applyBtn = $("#applyCode");
+  if (applyBtn) applyBtn.addEventListener("click", applyCode);
+  const codeInput = $("#discCode");
+  if (codeInput) codeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); applyCode(); }
+  });
 
   $("#confirmOrder").addEventListener("click", async () => {
     let ok = true;

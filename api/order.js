@@ -12,6 +12,7 @@
 const { rest, cors, configured } = require("./_lib/db");
 const mail = require("./_lib/mail");
 const listOrders = require("./_lib/order-list");
+const discount = require("./_lib/discounts");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
@@ -45,6 +46,31 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "Unknown menu address." });
   }
 
+  /* One code, checked before the guest commits: what it is worth against this
+     basket, from the row in the database rather than the number the page shows. */
+  if (body.discountCheck) {
+    const dHandle = clean(body.handle, 40).toLowerCase();
+    if (!SAFE_HANDLE.test(dHandle)) {
+      return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "Unknown menu address." });
+    }
+    const dr = await rest("restaurants?handle=eq." + encodeURIComponent(dHandle) + "&select=id,currency&limit=1");
+    if (!dr.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+    const dress = (dr.data || [])[0];
+    if (!dress) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No menu at that address." });
+
+    const subtotal = Math.max(0, Number(body.subtotal) || 0);
+    const verdict = await discount.check(dress.id, body.code, subtotal, body.phone);
+    if (!verdict.ok) return res.status(200).json(verdict);
+    return res.status(200).json({
+      ok: true,
+      code: verdict.code,
+      percent: verdict.percent,
+      amount: verdict.amount,
+      total: verdict.total,
+      currency: dress.currency || "AED"
+    });
+  }
+
   const mode = MODES.includes(body.mode) ? body.mode : "Dine In";
   const guestName = clean(body.name, 80);
   const phoneDigits = clean(body.phone, 30).replace(/[^\d]/g, "");
@@ -71,7 +97,8 @@ module.exports = async function handler(req, res) {
   /* The paywall, enforced where the order is actually written. A restaurant on
      the menu-only plan cannot take orders, whatever its page happens to show. */
   const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
-  if (gate.ok && (gate.data || [])[0] && (gate.data[0].plan || "qr") !== "order") {
+  const ORDERING_PLANS = ["order", "pro"];
+  if (gate.ok && (gate.data || [])[0] && ORDERING_PLANS.indexOf(gate.data[0].plan || "qr") < 0) {
     return res.status(403).json({
       ok: false,
       code: "ORDERING_NOT_INCLUDED",
@@ -102,7 +129,21 @@ module.exports = async function handler(req, res) {
       menu_item_id: /^[0-9a-f-]{36}$/i.test(String(it.id || "")) ? it.id : null
     };
   });
-  total = Math.round(total * 100) / 100;
+  const subtotal = Math.round(total * 100) / 100;
+
+  /* The code is re-checked here, not trusted from the checkout page, and a used
+     or stale one is refused rather than quietly dropped — a guest who saw
+     "AED 20 off" must not be charged full price without being told. */
+  let applied = null;
+  if (body.discountCode) {
+    const verdict = await discount.check(restaurant.id, body.discountCode, subtotal, body.phone);
+    if (!verdict.ok) {
+      const status = verdict.code === "NO_DISCOUNTS" ? 503 : 409;
+      return res.status(status).json({ ok: false, code: verdict.code, message: verdict.message, subtotal: subtotal });
+    }
+    applied = verdict;
+  }
+  total = applied ? applied.total : subtotal;
 
   const order = {
     restaurant_id: restaurant.id,
@@ -113,6 +154,10 @@ module.exports = async function handler(req, res) {
     guest_name: guestName,
     guest_phone: clean(body.phone, 30),
     total,
+    subtotal: subtotal,
+    delivery_fee: 0,
+    discount_code: applied ? applied.code : null,
+    discount_amount: applied ? applied.amount : 0,
     status: "awaiting_confirmation"
   };
 
@@ -139,7 +184,17 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const made = await rest("orders", { method: "POST", body: order, prefer: "return=representation" });
+  let made = await rest("orders", { method: "POST", body: order, prefer: "return=representation" });
+  /* 0019 may not have run yet: a deploy lands before the SQL does, so write the
+     order without the money columns rather than lose the order */
+  if (!made.ok && /subtotal|discount_|delivery_fee|column|schema/i.test(String(made.error || made.data || ""))) {
+    const lean = Object.assign({}, order);
+    delete lean.subtotal;
+    delete lean.delivery_fee;
+    delete lean.discount_code;
+    delete lean.discount_amount;
+    made = await rest("orders", { method: "POST", body: lean, prefer: "return=representation" });
+  }
   if (!made.ok) {
     return res.status(500).json({
       ok: false,
@@ -149,6 +204,11 @@ module.exports = async function handler(req, res) {
     });
   }
   const saved = (made.data || [])[0];
+
+  if (applied && saved && saved.id) {
+    const red = await discount.redeem(restaurant.id, applied.id, applied.code, body.phone, saved.id, applied.amount);
+    if (!red.ok) console.error("[order] redemption", red.error);
+  }
 
   const lines = rows.map((r) => ({ ...r, order_id: saved.id }));
   const lineRes = await rest("order_items", { method: "POST", body: lines, prefer: "return=minimal" });
@@ -171,6 +231,8 @@ module.exports = async function handler(req, res) {
     "",
     itemLines,
     "",
+    applied ? "Subtotal: AED " + subtotal.toFixed(2) : "",
+    applied ? "Discount " + applied.code + " (" + applied.percent + "%): -AED " + applied.amount.toFixed(2) : "",
     "Total: AED " + total.toFixed(2),
     "",
     when,
@@ -197,6 +259,8 @@ module.exports = async function handler(req, res) {
     ok: true,
     orderId: saved.id,
     total,
+    subtotal,
+    discount: applied ? { code: applied.code, amount: applied.amount } : null,
     items: lines.length,
     linesSaved: lineRes.ok,
     notified,

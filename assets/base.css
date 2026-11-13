@@ -176,6 +176,7 @@ select.input { padding-right: 34px; appearance: none; background-image: url("dat
 .error-msg.ok { color: var(--brand-text); }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0 16px; }
 
 /* ---------- misc atoms ---------- */
 
@@ -213,6 +214,7 @@ select.input { padding-right: 34px; appearance: none; background-image: url("dat
 
 @media (max-width: 720px) {
   .grid-2 { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -49,8 +49,13 @@ module.exports = async function listOrders(req, res) {
   /* 0016 adds the archive columns. A deploy can land before the migration is
      run, so ask for them and fall back to the plain read rather than taking
      the order list down. */
-  let list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + filters + archFilter + tail);
-  let hasArchive = true;
+  const MONEY = ",subtotal,delivery_fee,discount_code,discount_amount";
+  let list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + MONEY + filters + archFilter + tail);
+  let hasArchive = true, hasMoney = true;
+  if (!list.ok) {
+    hasMoney = false;
+    list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + filters + archFilter + tail);
+  }
   if (!list.ok) {
     hasArchive = false;
     list = await rest(base + "&select=" + COLS + filters + tail);
@@ -118,6 +123,10 @@ module.exports = async function listOrders(req, res) {
       guest: o.guest_name,
       phone: o.guest_phone,
       total: Number(o.total),
+      subtotal: o.subtotal == null ? Number(o.total) : Number(o.subtotal),
+      deliveryFee: Number(o.delivery_fee) || 0,
+      discountCode: o.discount_code || null,
+      discountAmount: Number(o.discount_amount) || 0,
       status: o.status,
       archivedAt: o.archived_at || null,
       archiveReason: o.archive_reason || null,

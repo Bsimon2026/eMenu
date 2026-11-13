@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/base.css?v=20261111s">
+<link rel="stylesheet" href="/assets/base.css?v=20261114a">
 <link rel="stylesheet" href="/assets/app.css?v=20261114b">
 </head>
 <body class="app-body">
@@ -527,6 +527,39 @@
           </div>
           <div class="card-body" id="mkReviews"></div>
         </div>
+
+        <div class="card" id="dcCard">
+          <div class="card-head">
+            <div>
+              <h2>Discount codes</h2>
+              <p>A percentage off, optionally capped in dirhams, used once per mobile number. Guests type it at checkout.</p>
+            </div>
+            <span class="pill" id="dcGiven">—</span>
+          </div>
+          <div class="card-body">
+            <div class="grid-4">
+              <div class="field">
+                <label for="dcCode">Code</label>
+                <input class="input" id="dcCode" placeholder="EID25" autocomplete="off" spellcheck="false" style="text-transform:uppercase">
+              </div>
+              <div class="field">
+                <label for="dcPercent">Percent off</label>
+                <input class="input" id="dcPercent" inputmode="decimal" placeholder="10">
+              </div>
+              <div class="field">
+                <label for="dcMax">Max off (AED)</label>
+                <input class="input" id="dcMax" inputmode="decimal" placeholder="No cap">
+              </div>
+              <div class="field">
+                <label for="dcMin">Min order (AED)</label>
+                <input class="input" id="dcMin" inputmode="decimal" placeholder="0">
+              </div>
+            </div>
+            <button class="btn btn-brand" type="button" id="dcCreate" style="margin-top:6px">Create code</button>
+            <div class="hint" id="dcMsg"></div>
+            <div id="dcList" class="dc-list"></div>
+          </div>
+        </div>
       </section>
 
       <!-- ---------------- documents ---------------- -->
@@ -911,6 +944,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261114c"></script>
+<script src="/assets/app.js?v=20261114d"></script>
 </body>
 </html>

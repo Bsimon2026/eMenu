@@ -27,6 +27,7 @@
 const crypto = require("crypto");
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
 const waSend = require("./_lib/wa-inbox");
+const discount = require("./_lib/discounts");
 
 const GRAPH = (process.env.WHATSAPP_API_VERSION || "v21.0");
 const GUEST_BASE = (process.env.PUBLIC_BASE || "https://digimenu.indubaicity.com").replace(/\/+$/, "");
@@ -501,6 +502,115 @@ async function owner(req, res) {
     });
 
     return res.status(200).json({ ok: true, kind: kind, via: sent.via || null });
+  }
+
+  /* ------------------------------------------------------- discount codes
+     A code is a percentage with a cap and a once-per-customer rule. The owner
+     makes them here; the guest redeems one at checkout and the order records
+     what it was worth. */
+  if (q.discounts !== undefined) {
+    if (req.method === "GET") {
+      const list = await rest(
+        "discounts?restaurant_id=eq." + rid +
+        "&select=id,code,percent,max_amount,min_order,active,created_at&order=created_at.desc&limit=100"
+      );
+      if (!list.ok) {
+        return res.status(503).json({
+          ok: false, code: "NO_DISCOUNTS",
+          message: "Discount codes are not switched on yet — run db/0019_discounts.sql."
+        });
+      }
+      const red = await rest(
+        "discount_redemptions?restaurant_id=eq." + rid + "&select=discount_id,amount"
+      );
+      const uses = new Map();
+      let given = 0;
+      for (const r of (red.ok && red.data) || []) {
+        uses.set(r.discount_id, (uses.get(r.discount_id) || 0) + 1);
+        given += Number(r.amount) || 0;
+      }
+      return res.status(200).json({
+        ok: true,
+        currency: actor.restaurant.currency || "AED",
+        givenAway: discount.money(given),
+        codes: ((list.data) || []).map(function (c) {
+          return {
+            id: c.id,
+            code: c.code,
+            percent: Number(c.percent),
+            maxAmount: c.max_amount == null ? null : Number(c.max_amount),
+            minOrder: Number(c.min_order) || 0,
+            active: Boolean(c.active),
+            uses: uses.get(c.id) || 0,
+            createdAt: c.created_at
+          };
+        })
+      });
+    }
+
+    if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
+
+    let body = req.body;
+    if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
+    const action = body && String(body.action || "create");
+
+    if (action === "create") {
+      const code = discount.clean(body.code);
+      const percent = Number(body.percent);
+      const maxAmount = body.maxAmount === "" || body.maxAmount == null ? null : Number(body.maxAmount);
+      const minOrder = body.minOrder === "" || body.minOrder == null ? 0 : Number(body.minOrder);
+
+      if (code.length < 3) {
+        return res.status(400).json({ ok: false, code: "BAD_CODE", message: "A code needs at least three characters." });
+      }
+      if (!(percent > 0 && percent <= 100)) {
+        return res.status(400).json({ ok: false, code: "BAD_PERCENT", message: "The percentage has to be between 1 and 100." });
+      }
+      if (maxAmount != null && !(maxAmount > 0)) {
+        return res.status(400).json({ ok: false, code: "BAD_CAP", message: "The cap has to be a positive amount, or empty for no cap." });
+      }
+      if (!(minOrder >= 0)) {
+        return res.status(400).json({ ok: false, code: "BAD_MIN", message: "The minimum spend cannot be negative." });
+      }
+
+      const made = await rest("discounts", {
+        method: "POST",
+        prefer: "return=representation",
+        body: { restaurant_id: rid, code: code, percent: percent, max_amount: maxAmount, min_order: minOrder, active: true }
+      });
+      if (!made.ok) {
+        const raw = String(made.error || made.data || "");
+        if (/duplicate|unique/i.test(raw)) {
+          return res.status(409).json({ ok: false, code: "DUPLICATE", message: "That code already exists." });
+        }
+        return res.status(503).json({
+          ok: false, code: "NO_DISCOUNTS",
+          message: "Discount codes are not switched on yet — run db/0019_discounts.sql."
+        });
+      }
+      return res.status(200).json({ ok: true, code: (made.data || [])[0] });
+    }
+
+    const id = body && String(body.id || "").trim();
+    if (!id) return res.status(400).json({ ok: false, code: "NO_ID", message: "Which code?" });
+
+    if (action === "toggle") {
+      const upd = await rest("discounts?id=eq." + encodeURIComponent(id) + "&restaurant_id=eq." + rid, {
+        method: "PATCH", prefer: "return=minimal", body: { active: Boolean(body.active) }
+      });
+      if (!upd.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED", message: "That did not save." });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === "delete") {
+      const del = await rest("discounts?id=eq." + encodeURIComponent(id) + "&restaurant_id=eq." + rid, {
+        method: "DELETE", prefer: "return=minimal"
+      });
+      if (!del.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED", message: "That did not save." });
+      return res.status(200).json({ ok: true });
+    }
+
+    return res.status(400).json({ ok: false, code: "BAD_ACTION", message: "Unknown action." });
   }
 
   /* ------------------------------------------------- free: mark one as sent */
