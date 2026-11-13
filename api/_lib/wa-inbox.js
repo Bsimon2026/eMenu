@@ -193,13 +193,20 @@ async function thankYou(s, row) {
   /* the newest order from this number gives the greeting its name */
   let name = "";
   let orderId = null;
+  /* The order stores the number the guest typed — "+971 56 891 1233" — while the
+     message carries digits only. Comparing them as strings found nothing, so the
+     thank-you went out without an order attached and the panel had to fall back
+     to guessing by number. Compare digits instead. */
   const ord = await rest(
-    "orders?restaurant_id=eq." + s.id + "&guest_phone=eq." + encodeURIComponent(row.from) +
-    "&select=id,guest_name,created_at&order=created_at.desc&limit=1"
+    "orders?restaurant_id=eq." + s.id +
+    "&select=id,guest_name,guest_phone&order=created_at.desc&limit=20"
   );
-  if (ord.ok && ord.data && ord.data.length) {
-    name = String(ord.data[0].guest_name || "").split(" ")[0].slice(0, 40);
-    orderId = ord.data[0].id;
+  if (ord.ok && ord.data) {
+    const hit = ord.data.find((o) => digits(o.guest_phone) === row.from);
+    if (hit) {
+      name = String(hit.guest_name || "").split(" ")[0].slice(0, 40);
+      orderId = hit.id;
+    }
   }
 
   const text = name

@@ -1393,10 +1393,35 @@
 
   /* the strip must change on its own: Send Order unlocks two minutes after the
      order, and the window countdown has to be honest a minute later too */
+  /* A message that arrives while the pane is open must light its buttons by
+     itself: the ticker can count down from what it was painted with, but it
+     cannot invent an inbound time. So every third tick (a minute) the list is
+     re-read, and the pane repaints only if the window state actually moved. */
+  let waStateSig = "";
+  let waTicks = 0;
+
+  function waSignature(rows) {
+    return (rows || []).map(function (o) {
+      return o.id + ":" + (o.inboundAt || "") + ":" + Object.keys(o.waSent || {}).sort().join("+");
+    }).join("|");
+  }
+
+  async function waRefreshIfChanged() {
+    if (document.hidden) return;
+    if (!document.querySelector(".owa")) return;      /* not on the orders pane */
+    ordersFetchedAt = 0;
+    const cache = await loadOrders(true);
+    if (!cache) return;
+    if (waSignature(cache) === waStateSig) return;
+    await renderOrders();
+  }
+
   let waTicker = 0;
   function startWaTicker() {
     if (waTicker) return;
     waTicker = setInterval(function () {
+      waTicks += 1;
+      if (waTicks % 3 === 0) waRefreshIfChanged();
       document.querySelectorAll(".owa").forEach(function (bar) {
         const inAt = Number(bar.getAttribute("data-inbound") || 0);
         const created = Number(bar.getAttribute("data-created") || 0);
@@ -1786,6 +1811,7 @@
       return;
     }
     host.innerHTML = shown.map((o) => orderLedgerRowHtml(o, REVIEWS.byOrder.get(o.id))).join("");
+    waStateSig = waSignature(shown);
     startWaTicker();
   }
 
