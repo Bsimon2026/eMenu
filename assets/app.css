@@ -1556,3 +1556,41 @@ body[data-role="orders"] #newCatName { display: none !important; }
 .dc-row .dc-act { display: flex; justify-content: flex-end; gap: 6px; }
 .dc-empty { padding: 14px 2px; color: var(--ink-4, #9a9488); font-size: 13px; }
 
+/* ---------------- editing an order ---------------- */
+.edit-back { position: fixed; inset: 0; background: rgba(24,22,19,.42); z-index: 60; }
+.edit-sheet {
+  position: fixed;
+  z-index: 61;
+  right: 0; top: 0; bottom: 0;
+  width: min(560px, 100vw);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -18px 0 48px rgba(0,0,0,.16);
+}
+.edit-sheet[hidden] { display: none; }
+.es-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 12px; border-bottom: 1px solid var(--line, #ece9e3); }
+.es-head h2 { font-family: var(--display); font-size: 19px; margin: 0 0 3px; }
+.es-head .hint { margin: 0; }
+.es-body { padding: 14px 20px; overflow-y: auto; flex: 1; }
+.es-items { border: 1px solid var(--line, #ece9e3); border-radius: 10px; overflow: hidden; }
+.es-row { display: grid; grid-template-columns: minmax(0,1fr) 96px 88px 28px; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid #f3f1ec; font-size: 13.5px; }
+.es-row:last-child { border-bottom: none; }
+.es-row .es-nm { overflow-wrap: anywhere; }
+.es-row .es-qty { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.es-row .es-qty button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line, #e0dbd1); background: #fff; cursor: pointer; line-height: 1; font-size: 14px; }
+.es-row .es-qty b { min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.es-row .es-amt { text-align: right; font-variant-numeric: tabular-nums; }
+.es-row .es-x { border: none; background: none; color: var(--ink-4, #9a9488); cursor: pointer; font-size: 16px; line-height: 1; }
+.es-add { display: flex; gap: 8px; margin-top: 10px; }
+.es-add select { flex: 1; }
+.es-totals { margin-top: 14px; border-top: 1px solid var(--line, #ece9e3); padding-top: 10px; font-size: 13.5px; }
+.es-totals div { display: flex; justify-content: space-between; padding: 4px 0; font-variant-numeric: tabular-nums; }
+.es-totals .disc { color: var(--ok, #1c7a4a); }
+.es-totals .grand { font-weight: 600; font-size: 15px; border-top: 1px dashed var(--line, #ece9e3); margin-top: 6px; padding-top: 8px; }
+.es-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line, #ece9e3); }
+@media (max-width: 620px) {
+  .edit-sheet { width: 100vw; }
+  .es-row { grid-template-columns: minmax(0,1fr) 84px 70px 24px; gap: 6px; }
+}
+

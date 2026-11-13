@@ -7,6 +7,7 @@
  */
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./db");
+const discount = require("./discounts");
 
 module.exports = async function listOrders(req, res) {
   cors(res);
@@ -185,6 +186,93 @@ module.exports.setStatus = async function setStatus(req, res) {
       return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "That order is not yours." });
     }
     return res.status(200).json({ ok: true, id, archived: on });
+  }
+
+  /* ------------------------------------------------------------ edit lines
+     The kitchen changes an order after it lands: a guest adds a drink, the
+     restaurant adds the delivery charge, a code is applied. Everything that
+     decides money is recomputed here from the items, never taken from the page. */
+  if (body.edit) {
+    const ed = body.edit;
+    const inItems = Array.isArray(ed.items) ? ed.items.filter((i) => i && i.name).slice(0, 100) : [];
+    if (!inItems.length) {
+      return res.status(400).json({ ok: false, code: "NO_ITEMS", message: "An order needs at least one dish." });
+    }
+
+    const found = await rest(
+      "orders?id=eq." + encodeURIComponent(id) + "&restaurant_id=eq." + restaurant.id +
+      "&select=id,guest_phone,mode,status&limit=1"
+    );
+    if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+    const ord = (found.data || [])[0];
+    if (!ord) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "That order is not yours." });
+
+    let subtotal = 0;
+    const rows = inItems.map((it) => {
+      const qty = Math.max(1, Math.min(99, Number(it.qty) || 1));
+      const price = Math.max(0, discount.money(it.price));
+      subtotal += price * qty;
+      return {
+        order_id: id,
+        name: String(it.name || "").trim().slice(0, 120),
+        unit_price: price,
+        qty: qty,
+        menu_item_id: /^[0-9a-f-]{36}$/i.test(String(it.id || "")) ? it.id : null
+      };
+    });
+    subtotal = discount.money(subtotal);
+
+    const fee = Math.max(0, discount.money(ed.deliveryFee));
+
+    let applied = null;
+    if (ed.discountCode) {
+      const verdict = await discount.check(restaurant.id, ed.discountCode, subtotal, ord.guest_phone, id);
+      if (!verdict.ok) {
+        return res.status(409).json({ ok: false, code: verdict.code, message: verdict.message });
+      }
+      applied = verdict;
+    }
+    const total = discount.money(Math.max(0, subtotal + fee - (applied ? applied.amount : 0)));
+
+    const patch = {
+      total: total,
+      subtotal: subtotal,
+      delivery_fee: fee,
+      discount_code: applied ? applied.code : null,
+      discount_amount: applied ? applied.amount : 0
+    };
+
+    let upd = await rest("orders?id=eq." + encodeURIComponent(id) + "&restaurant_id=eq." + restaurant.id, {
+      method: "PATCH", prefer: "return=representation", body: patch
+    });
+    /* before 0019 lands there are no money columns; the total still moves */
+    if (!upd.ok) {
+      upd = await rest("orders?id=eq." + encodeURIComponent(id) + "&restaurant_id=eq." + restaurant.id, {
+        method: "PATCH", prefer: "return=representation", body: { total: total }
+      });
+    }
+    if (!upd.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED", message: "That did not save." });
+
+    const wiped = await rest("order_items?order_id=eq." + encodeURIComponent(id), {
+      method: "DELETE", prefer: "return=minimal"
+    });
+    if (!wiped.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED", message: "The lines did not save." });
+    const wroteLines = await rest("order_items", { method: "POST", prefer: "return=minimal", body: rows });
+    if (!wroteLines.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED", message: "The lines did not save." });
+
+    if (applied) {
+      const red = await discount.redeem(restaurant.id, applied.id, applied.code, ord.guest_phone, id, applied.amount);
+      if (!red.ok) console.error("[order edit] redemption", red.error);
+    }
+
+    return res.status(200).json({
+      ok: true,
+      id: id,
+      subtotal: subtotal,
+      deliveryFee: fee,
+      discount: applied ? { code: applied.code, amount: applied.amount, percent: applied.percent } : null,
+      total: total
+    });
   }
 
   /* two states, not four: everything else in the column is history */

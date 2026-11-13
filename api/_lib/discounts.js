@@ -51,6 +51,16 @@ async function find(rid, code) {
   return (r.data || [])[0] || null;
 }
 
+async function redemptionFor(rid, discountId, phone) {
+  const p = digits(phone);
+  if (!p || !discountId) return null;
+  const r = await rest(
+    "discount_redemptions?restaurant_id=eq." + rid + "&discount_id=eq." + discountId +
+    "&phone=eq." + encodeURIComponent(p) + "&select=id,order_id,amount&limit=1"
+  );
+  return r.ok ? ((r.data || [])[0] || null) : null;
+}
+
 async function usedBy(rid, discountId, phone) {
   const p = digits(phone);
   if (!p || !discountId) return false;
@@ -62,7 +72,9 @@ async function usedBy(rid, discountId, phone) {
 }
 
 /* the whole decision, in one place: is this code usable for this basket? */
-async function check(rid, code, subtotal, phone) {
+/* `orderId` is set when staff edit an order that already carries the code: the
+   guest has not "used it again", they are the same dinner. */
+async function check(rid, code, subtotal, phone, orderId) {
   const row = await find(rid, code);
   if (row && row.missingTable) {
     return { ok: false, code: "NO_DISCOUNTS", message: "Discount codes are not switched on yet." };
@@ -77,8 +89,11 @@ async function check(rid, code, subtotal, phone) {
       message: "That code needs an order of AED " + money(row.min_order).toFixed(0) + " or more."
     };
   }
-  if (phone && (await usedBy(rid, row.id, phone))) {
-    return { ok: false, code: "USED", message: "That code has already been used on this number." };
+  if (phone) {
+    const already = await redemptionFor(rid, row.id, phone);
+    if (already && !(orderId && already.order_id === orderId)) {
+      return { ok: false, code: "USED", message: "That code has already been used on this number." };
+    }
   }
 
   const q = quote(row, base);
@@ -96,6 +111,19 @@ async function check(rid, code, subtotal, phone) {
 async function redeem(rid, discountId, code, phone, orderId, amount) {
   const p = digits(phone);
   if (!discountId || !p) return { ok: false };
+
+  /* editing an order that already carries the code: move the amount, do not
+     count a second use */
+  const already = await redemptionFor(rid, discountId, p);
+  if (already) {
+    if (orderId && already.order_id === orderId) {
+      const upd = await rest("discount_redemptions?id=eq." + encodeURIComponent(already.id), {
+        method: "PATCH", prefer: "return=minimal", body: { amount: money(amount) }
+      });
+      return { ok: upd.ok, error: upd.ok ? null : String(upd.error || "").slice(0, 160) };
+    }
+    return { ok: false, error: "used" };
+  }
   /* the unique index is the real rule: two orders racing on the same number
      still end up with one redemption */
   const r = await rest("discount_redemptions", {
@@ -109,4 +137,4 @@ async function redeem(rid, discountId, code, phone, orderId, amount) {
   return { ok: r.ok, error: r.ok ? null : String(r.error || r.data).slice(0, 160) };
 }
 
-module.exports = { clean, digits, quote, find, usedBy, check, redeem, money };
+module.exports = { clean, digits, quote, find, usedBy, redemptionFor, check, redeem, money };

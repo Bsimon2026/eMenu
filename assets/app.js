@@ -1473,6 +1473,7 @@
           : '<button class="btn btn-sm ' + (done ? "btn-quiet" : "btn-outline") + '" type="button" ' +
               'data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
               (done ? "Reopen" : "Mark done") + '</button>' +
+            (done ? "" : '<button class="btn btn-sm btn-quiet" type="button" data-edit="' + esc(o.id) + '">Edit</button>') +
             '<button class="btn btn-sm btn-quiet" type="button" data-arch="' + esc(o.id) + '" data-on="1">Archive</button>') +
       '</div>' + (archived ? "" : waStripHtml(o)) + review +
     '</article>' + (ARCH_FOR === o.id
@@ -1484,6 +1485,199 @@
           '<button type="button" class="btn-quiet" data-arch-cancel>Cancel</button>' +
         '</div>'
       : '');
+  }
+
+  /* ------------------------------------------------------ editing an order
+     The kitchen changes what was ordered: a drink added at the table, the
+     delivery charge the restaurant quotes, a code applied at the counter. The
+     page only collects it — the server recomputes every figure. */
+  const EDIT = { id: null, items: [], fee: 0, code: "", disc: null, phone: "", place: "" };
+
+  function esMoney(n) { return "AED " + (Math.round((Number(n) || 0) * 100) / 100); }
+
+  function esSubtotal() {
+    return Math.round(EDIT.items.reduce((a, i) => a + i.price * i.qty, 0) * 100) / 100;
+  }
+
+  function esDiscount() {
+    if (!EDIT.disc) return 0;
+    const sub = esSubtotal();
+    /* an order that already carries a code knows only what it was worth, not the
+       percentage: show that figure until the staff press Apply again */
+    if (EDIT.disc.percent == null) return Math.min(EDIT.disc.amount || 0, sub);
+    let amount = sub * (EDIT.disc.percent / 100);
+    if (EDIT.disc.maxAmount) amount = Math.min(amount, EDIT.disc.maxAmount);
+    return Math.min(Math.round(amount * 100) / 100, sub);
+  }
+
+  function esPaint() {
+    const host = $("#esItems");
+    if (!host) return;
+    host.innerHTML = EDIT.items.length
+      ? EDIT.items.map(function (it, i) {
+          return '<div class="es-row" data-i="' + i + '">' +
+            '<span class="es-nm">' + esc(it.name) + '</span>' +
+            '<span class="es-qty">' +
+              '<button type="button" data-es-minus="' + i + '" aria-label="One less">\u2212</button>' +
+              '<b>' + it.qty + '</b>' +
+              '<button type="button" data-es-plus="' + i + '" aria-label="One more">+</button>' +
+            '</span>' +
+            '<span class="es-amt">' + esMoney(it.price * it.qty) + '</span>' +
+            '<button class="es-x" type="button" data-es-drop="' + i + '" aria-label="Remove">\u00d7</button>' +
+          '</div>';
+        }).join("")
+      : '<div class="es-row"><span class="es-nm none">No dishes. Add one below.</span></div>';
+
+    const fee = Math.max(0, Number(($("#esFee") || {}).value || 0));
+    EDIT.fee = fee;
+    const sub = esSubtotal();
+    const off = esDiscount();
+    const total = Math.round(Math.max(0, sub + fee - off) * 100) / 100;
+
+    $("#esTotals").innerHTML =
+      '<div><span>Food</span><span>' + esMoney(sub) + '</span></div>' +
+      (fee > 0 ? '<div><span>Delivery</span><span>' + esMoney(fee) + '</span></div>' : '') +
+      (off > 0 ? '<div class="disc"><span>' + esc(EDIT.disc.code) + (EDIT.disc.percent == null ? '' : ' \u00b7 ' + EDIT.disc.percent + '% off') + '</span><span>\u2212 ' + esMoney(off) + '</span></div>' : '') +
+      '<div class="grand"><span>Total</span><span>' + esMoney(total) + '</span></div>';
+  }
+
+  function esPicker() {
+    const sel = $("#esPicker");
+    if (!sel) return;
+    const cats = (state.menu && state.menu.categories) || [];
+    const opts = [];
+    cats.forEach(function (c) {
+      (c.items || []).forEach(function (i) {
+        if (i.soldOut) return;
+        opts.push('<option value="' + esc(i.id || "") + '" data-name="' + esc(i.name) + '" data-price="' + (Number(i.price) || 0) + '">' +
+          esc(i.name) + ' \u00b7 AED ' + (Number(i.price) || 0) + '</option>');
+      });
+    });
+    sel.innerHTML = opts.length ? opts.join("") : '<option value="">The menu is not loaded</option>';
+  }
+
+  function openEditOrder(id) {
+    const o = (ORDERS || []).filter((x) => x.id === id)[0];
+    if (!o) return;
+    EDIT.id = id;
+    EDIT.items = (o.items || []).map((i) => ({ name: i.name, price: i.price, qty: i.qty }));
+    EDIT.fee = o.deliveryFee || 0;
+    EDIT.code = o.discountCode || "";
+    EDIT.disc = o.discountAmount > 0
+      ? { code: o.discountCode || "code", percent: null, amount: o.discountAmount, maxAmount: null }
+      : null;
+    EDIT.phone = o.phone || "";
+    EDIT.place = (o.mode || "") + (o.table ? " \u00b7 table " + o.table : "");
+
+    $("#esTitle").textContent = "Edit order";
+    $("#esSub").textContent = [o.guest || "Guest", EDIT.place, o.phone || ""].filter(Boolean).join(" \u00b7 ");
+    $("#esFee").value = EDIT.fee ? String(EDIT.fee) : "";
+    $("#esCode").value = EDIT.code || "";
+    const msg = $("#esCodeMsg");
+    if (msg) {
+      msg.className = "hint";
+      msg.textContent = o.discountAmount > 0
+        ? "Applied: \u2212 " + esMoney(o.discountAmount) + ". Apply again after changing the lines."
+        : "";
+    }
+    esPicker();
+    esPaint();
+    $("#editSheet").hidden = false;
+    $("#editBack").hidden = false;
+  }
+
+  function closeEdit() {
+    $("#editSheet").hidden = true;
+    $("#editBack").hidden = true;
+    EDIT.id = null;
+  }
+
+  async function esApplyCode() {
+    const btn = $("#esApply"), msg = $("#esCodeMsg");
+    const code = (($("#esCode") || {}).value || "").trim().toUpperCase();
+    if (!code) {
+      EDIT.disc = null; EDIT.code = "";
+      if (msg) { msg.className = "hint bad"; msg.textContent = "Type the code first."; }
+      esPaint();
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = "Checking\u2026"; }
+    const r = await window.Auth.api("/api/order", {
+      method: "POST",
+      body: JSON.stringify({ discountCheck: true, handle: state.handle, code: code, subtotal: esSubtotal(), phone: EDIT.phone })
+    });
+    if (btn) { btn.disabled = false; btn.textContent = "Apply"; }
+    if (!r.ok || !(r.data && r.data.ok)) {
+      EDIT.disc = null;
+      if (msg) { msg.className = "hint bad"; msg.textContent = (r.data && r.data.message) || "That code did not work."; }
+      esPaint();
+      return;
+    }
+    EDIT.code = r.data.code;
+    EDIT.disc = { code: r.data.code, percent: r.data.percent, maxAmount: r.data.maxAmount || null };
+    if (msg) { msg.className = "hint good"; msg.textContent = r.data.code + " applied."; }
+    esPaint();
+  }
+
+  async function esSave() {
+    if (!EDIT.items.length) { toast("An order needs at least one dish."); return; }
+    const btn = $("#esSave");
+    if (btn) { btn.disabled = true; btn.textContent = "Saving\u2026"; }
+    const r = await window.Auth.api("/api/orders", {
+      method: "PATCH",
+      body: JSON.stringify({
+        id: EDIT.id,
+        edit: {
+          items: EDIT.items.map((i) => ({ name: i.name, price: i.price, qty: i.qty })),
+          deliveryFee: Number(($("#esFee") || {}).value || 0),
+          discountCode: EDIT.code || null
+        }
+      })
+    });
+    if (btn) { btn.disabled = false; btn.textContent = "Save changes"; }
+    if (!r.ok) {
+      const d = r.data || {};
+      toast(d.code === "NO_DISCOUNTS" ? "Discounts are not switched on yet \u2014 run db/0019_discounts.sql."
+        : (d.message || "That did not save."));
+      return;
+    }
+    closeEdit();
+    ordersFetchedAt = 0;
+    await renderOrders();
+    if (typeof renderRecentOrders === "function") renderRecentOrders();
+    toast("Order updated \u2014 " + esMoney(r.data.total) + ".");
+  }
+
+  function esWireOnce() {
+    const save = $("#esSave");
+    if (!save || save.dataset.wired) return;
+    save.dataset.wired = "1";
+
+    save.addEventListener("click", esSave);
+    $("#esCancel").addEventListener("click", closeEdit);
+    $("#esClose").addEventListener("click", closeEdit);
+    $("#editBack").addEventListener("click", closeEdit);
+    $("#esFee").addEventListener("input", esPaint);
+    $("#esApply").addEventListener("click", esApplyCode);
+    $("#esCode").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); esApplyCode(); }
+    });
+    $("#esAdd").addEventListener("click", function () {
+      const sel = $("#esPicker");
+      const opt = sel && sel.options[sel.selectedIndex];
+      if (!opt || !opt.dataset.name) return;
+      const name = opt.dataset.name, price = Number(opt.dataset.price) || 0;
+      const hit = EDIT.items.filter((i) => i.name === name)[0];
+      if (hit) hit.qty += 1;
+      else EDIT.items.push({ name: name, price: price, qty: 1 });
+      /* a code is a percentage of the food: re-price it, never leave yesterday's */
+      if (EDIT.disc) EDIT.disc = Object.assign({}, EDIT.disc);
+      esPaint();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !$("#editSheet").hidden) closeEdit();
+    });
   }
 
   function skeletonRows(n) {
@@ -1723,6 +1917,30 @@
        Send Order is the paid one: it re-checks with the server at the moment of
        the click, because the state that enabled it can change between the paint
        and the press. Everything else sends a free message inside the window. */
+    /* the edit sheet's own controls first: they live inside a delegated click */
+    const esOpen = e.target.closest && e.target.closest("[data-edit]");
+    if (esOpen) {
+      e.preventDefault();
+      esWireOnce();
+      openEditOrder(esOpen.getAttribute("data-edit"));
+      return;
+    }
+
+    if (EDIT.id) {
+      const plus = e.target.closest && e.target.closest("[data-es-plus]");
+      const minus = e.target.closest && e.target.closest("[data-es-minus]");
+      const drop = e.target.closest && e.target.closest("[data-es-drop]");
+      if (plus || minus || drop) {
+        e.preventDefault();
+        const i = Number((plus || minus || drop).getAttribute(plus ? "data-es-plus" : minus ? "data-es-minus" : "data-es-drop"));
+        if (plus) EDIT.items[i].qty += 1;
+        if (minus) { EDIT.items[i].qty -= 1; if (EDIT.items[i].qty <= 0) EDIT.items.splice(i, 1); }
+        if (drop) EDIT.items.splice(i, 1);
+        esPaint();
+        return;
+      }
+    }
+
     const waBtn = e.target.closest && e.target.closest("[data-wa]");
     if (waBtn) {
       e.preventDefault();

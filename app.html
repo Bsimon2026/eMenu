@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/base.css?v=20261114a">
-<link rel="stylesheet" href="/assets/app.css?v=20261114b">
+<link rel="stylesheet" href="/assets/app.css?v=20261114c">
 </head>
 <body class="app-body">
 
@@ -562,6 +562,48 @@
         </div>
       </section>
 
+      <!-- editing an order: the lines, the delivery charge, a code, then save -->
+      <div class="edit-back" id="editBack" hidden></div>
+      <section class="edit-sheet" id="editSheet" hidden role="dialog" aria-modal="true" aria-labelledby="esTitle">
+        <div class="es-head">
+          <div>
+            <h2 id="esTitle">Edit order</h2>
+            <p id="esSub" class="hint"></p>
+          </div>
+          <button class="btn btn-quiet" type="button" id="esClose">Close</button>
+        </div>
+        <div class="es-body">
+          <div id="esItems" class="es-items"></div>
+
+          <div class="es-add">
+            <select class="input" id="esPicker" aria-label="Dish to add"></select>
+            <button class="btn btn-outline" type="button" id="esAdd">Add dish</button>
+          </div>
+
+          <div class="grid-2" style="margin-top:10px">
+            <div class="field">
+              <label for="esFee">Delivery charge (AED)</label>
+              <input class="input" id="esFee" inputmode="decimal" placeholder="0">
+              <div class="hint">Added on top of the food. Leave empty for none.</div>
+            </div>
+            <div class="field">
+              <label for="esCode">Discount code</label>
+              <div class="code-row">
+                <input class="input" id="esCode" placeholder="Optional" autocomplete="off" spellcheck="false" style="text-transform:uppercase">
+                <button class="btn btn-outline" type="button" id="esApply">Apply</button>
+              </div>
+              <div class="hint" id="esCodeMsg"></div>
+            </div>
+          </div>
+
+          <div class="es-totals" id="esTotals"></div>
+        </div>
+        <div class="es-foot">
+          <button class="btn btn-outline" type="button" id="esCancel">Cancel</button>
+          <button class="btn btn-brand" type="button" id="esSave">Save changes</button>
+        </div>
+      </section>
+
       <!-- ---------------- documents ---------------- -->
       <section class="content-in" data-pane="docs" hidden>
         <div class="card" id="passwordCard">
@@ -944,6 +986,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261114d"></script>
+<script src="/assets/app.js?v=20261114e"></script>
 </body>
 </html>
