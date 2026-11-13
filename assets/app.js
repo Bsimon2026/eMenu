@@ -1274,12 +1274,20 @@
     return o.mode === "Delivery" ? "delivery" : o.mode === "Dine In" ? "meal" : "ready";
   }
 
+  /* Quiet hours: nothing wakes a guest between 22:00 and 09:00 in Dubai.
+     With no scheduler, this lives on the button instead. */
+  function quietNow() {
+    const h = (new Date().getUTCHours() + 4) % 24;   /* Asia/Dubai, no DST */
+    return h >= 22 || h < 9;
+  }
+
   function waStripHtml(o) {
     const w = waState(o);
     const kind = waStatusKind(o);
     const label = { delivery: "Sent for Delivery", meal: "Enjoy your Meal", ready: "Ready for Pickup" }[kind];
 
     const canOrder = !w.open && !w.sent.order && w.ageMs >= 2 * 60e3;
+    const quiet = quietNow();
     const btn = (k, text, on, sentAt, cls) =>
       '<button type="button" class="wa-btn ' + (cls || "") + (sentAt ? " done" : "") + '" data-wa="' + k +
       '" data-id="' + esc(o.id) + '"' + (on && !sentAt ? "" : " disabled") + '>' +
@@ -1293,7 +1301,7 @@
       btn("order", w.sent.order ? "Order sent" : "Send Order", canOrder, w.sent.order, "paid") +
       btn("accept", "Accept Order", w.open, w.sent.accept) +
       btn(kind, label, w.open, w.sent[kind]) +
-      btn("review", "Review Message", w.open, w.sent.review) +
+      btn("review", quiet ? "Review Message (from 9am)" : "Review Message", w.open && !quiet, w.sent.review) +
     '</div>';
   }
 
@@ -1322,8 +1330,12 @@
           const k = b.getAttribute("data-wa");
           const already = Boolean(sent[k]);
           let on;
+          const quiet = quietNow();
           if (k === "order") on = !open && !already && age >= 2 * 60e3;
-          else on = open;
+          else if (k === "review") {
+            on = open && !quiet;
+            b.textContent = quiet ? "Review Message (from 9am)" : "Review Message";
+          } else on = open;
           b.disabled = !on || already;
           if (k === "order" && already) b.textContent = "\u2713 Order sent";
         });

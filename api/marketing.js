@@ -440,6 +440,14 @@ async function owner(req, res) {
       }
 
       if (kind === "review") {
+        /* nothing sends itself here, so the quiet-hours rule guards the press */
+        const dubaiHour = (new Date().getUTCHours() + 4) % 24;
+        if (dubaiHour >= 22 || dubaiHour < 9) {
+          return res.status(409).json({
+            ok: false, code: "QUIET_HOURS",
+            message: "Nobody is asked for a review between 10pm and 9am."
+          });
+        }
         let token = null;
         const rr = await rest(
           "review_requests?restaurant_id=eq." + rid + "&order_id=eq." + encodeURIComponent(orderId) + "&select=token&limit=1"
