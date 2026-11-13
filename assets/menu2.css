@@ -1259,3 +1259,14 @@ body.t-dark .checkout-btn { background: var(--ink); border-color: var(--ink); co
 body.t-dark .checkout-btn:hover:not([disabled]) { background: var(--accent); border-color: var(--accent); }
 body.t-dark .cart-empty, body.t-dark .hint { color: var(--ink-3); }
 
+/* The sticky bar had a translucent tail, so the shelf scrolling under it showed
+   through as a band of orphaned dish names. Opaque reads cleaner and costs
+   nothing: the content is meant to disappear underneath, not bleed through. */
+.cat-pick,
+body.t-dark .cat-pick,
+body.t-clay .cat-pick { background: var(--paper); }
+
+.rail,
+body.t-dark .rail,
+body.t-clay .rail { background: var(--paper); }
+
