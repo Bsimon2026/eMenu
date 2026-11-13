@@ -841,6 +841,18 @@
     wireThumbs();
     hero.hidden = false;
     document.body.classList.add("has-hero");
+
+    /* the sticky bar takes over from the hero: it holds the language switch and
+       the category picker, so it starts the moment the landing leaves */
+    if ("IntersectionObserver" in window && !window.__headWatch) {
+      window.__headWatch = new IntersectionObserver(
+        function (entries) {
+          document.body.classList.toggle("scrolled", !entries[0].isIntersecting);
+        },
+        { rootMargin: "-64px 0px 0px 0px" }
+      );
+      window.__headWatch.observe(hero);
+    }
   }
 
   /* ---------- when there is no menu to show ---------- */

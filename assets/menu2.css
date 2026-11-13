@@ -353,7 +353,12 @@ body.menu-body::before {
   color: var(--paper);
 }
 /* the hero carries the identity, so the sticky header stands down */
+/* The hero already carries the mark and the name, so the bar waits: it arrives
+   once the landing has scrolled past and then stays, holding the language and
+   the category picker for the rest of the page. */
 body.has-hero .mhead { display: none; }
+body.has-hero.scrolled .mhead { display: block; animation: headIn .22s var(--ease-out) both; }
+@keyframes headIn { from { transform: translateY(-100%); } to { transform: none; } }
 
 /* ================================================================ layout === */
 .mwrap {
