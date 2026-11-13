@@ -108,15 +108,8 @@ async function restaurantFor(pnid) {
 
 /* Two doors again: Meta answers graph.facebook.com, Kapso answers its proxy and
    wants the project key in X-API-Key, not the bearer. */
-async function sendText(s, to, body, extra) {
-  const payload = Object.assign({
-    messaging_product: "whatsapp",
-    recipient_type: "individual",
-    to: to,
-    type: "text",
-    text: { preview_url: false, body: body }
-  }, extra || {});
-
+/* every outbound message goes through here: two doors, one payload */
+async function post(s, payload) {
   const doors = [
     { name: "meta", base: "https://graph.facebook.com/" + GRAPH, headers: { Authorization: "Bearer " + s.wa_access_token } },
     { name: "kapso", base: KAPSO_BASE, headers: { "X-API-Key": s.wa_access_token } }
@@ -143,6 +136,41 @@ async function sendText(s, to, body, extra) {
     }
   }
   return { ok: false, error: err };
+}
+
+async function sendText(s, to, body) {
+  return post(s, {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: to,
+    type: "text",
+    text: { preview_url: false, body: body }
+  });
+}
+
+/* A template with a quick-reply button. The tap comes back as an inbound
+   message, which is the only way we can open a window from our side — a URL
+   button sends us nothing, so it buys no free hours. */
+async function sendTemplate(s, to, name, params, buttonPayload) {
+  const components = [{
+    type: "body",
+    parameters: (params || []).map((t) => ({ type: "text", text: String(t == null ? "" : t).slice(0, 900) }))
+  }];
+  if (buttonPayload) {
+    components.push({
+      type: "button",
+      sub_type: "quick_reply",
+      index: "0",
+      parameters: [{ type: "payload", payload: String(buttonPayload).slice(0, 100) }]
+    });
+  }
+  return post(s, {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: to,
+    type: "template",
+    template: { name: name, language: { code: s.wa_template_lang || "en" }, components: components }
+  });
 }
 
 function safeId(t) {
@@ -259,4 +287,4 @@ async function receive(req, res) {
   });
 }
 
-module.exports = { receive, sendText, thankYou, normalise, digits };
+module.exports = { receive, post, sendText, sendTemplate, thankYou, normalise, digits };

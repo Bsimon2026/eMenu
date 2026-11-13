@@ -1244,6 +1244,93 @@
     return "\u2605".repeat(k) + "\u2606".repeat(5 - k);
   }
 
+  /* ---------------------------------------------------------- WhatsApp strip
+     The 24-hour window is the whole point: inside it a plain message is free
+     and allowed, outside it only an approved template reaches the guest. The
+     inbound time comes from the server, so the button a guest's own message
+     enables cannot be faked by a clock on the browser. */
+  const WA_FREE_MS = 23 * 3600e3;   /* 23h, not 24: a minute of margin */
+
+  function waState(o) {
+    const now = Date.now();
+    const inAt = o.inboundAt ? new Date(o.inboundAt).getTime() : 0;
+    const created = new Date(o.ts || o.createdAt).getTime() || 0;
+    const open = Boolean(inAt) && now - inAt < WA_FREE_MS;
+    return {
+      open: open,
+      inAt: inAt,
+      freeMs: inAt ? Math.max(0, WA_FREE_MS - (now - inAt)) : 0,
+      ageMs: created ? now - created : 0,
+      sent: o.waSent || {}
+    };
+  }
+
+  function waLeft(ms) {
+    const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
+    return h > 0 ? h + "h " + m + "m" : m + "m";
+  }
+
+  function waStatusKind(o) {
+    return o.mode === "Delivery" ? "delivery" : o.mode === "Dine In" ? "meal" : "ready";
+  }
+
+  function waStripHtml(o) {
+    const w = waState(o);
+    const kind = waStatusKind(o);
+    const label = { delivery: "Sent for Delivery", meal: "Enjoy your Meal", ready: "Ready for Pickup" }[kind];
+
+    const canOrder = !w.open && !w.sent.order && w.ageMs >= 2 * 60e3;
+    const btn = (k, text, on, sentAt, cls) =>
+      '<button type="button" class="wa-btn ' + (cls || "") + (sentAt ? " done" : "") + '" data-wa="' + k +
+      '" data-id="' + esc(o.id) + '"' + (on && !sentAt ? "" : " disabled") + '>' +
+      (sentAt ? "\u2713 " : "") + esc(text) + '</button>';
+
+    return '<div class="owa" data-created="' + (new Date(o.ts || o.createdAt).getTime() || 0) + '"' +
+      ' data-inbound="' + (w.inAt || "") + '" data-sent="' + esc(JSON.stringify(w.sent)) + '">' +
+      '<span class="owa-win ' + (w.open ? "on" : "off") + '">' +
+        (w.open ? "Free window \u00b7 " + waLeft(w.freeMs) + " left" : "Guest has not messaged") +
+      '</span>' +
+      btn("order", w.sent.order ? "Order sent" : "Send Order", canOrder, w.sent.order, "paid") +
+      btn("accept", "Accept Order", w.open, w.sent.accept) +
+      btn(kind, label, w.open, w.sent[kind]) +
+      btn("review", "Review Message", w.open, w.sent.review) +
+    '</div>';
+  }
+
+  /* the strip must change on its own: Send Order unlocks two minutes after the
+     order, and the window countdown has to be honest a minute later too */
+  let waTicker = 0;
+  function startWaTicker() {
+    if (waTicker) return;
+    waTicker = setInterval(function () {
+      document.querySelectorAll(".owa").forEach(function (bar) {
+        const inAt = Number(bar.getAttribute("data-inbound") || 0);
+        const created = Number(bar.getAttribute("data-created") || 0);
+        let sent = {};
+        try { sent = JSON.parse(bar.getAttribute("data-sent") || "{}") || {}; } catch (e) { sent = {}; }
+        const now = Date.now();
+        const open = Boolean(inAt) && now - inAt < WA_FREE_MS;
+        const age = created ? now - created : 0;
+
+        const win = bar.querySelector(".owa-win");
+        if (win) {
+          win.className = "owa-win " + (open ? "on" : "off");
+          win.textContent = open ? "Free window \u00b7 " + waLeft(Math.max(0, WA_FREE_MS - (now - inAt))) + " left"
+                                 : "Guest has not messaged";
+        }
+        bar.querySelectorAll("[data-wa]").forEach(function (b) {
+          const k = b.getAttribute("data-wa");
+          const already = Boolean(sent[k]);
+          let on;
+          if (k === "order") on = !open && !already && age >= 2 * 60e3;
+          else on = open;
+          b.disabled = !on || already;
+          if (k === "order" && already) b.textContent = "\u2713 Order sent";
+        });
+      });
+    }, 20000);
+  }
+
   function orderLedgerRowHtml(o, rev) {
     const archived = Boolean(o.archivedAt);
     const d = new Date(o.ts);
@@ -1289,7 +1376,7 @@
               'data-id="' + esc(o.id) + '" data-status="' + (done ? "awaiting_confirmation" : "confirmed") + '">' +
               (done ? "Reopen" : "Mark done") + '</button>' +
             '<button class="btn btn-sm btn-quiet" type="button" data-arch="' + esc(o.id) + '" data-on="1">Archive</button>') +
-      '</div>' + review +
+      '</div>' + (archived ? "" : waStripHtml(o)) + review +
     '</article>' + (ARCH_FOR === o.id
       ? '<div class="arch-bar">' +
           '<span class="arch-why">Archive this order — why?</span>' +
@@ -1407,6 +1494,7 @@
       return;
     }
     host.innerHTML = shown.map((o) => orderLedgerRowHtml(o, REVIEWS.byOrder.get(o.id))).join("");
+    startWaTicker();
   }
 
   /* ---------------- feedback ----------------
@@ -1532,6 +1620,39 @@
 
     const archNo = e.target.closest && e.target.closest("[data-arch-cancel]");
     if (archNo) { ARCH_FOR = null; renderOrders(); return; }
+
+    /* ---- the WhatsApp buttons -------------------------------------------
+       Send Order is the paid one: it re-checks with the server at the moment of
+       the click, because the state that enabled it can change between the paint
+       and the press. Everything else sends a free message inside the window. */
+    const waBtn = e.target.closest && e.target.closest("[data-wa]");
+    if (waBtn) {
+      e.preventDefault();
+      if (waBtn.disabled) return;
+      const kind = waBtn.getAttribute("data-wa");
+      const orderId = waBtn.getAttribute("data-id");
+      const was = waBtn.textContent;
+      waBtn.disabled = true;
+      waBtn.textContent = "Sending\u2026";
+      const r = await window.Auth.api("/api/marketing?send=1", {
+        method: "POST",
+        body: JSON.stringify({ orderId: orderId, kind: kind })
+      });
+      if (!r.ok) {
+        const d = r.data || {};
+        waBtn.textContent = was;
+        waBtn.disabled = false;
+        toast(d.code === "NO_INBOX" ? "The message inbox is not switched on yet \u2014 run db/0018_wa_messages.sql."
+          : d.code === "WINDOW_CLOSED" ? "That window has closed. Only Send Order can reach them now."
+          : d.code === "NOT_YET" ? "Give it two minutes \u2014 Send Order unlocks after that."
+          : (d.message || "That did not send."));
+        return;
+      }
+      ordersFetchedAt = 0;
+      await renderOrders();
+      toast((r.data && r.data.via ? "Sent via " + r.data.via + "." : "Sent."));
+      return;
+    }
 
     const btn = e.target.closest && e.target.closest("[data-status]");
     if (!btn) return;

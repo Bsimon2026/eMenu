@@ -26,8 +26,10 @@
 
 const crypto = require("crypto");
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
+const waSend = require("./_lib/wa-inbox");
 
 const GRAPH = (process.env.WHATSAPP_API_VERSION || "v21.0");
+const GUEST_BASE = (process.env.PUBLIC_BASE || "https://digimenu.indubaicity.com").replace(/\/+$/, "");
 const SETTINGS_COLS =
   "sender_mode,wa_phone_number_id,wa_access_token,wa_template,wa_template_lang,google_review_url,wa_order_e164";
 
@@ -164,7 +166,7 @@ async function owner(req, res) {
   const user = await userFromToken(bearer(req));
   if (!user) return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
 
-  const actor = await actorRestaurant(user, "id,handle,name,whatsapp_e164");
+  const actor = await actorRestaurant(user, "id,handle,name,whatsapp_e164,currency");
   if (!actor) return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Set up your restaurant first." });
   if (actor.role !== "owner") {
     return res.status(403).json({ ok: false, code: "NOT_OWNER", message: "Only the owner can run marketing." });
@@ -345,6 +347,154 @@ async function owner(req, res) {
     return res.status(200).json({ ok: true, queued: made.length, skipped, rows: made });
   }
 
+  /* ------------------------------------------ one message, from a button
+     Every button under an order comes here. The server decides, not the panel:
+     inside the window a plain message is free and allowed; outside it only the
+     paid template reaches the guest, and only for the order-confirmation
+     purpose. The button that enabled itself can be stale by the time it is
+     pressed, so the window and the two-minute hold are re-checked now. */
+  if (q.send !== undefined) {
+    if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
+
+    let body = req.body;
+    if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
+    const orderId = body && String(body.orderId || "").trim();
+    const kind = body && String(body.kind || "").trim();
+    const KINDS = ["order", "accept", "ready", "delivery", "meal", "review"];
+    if (!orderId || KINDS.indexOf(kind) < 0) {
+      return res.status(400).json({ ok: false, code: "BAD_REQUEST", message: "Which order, and which message?" });
+    }
+
+    const ordR = await rest(
+      "orders?id=eq." + encodeURIComponent(orderId) + "&restaurant_id=eq." + rid +
+      "&select=id,guest_name,guest_phone,mode,total,created_at,status"
+    );
+    if (!ordR.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+    const o = (ordR.data || [])[0];
+    if (!o) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "That order is not yours." });
+
+    const to = normalisePhone(o.guest_phone, dial);
+    if (!to) {
+      return res.status(400).json({ ok: false, code: "NO_NUMBER", message: "That order has no usable number to send to." });
+    }
+
+    /* the inbox is the only honest source for "is the window open" */
+    const inR = await rest(
+      "wa_messages?restaurant_id=eq." + rid + "&direction=eq.in&customer_number=eq." + to +
+      "&select=created_at&order=created_at.desc&limit=1"
+    );
+    if (!inR.ok) {
+      return res.status(503).json({
+        ok: false, code: "NO_INBOX",
+        message: "The message inbox is not switched on yet — run db/0018_wa_messages.sql."
+      });
+    }
+    const lastIn = (inR.data || [])[0] && inR.data[0].created_at;
+    const open = Boolean(lastIn) && Date.now() - new Date(lastIn).getTime() < 23 * 3600e3;
+
+    /* pressing twice must not send twice */
+    const dup = await rest(
+      "wa_messages?restaurant_id=eq." + rid + "&order_id=eq." + encodeURIComponent(orderId) +
+      "&direction=eq.out&type=eq." + kind + "&select=id&limit=1"
+    );
+    if (dup.ok && (dup.data || []).length) {
+      return res.status(409).json({ ok: false, code: "ALREADY", message: "That message already went out for this order." });
+    }
+
+    if (!s.wa_phone_number_id || !s.wa_access_token) {
+      return res.status(400).json({ ok: false, code: "NOT_CONNECTED", message: "Connect the Cloud API first: phone number id and access token." });
+    }
+
+    const first = String(o.guest_name || "there").split(" ")[0].slice(0, 40);
+    const place = String(actor.restaurant.name || "").slice(0, 60);
+    const total = (actor.restaurant.currency || "AED") + " " + Number(o.total || 0).toFixed(0);
+
+    let text = "";
+    let sent = null;
+
+    if (kind === "order") {
+      if (open) {
+        return res.status(409).json({
+          ok: false, code: "ALREADY_WINDOW",
+          message: "The guest is already in the free window — use Accept Order instead."
+        });
+      }
+      if (Date.now() - new Date(o.created_at).getTime() < 2 * 60e3) {
+        return res.status(409).json({ ok: false, code: "NOT_YET", message: "Send Order unlocks two minutes after the order." });
+      }
+      const items = await rest("order_items?order_id=eq." + encodeURIComponent(orderId) + "&select=name,qty");
+      const lines = ((items.ok && items.data) || [])
+        .map(function (i) { return (i.qty || 1) + " x " + i.name; })
+        .join("\n").slice(0, 800) || "Your order";
+      text = "Order confirmation: " + lines + " — " + total;
+      sent = await waSend.sendTemplate(
+        s, to, "order_confirm",
+        [first, place, lines, total], "CONFIRM"
+      );
+    } else {
+      if (!open) {
+        return res.status(409).json({
+          ok: false, code: "WINDOW_CLOSED",
+          message: "That window has closed — only Send Order can reach them now."
+        });
+      }
+
+      if (kind === "review") {
+        let token = null;
+        const rr = await rest(
+          "review_requests?restaurant_id=eq." + rid + "&order_id=eq." + encodeURIComponent(orderId) + "&select=token&limit=1"
+        );
+        if (rr.ok && rr.data && rr.data[0]) token = rr.data[0].token;
+        if (!token) {
+          const made = await rest("review_requests", {
+            method: "POST", prefer: "return=representation",
+            body: {
+              restaurant_id: rid, order_id: orderId, phone: to, phone_raw: o.guest_phone || "",
+              guest_name: o.guest_name || "", token: crypto.randomBytes(9).toString("base64url"), status: "queued"
+            }
+          });
+          token = made.ok && made.data && made.data[0] ? made.data[0].token : null;
+        }
+        if (!token) return res.status(502).json({ ok: false, code: "DB_ERROR", message: "Could not build the review link." });
+        text = "Hi " + first + ", thanks for eating at " + place + ". How was it? " + GUEST_BASE + "/f/" + token;
+        await rest("review_requests?token=eq." + encodeURIComponent(token), {
+          method: "PATCH", prefer: "return=minimal",
+          body: { status: "sent", sent_at: new Date().toISOString(), error: null }
+        });
+      } else {
+        const say = {
+          accept: "Order accepted — " + place + " is preparing it now. We will message you the moment it moves.",
+          ready: "Your order is ready for pickup at " + place + ".",
+          delivery: "Your order has left " + place + " — it will reach you shortly.",
+          meal: "Enjoy your meal at " + place + "!"
+        };
+        text = say[kind] || "";
+      }
+
+      sent = await waSend.sendText(s, to, text);
+    }
+
+    if (!sent || !sent.ok) {
+      return res.status(502).json({
+        ok: false, code: "SEND_FAILED",
+        message: (sent && sent.error) || "WhatsApp refused that message."
+      });
+    }
+
+    /* best effort: a message that went out must be on the record, or the panel
+       will offer to send it again */
+    await rest("wa_messages", {
+      method: "POST", prefer: "return=minimal",
+      body: [{
+        restaurant_id: rid, order_id: orderId, wamid: sent.id || null,
+        direction: "out", phone_number_id: s.wa_phone_number_id,
+        customer_number: to, type: kind, body: text
+      }]
+    });
+
+    return res.status(200).json({ ok: true, kind: kind, via: sent.via || null });
+  }
+
   /* ------------------------------------------------- free: mark one as sent */
   if (q.sent !== undefined) {
     if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
@@ -385,7 +535,7 @@ async function owner(req, res) {
 
     const results = [];
     for (const row of batch.data || []) {
-      const link = "https://digimenu.indubaicity.com/f/" + row.token;
+      const link = GUEST_BASE + "/f/" + row.token;
       const first = String(row.guest_name || "there").split(" ")[0].slice(0, 40);
       const restaurantName = String(actor.restaurant.name || "").slice(0, 60);
 
