@@ -939,5 +939,8 @@
     }
 
     paint();
+    /* paint() is what renders the shelves, so the thumbs can only be observed
+       once it has finished — wiring them from the hero ran too early. */
+    wireThumbs();
   })();
 })();
