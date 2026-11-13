@@ -538,11 +538,15 @@ body:not(.has-hero) .rail { top: 64px; }
   display: block;
   transition: opacity .4s var(--ease);
 }
+/* an image that is still arriving shows a shimmer in its own box: at opacity 0
+   a slow CDN left a hole where the photograph should be, and 114 lazy images on
+   one page is exactly when that happens */
 .item .thumb.loading {
-  opacity: 0;
+  opacity: 1;
   background: linear-gradient(100deg, var(--paper-3) 30%, var(--paper-2) 45%, var(--paper-3) 60%);
   background-size: 300% 100%;
   animation: thumbShimmer 1.3s ease-in-out infinite;
+  color: transparent;
 }
 .item .thumb.ph { background: repeating-linear-gradient(135deg, var(--paper-3) 0 6px, var(--paper-2) 6px 12px); }
 
