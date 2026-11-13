@@ -1176,7 +1176,16 @@
       items: o.items || [],
       status: o.status,
       archivedAt: o.archivedAt || null,
-      archiveReason: o.archiveReason || null
+      archiveReason: o.archiveReason || null,
+      /* the WhatsApp strip's whole state: dropping these here is why a guest who
+         had messaged still read "not messaged" and every free button stayed off */
+      inboundAt: o.inboundAt || null,
+      waSent: o.waSent || null,
+      /* and the money breakdown the edit sheet shows */
+      subtotal: o.subtotal == null ? o.total : o.subtotal,
+      deliveryFee: o.deliveryFee || 0,
+      discountCode: o.discountCode || null,
+      discountAmount: o.discountAmount || 0
     }));
   }
 
