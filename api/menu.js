@@ -168,13 +168,18 @@ async function menuHandler(req, res) {
   }
 
   const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
-  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends,locales,sender_mode,wa_phone_number_id,wa_order_e164";
+  const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends,locales,sender_mode,wa_phone_number_id";
+  /* 0017 adds the order number. Asking for a column that does not exist yet
+     fails the whole select, so it is tried last and dropped on its own — the
+     cover photo and the Arabic must not disappear because one column is new. */
+  const FULL_ORDER = FULL_COLS + ",wa_order_e164";
   const query = (cols) =>
     "restaurants?" + lookup + "&status=eq.published&select=" + cols;
 
   /* 0004 adds the identity columns; a deployment can land before the migration
      is run, so fall back to the original columns instead of failing the page */
-  let found = await rest(query(FULL_COLS));
+  let found = await rest(query(FULL_ORDER));
+  if (!found.ok) found = await rest(query(FULL_COLS));
   if (!found.ok) found = await rest(query(BASE_COLS));
   if (!found.ok) {
     return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
