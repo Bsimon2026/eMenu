@@ -1319,5 +1319,4 @@ body.t-dark .sold-tag { color: var(--ink-3); border-color: var(--rule); }
 
 /* a chip that carries the accent needs its own ink: white on a light accent is
    the same class of bug as cream on cream, and only the accent knows */
-body.menu-body { --accent-ink: #FFFFFF; }
 
