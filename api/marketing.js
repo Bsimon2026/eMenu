@@ -540,6 +540,9 @@ module.exports = async function handler(req, res) {
   if (!configured) return res.status(500).json({ ok: false, code: "NOT_CONFIGURED" });
 
   const q = req.query || {};
+  /* the inbox is public by necessity — Kapso posts to it with no session — and
+     it authenticates with an HMAC over the raw body instead */
+  if (q.wa !== undefined) return require("./_lib/wa-inbox").receive(req, res);
   if (q.feedback !== undefined) return feedback(req, res);
   return owner(req, res);
 };

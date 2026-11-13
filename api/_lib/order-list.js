@@ -71,6 +71,40 @@ module.exports = async function listOrders(req, res) {
     byOrder.get(line.order_id).push({ name: line.name, qty: line.qty, price: Number(line.unit_price) });
   }
 
+  /* What the guest said, and what we already sent them. The inbound time is the
+     only honest evidence that the 24-hour window is open — it is what enables
+     every button except Send Order. 0018 may not have been run yet, so a failed
+     read means "no inbox", not "no orders". */
+  const digits = (v) => String(v || "").replace(/[^\d]/g, "");
+  const lastIn = new Map();        /* phone -> newest inbound */
+  const sentFor = new Map();       /* order id -> { thankyou, accept, ready, review } */
+  const sentForPhone = new Map();  /* phone -> newest outbound, for rows with no order id */
+
+  if (orders.length) {
+    const phones = Array.from(new Set(orders.map((o) => digits(o.guest_phone)).filter(Boolean)));
+    if (phones.length) {
+      const w = await rest(
+        "wa_messages?restaurant_id=eq." + restaurant.id +
+        "&customer_number=in.(" + phones.map(encodeURIComponent).join(",") + ")" +
+        "&select=customer_number,direction,type,created_at,order_id&order=created_at.desc&limit=1000"
+      );
+      if (w.ok) {
+        for (const m of w.data || []) {
+          const phone = digits(m.customer_number);
+          if (m.direction === "in") {
+            if (!lastIn.has(phone)) lastIn.set(phone, m.created_at);
+          } else if (m.order_id) {
+            if (!sentFor.has(m.order_id)) sentFor.set(m.order_id, {});
+            const bag = sentFor.get(m.order_id);
+            if (!bag[m.type]) bag[m.type] = m.created_at;
+          } else if (phone) {
+            if (!sentForPhone.has(phone)) sentForPhone.set(phone, m.type);
+          }
+        }
+      }
+    }
+  }
+
   return res.status(200).json({
     ok: true,
     currency: restaurant.currency || "AED",
@@ -87,6 +121,9 @@ module.exports = async function listOrders(req, res) {
       status: o.status,
       archivedAt: o.archived_at || null,
       archiveReason: o.archive_reason || null,
+      /* the panel's buttons read these three */
+      inboundAt: lastIn.get(digits(o.guest_phone)) || null,
+      waSent: sentFor.get(o.id) || (sentForPhone.get(digits(o.guest_phone)) ? { thankyou: true } : null),
       items: byOrder.get(o.id) || []
     }))
   });
