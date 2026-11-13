@@ -888,7 +888,7 @@ html[dir="rtl"] .cat-pick::after { margin-inline-start: 2px; transform: rotate(4
   width: min(100%, 520px);
   max-height: 92dvh;
   overflow-y: auto;
-  padding: 22px clamp(18px, 5vw, 26px) calc(22px + env(safe-area-inset-bottom));
+  padding: 22px clamp(18px, 5vw, 26px) calc(26px + env(safe-area-inset-bottom));
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   background: var(--paper);
   box-shadow: var(--shadow-2);
@@ -1171,8 +1171,9 @@ html[dir="rtl"] .item .ds { line-height: 1.75; }
   .add { height: 30px; padding: 0 13px; }
   .sec { scroll-margin-top: 58px; }
   .sec-head h2 { font-size: 19px; }
-  .sheet-actions { flex-direction: column-reverse; }
-  .sheet-actions .btn { width: 100%; }
+  .sheet-actions { flex-direction: row; gap: 8px; }
+  .sheet-actions .btn { width: auto; flex: 1; min-width: 0; }
+  .sheet-actions .btn-brand { flex: 1.35; }
 }
 /* quantity on the row: the Add pill becomes a stepper once the count is above
    zero, so a mis-tap is undone where it happened */
