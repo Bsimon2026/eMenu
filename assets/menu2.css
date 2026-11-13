@@ -1393,3 +1393,32 @@ html.t-dark #sheet .ol-row.total span { color: #F3EFE7; border-top-color: #3A424
 html.t-dark #sheet .ol-row.disc, html.t-dark #sheet .ol-row.disc span { color: #6FBF8F; }
 html.t-dark #sheet .sheet-actions { background: #14171A; border-top-color: #262C33; }
 
+/* ---------------------------------------------------------------------------
+   The scrim was written for bone paper: a cream wash. Under the charcoal theme
+   it turned the hero into a bright band with cream type on it — the title
+   measured about 1.6:1 against the photo. The dark theme gets a charcoal scrim,
+   and the title keeps a soft shadow for the brightest part of a photograph. */
+html.t-dark .hero.has-media::before {
+  background:
+    linear-gradient(to top,
+      #0E1114 1%,
+      rgba(14, 17, 20, .97) 20%,
+      rgba(14, 17, 20, .86) 44%,
+      rgba(14, 17, 20, .45) 70%,
+      rgba(14, 17, 20, .18) 86%),
+    linear-gradient(to top, rgba(0, 0, 0, .40), rgba(0, 0, 0, 0) 60%);
+}
+html.t-dark .hero h1 {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 8px 28px rgba(0, 0, 0, .45);
+}
+html.t-dark .hero .tagline,
+html.t-dark .hero-meta { text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+/* a disabled control still has to be readable: it says what it is waiting for */
+html.t-dark .checkout-btn:disabled,
+html.t-dark #sheet .checkout-btn:disabled {
+  background: #262C33;
+  border-color: #262C33;
+  color: #B9C1C8;
+  opacity: 1;
+}
+
