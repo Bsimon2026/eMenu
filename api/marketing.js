@@ -434,9 +434,12 @@ async function owner(req, res) {
         .join("\n").slice(0, 800) || "Your order";
       text = "Hello " + first + ", your order at " + place + " is " + lines +
         " — " + total + ". Tap CONFIRM below and we'll take it from here.";
+      /* No button component: the template's quick replies are static, and Meta
+         rejects a payload parameter for a button that has no variable. It also
+         lets the owner add a second button (Cancel Order) without a code change. */
       sent = await waSend.sendTemplate(
         s, to, "order_confirm",
-        [first, place, lines, total], "CONFIRM"
+        [first, place, lines, total]
       );
     } else {
       if (!open) {
