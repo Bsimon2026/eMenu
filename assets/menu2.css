@@ -290,7 +290,49 @@ body.menu-body::before {
 .hero [hidden] { display: none !important; }
 
 /* ================================================================= head === */
-.mhead { background: var(--paper); border-bottom: 1px solid var(--rule); position: sticky; top: 0; z-index: 30; }
+.mhead {
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 60;
+}
+/* line one: the mark, the name, the language. Two rows frozen as one bar, so the
+   picker can never slide under the switch the way it did while it floated. */
+.mhead-txt { min-width: 0; flex: 1; }
+.mhead-txt h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mhead .lang-switch {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  margin-inline-start: auto;
+  box-shadow: none;
+  background: var(--paper-2);
+  border-color: var(--rule);
+}
+/* line two: where you are in the menu, tinted with the house colour */
+.mhead-pick {
+  border-top: 1px solid var(--rule-2);
+  background: var(--accent-soft, rgba(247, 148, 29, .14));
+}
+.mhead-pick .cat-pick {
+  position: static;
+  top: auto;
+  z-index: auto;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 clamp(18px, 5vw, 48px);
+  min-height: 46px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.mhead-pick .cat-pick select { height: 44px; font-size: 14.5px; }
+@media (max-width: 599px) {
+  /* a phone has room for the name and the language, not for three more controls */
+  .mhead .mwa { display: none; }
+}
 .mhead-in {
   max-width: 1240px;
   margin: 0 auto;
@@ -461,8 +503,6 @@ body:not(.has-hero) .rail { top: 64px; }
 }
 html[dir="rtl"] .cat-pick::after { margin-inline-start: 2px; transform: rotate(45deg); }
 @media (min-width: 900px) {
-  /* the header is sticky at the top of a wide screen: the picker parks under it */
-  .cat-pick { top: 64px; margin-top: 10px; max-width: 520px; }
   .cat-pick select { min-width: 200px; }
 }
 
@@ -1012,6 +1052,7 @@ body.embed .mwrap { padding: 0 12px; grid-template-columns: minmax(0, 1fr); }
 body.embed .rail { display: flex; position: sticky; top: 0; padding: 8px 0; gap: 6px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; }
 body.embed .rail a { height: 26px; font-size: 11px; padding: 0 9px; }
 body.embed .cat-pick { display: none !important; }
+body.embed .mhead-pick { display: none !important; }
 body.embed .sec { padding-top: 16px; }
 body.embed .sec-head h2 { font-size: 15px; }
 body.embed .sec-head > span { font-size: 10px; }
@@ -1241,8 +1282,9 @@ html.t-clay {
 
 /* The light surfaces that were hardcoded: a dark ground has to carry them too,
    or the picker arrives as a white pill on a charcoal page. */
+html.t-dark .mhead-pick { background: var(--accent-soft, rgba(247, 148, 29, .16)); }
 html.t-dark .cat-pick {
-  background: #1B1F24;
+  background: transparent;
   border-color: rgba(243, 239, 231, .18);
   box-shadow: 0 14px 26px -18px rgba(0, 0, 0, .9);
 }

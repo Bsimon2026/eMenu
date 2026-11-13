@@ -910,6 +910,9 @@
       const onWhite = 1.05 / (L + 0.05);
       const onInk = (L + 0.05) / (0.013 + 0.05);
       document.documentElement.style.setProperty("--accent-ink", onInk >= onWhite ? "#14120E" : "#FFFFFF");
+      /* a wash of the same colour for the header's category strip */
+      const channels = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+      document.documentElement.style.setProperty("--accent-soft", "rgba(" + channels.join(",") + ",0.16)");
     })(accent);
     handle = r.handle || wanted;
     publicLink = PUBLIC_BASE.replace(/^https?:\/\//i, "") + handle;
