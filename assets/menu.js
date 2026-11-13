@@ -852,12 +852,10 @@
         var r = hero.getBoundingClientRect();
         document.body.classList.toggle("scrolled", r.bottom < 72);
       };
-      var ticking = false;
-      window.addEventListener("scroll", function () {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(function () { ticking = false; syncHead(); });
-      }, { passive: true });
+      /* straight in the handler: a single bounding-box read, and rAF is not
+         guaranteed to run (it never did in the headless browser, which made the
+         bar look broken while the code was right) */
+      window.addEventListener("scroll", syncHead, { passive: true });
       window.addEventListener("resize", syncHead, { passive: true });
       syncHead();
     }
