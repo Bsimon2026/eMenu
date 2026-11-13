@@ -431,9 +431,12 @@ async function owner(req, res) {
           headers: { Authorization: "Bearer " + s.wa_access_token }
         },
         {
+          /* Kapso refuses a project key sent as a bearer ("Invalid credentials
+             for WhatsApp configuration") and accepts the same key in X-API-Key.
+             Only that header here — sending both risks it reading the wrong one. */
           name: "kapso",
           base: (process.env.WA_API_BASE || "https://api.kapso.ai/meta/whatsapp/v24.0"),
-          headers: { Authorization: "Bearer " + s.wa_access_token, "X-API-Key": s.wa_access_token }
+          headers: { "X-API-Key": s.wa_access_token }
         }
       ];
 
