@@ -1437,7 +1437,30 @@ html.t-dark #sheet .checkout-btn:disabled {
     overflow: visible;
     scroll-snap-type: none;
   }
-  .items .item { width: auto; scroll-snap-align: none; }
+  /* The shelf card is 146px wide because a phone shows one at a time. In a
+     two-column list that left each card's right half empty and the photo at a
+     thumbnail's width, so the card becomes a row again: photo, text, price. */
+  .items .item,
+  .items .item.has-img {
+    flex: none;
+    width: auto;
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr) auto;
+    column-gap: 18px;
+    align-items: start;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule-2);
+    scroll-snap-align: none;
+  }
+  .items .item:last-child { border-bottom: 0; }
+  .items .item .thumb,
+  .items .item.has-img > .thumb {
+    width: 132px;
+    height: 100px;
+    margin-bottom: 0;
+  }
+  .items .item .nm { font-size: 14.5px; }
+  .items .item .right { padding-top: 2px; }
 }
 
 /* the order lines carry their own quantity and a way out of the order */
