@@ -185,7 +185,7 @@
               return `
             <div class="item ${it.soldOut ? "sold" : ""} ${col}" data-id="${it.id}">
               ${it.image
-                ? `<img class="thumb loading" src="${sized(it.image, 320)}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.classList.add('ph'); this.removeAttribute('src')">`
+                ? `<img class="thumb loading" src="${sized(it.image, 320)}" alt="" loading="${cats[0] && cats[0].id === c.id ? "eager" : "lazy"}" fetchpriority="${cats[0] && cats[0].id === c.id ? "high" : "auto"}" referrerpolicy="no-referrer" onload="this.classList.remove('loading')" onerror="this.classList.add('ph'); this.removeAttribute('src')">`
                 : sectionHasImg ? `<div class="thumb ph" aria-hidden="true"></div>` : ""}
               <div>
                 <div class="nm">
@@ -316,8 +316,11 @@
       $("#goCheckout").addEventListener("click", openSheet);
     }
 
-    $("#cartCount").textContent = count + (count === 1 ? " item" : " items");
-    $("#barCount").textContent = count + (count === 1 ? " item" : " items");
+    const countWords = LANG === "ar"
+      ? (count + " \u0639\u0646\u0635\u0631")
+      : (count + (count === 1 ? " item" : " items"));
+    $("#cartCount").textContent = countWords;
+    $("#barCount").textContent = countWords;
     $("#barTotal").textContent = money(sum);
     $("#mobileBar").classList.toggle("on", count > 0);
   }
