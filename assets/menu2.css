@@ -1627,11 +1627,59 @@ html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
   align-items: center;
   justify-content: center;
   gap: 0;
-  height: auto;
-  min-height: 46px;
-  padding: 8px 18px;
-  line-height: 1.2;
+  height: 54px;
+  min-height: 54px;
+  padding: 0 14px;
+  line-height: 1.15;
+  border-radius: 14px;
 }
+#confirmOrder span { font-size: 15px; font-weight: 600; letter-spacing: -.012em; }
+#confirmOrder small {
+  margin-top: 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  opacity: .55;
+}
+
+/* the sheet's two actions: equal halves, one quiet and one decisive */
+.sheet-actions { gap: 10px; align-items: stretch; margin-top: 22px; padding-top: 16px; }
+.sheet-actions .btn {
+  flex: 1 1 0;
+  height: 54px;
+  min-height: 54px;
+  padding: 0 14px;
+  border-radius: 14px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font-family: var(--font-ui);
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+html.t-dark .sheet-actions .btn-outline {
+  border: 1px solid rgba(243, 239, 231, .22);
+  background: transparent;
+  color: #EFEAE1;
+}
+html.t-dark .sheet-actions .btn-outline:hover {
+  background: rgba(243, 239, 231, .07);
+  border-color: rgba(243, 239, 231, .44);
+}
+html.t-dark .sheet-actions .btn-brand {
+  border: 1px solid #F3EFE7;
+  background: #F3EFE7;
+  color: #14171A;
+  box-shadow: 0 12px 26px -18px rgba(0, 0, 0, .9);
+}
+html.t-dark .sheet-actions .btn-brand:hover { background: #FFFFFF; border-color: #FFFFFF; }
+/* a mouse press should not leave a ring behind on the primary action */
+.btn:focus { outline: none; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* The cart panel is sticky and the button sits at its foot: on a laptop with a
    few dishes the panel grew past the viewport and "Review order" fell below the
