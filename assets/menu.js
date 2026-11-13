@@ -83,8 +83,10 @@
     if (pick) pick.textContent = T("Jump to", "انتقل إلى");
 
     const cartH = document.querySelector(".cart h3");
-    if (cartH && cartH.firstChild && cartH.firstChild.nodeType === 3) {
-      cartH.firstChild.nodeValue = T("Your order ", "طلبك ");
+    if (cartH) {
+      const em = cartH.querySelector("em");
+      cartH.textContent = T("Your order ", "طلبك ");
+      if (em) cartH.appendChild(em);
     }
     const call = document.querySelector("#heroCall span");
     if (call) call.textContent = T("Call", "اتصال");
@@ -111,6 +113,7 @@
       b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === LANG));
     });
     paint();
+    chrome();
   }
 
   function esc(t) {
