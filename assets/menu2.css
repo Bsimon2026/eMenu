@@ -252,7 +252,7 @@ body.menu-body::before {
 .hero-meta .sep { color: var(--ink-4); }
 .hero-meta .sep { color: var(--ink-4); opacity: .8; margin: 0 2px; }
 
-.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
 
 .mwa,
 .hero-social {
