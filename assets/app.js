@@ -200,6 +200,23 @@
     })
   );
 
+  /* ---------------- sub-menus ----------------
+     Settings and Marketing each hold four screens; everything on one page was
+     long enough to read as clutter. A sub-pane is a div inside the pane, so the
+     ids the rest of this file renders into stay put whether it is open or not. */
+  $$("[data-subnav]").forEach((nav) => {
+    nav.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-sub]");
+      if (!btn || !nav.contains(btn)) return;
+      const group = nav.dataset.subnav;
+      $$('[data-subnav="' + group + '"] [data-sub]').forEach((b) =>
+        b.setAttribute("aria-selected", String(b === btn)));
+      $$('[data-subpane-group="' + group + '"] > .subpane').forEach((p) => {
+        p.hidden = p.dataset.sub !== btn.dataset.sub;
+      });
+    });
+  });
+
   // one sign-out action, reachable from the rail on a desktop and from the
   // More screen on a phone
   ["#signOut", "#signOutMore"].forEach((sel) => {
@@ -418,7 +435,7 @@
           '<input type="checkbox" class="mk-done-chk" value="' + esc(o.id) + '">' +
           '<span><span class="who">' + esc(o.guest || "Guest") + '</span> ' +
             '<span class="meta">' + esc(o.phone || "no number") + ' · ' + esc(when) + ' · ' + esc(o.mode || "") + '</span></span>' +
-          '<span class="amt">' + esc((state.currency || "AED") + " " + (Math.round((Number(o.total) || 0) * 100) / 100)) + '</span>' +
+          '<span class="amt">' + esc(money(o.total)) + '</span>' +
         '</label>';
       }).join("");
   }
@@ -3324,7 +3341,86 @@
     set("#setFb", soc.facebook);
     set("#setTt", soc.tiktok);
     set("#setWeb", soc.website);
+    renderPalette();
   }
+
+  /* ---------------- menu colour ----------------
+     restaurants.accent is already what the guest page paints with — the order
+     buttons, the live category chip, the cart — and /api/restaurant already
+     accepts it on every save. What was missing was a way to choose it: the
+     colour could only ever be decided by uploading a logo. Six presets, plus
+     whatever the logo's own palette produced, offered first. */
+  const PALETTES = [
+    { name: "Saffron", hex: "#F7941D" },
+    { name: "Chili", hex: "#D9483B" },
+    { name: "Olive", hex: "#7C8B3B" },
+    { name: "Teal", hex: "#2F8B84" },
+    { name: "Clay", hex: "#B5643C" },
+    { name: "Slate", hex: "#5D7285" }
+  ];
+
+  /* white or near-black on the accent, whichever is readable — the same rule the
+     guest page runs, so the preview cannot promise something the menu won't do */
+  function accentInk(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+    if (!m) return "#14120E";
+    const n = parseInt(m[1], 16);
+    const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    const L = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+    return L > 0.32 ? "#14120E" : "#FFFFFF";
+  }
+
+  function renderPalette() {
+    const host = $("#swatches");
+    if (!host) return;
+    const current = String(state.accent || "").toLowerCase();
+    const fromLogo = (state.swatches || [])
+      .filter((h) => /^#[0-9a-f]{6}$/i.test(String(h)))
+      .map((h) => ({ name: "Logo", hex: h }));
+
+    const seen = new Set();
+    const list = fromLogo.concat(PALETTES).filter((p) => {
+      const k = String(p.hex).toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+    /* a colour that is set but sits outside the list — the seed default, or one
+       this build no longer offers — still has to look chosen, or the row opens
+       with nothing selected and reads as broken. It goes last as "Custom" so the
+       presets keep their own names and positions. */
+    if (/^#[0-9a-f]{6}$/i.test(String(state.accent || "")) && !seen.has(current)) {
+      list.push({ name: "Custom", hex: state.accent });
+      seen.add(current);
+    }
+
+    host.innerHTML = list.map((p) => {
+      const on = String(p.hex).toLowerCase() === current;
+      return '<button type="button" class="swatch' + (on ? " on" : "") + '" data-accent="' + esc(p.hex) +
+        '" aria-pressed="' + on + '" title="' + esc(p.name) + " " + esc(p.hex) + '">' +
+        '<i style="background:' + esc(p.hex) + '"></i><span>' + esc(p.name) + "</span></button>";
+    }).join("");
+
+    const prev = $("#swatchPreview");
+    if (prev) {
+      prev.style.setProperty("--brand", state.accent || "#F7941D");
+      prev.style.setProperty("--accent-ink", accentInk(state.accent));
+    }
+  }
+
+  /* delegated: the swatch row is rebuilt on every paint of the guest-page card */
+  document.addEventListener("click", (e) => {
+    const sw = e.target.closest("[data-accent]");
+    if (!sw) return;
+    state.accent = sw.dataset.accent;
+    save();
+    renderPalette();
+    toast("Colour set to " + sw.dataset.accent + " — press Save guest page");
+  });
 
   const cleanBtn = $("#cleanFiles");
   if (cleanBtn) {
@@ -3373,6 +3469,9 @@
       tagline: $("#setTagline").value.trim(),
       address_line: $("#setAddress").value.trim(),
       currency: $("#setCurrency").value,
+      /* the colour chosen in this card: the guest page repaints from
+         restaurants.accent, so it has to travel with the rest of the profile */
+      accent: state.accent,
       instagram: $("#setIg").value.trim(),
       facebook: $("#setFb").value.trim(),
       tiktok: $("#setTt").value.trim(),

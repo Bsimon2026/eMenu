@@ -12,7 +12,7 @@
   <link rel="manifest" href="/assets/site.webmanifest">
 <link rel="stylesheet" href="/assets/fonts.css?v=20261115a">
 <link rel="stylesheet" href="/assets/base.css?v=20261114a">
-<link rel="stylesheet" href="/assets/app-v2.css?v=20261115d">
+<link rel="stylesheet" href="/assets/app-v2.css?v=20261116b">
 </head>
 <body class="app-body">
 
@@ -415,6 +415,15 @@
 
       <!-- ---------------- marketing ---------------- -->
       <section class="content-in" data-pane="marketing" hidden>
+        <nav class="subnav" data-subnav="marketing" aria-label="Marketing">
+          <button type="button" data-sub="messaging" aria-selected="true">Messaging</button>
+          <button type="button" data-sub="reviews" aria-selected="false">Reviews</button>
+          <button type="button" data-sub="offers" aria-selected="false">Offers</button>
+          <button type="button" data-sub="social" aria-selected="false">Social media</button>
+        </nav>
+
+        <div class="subpanes" data-subpane-group="marketing">
+        <div class="subpane" data-sub="messaging">
         <article class="card">
           <div class="card-head">
             <div>
@@ -477,7 +486,9 @@
             <button class="btn btn-brand" type="button" id="mkSave">Save settings</button>
           </div>
         </article>
+        </div>
 
+        <div class="subpane" data-sub="reviews" hidden>
         <article class="card">
           <div class="card-head">
             <div>
@@ -528,7 +539,9 @@
           </div>
           <div class="card-body" id="mkReviews"></div>
         </article>
+        </div>
 
+        <div class="subpane" data-sub="offers" hidden>
         <article class="card" id="dcCard">
           <div class="card-head">
             <div>
@@ -561,10 +574,39 @@
             <div id="dcList" class="dc-list"></div>
           </div>
         </article>
+        </div>
+
+        <div class="subpane" data-sub="social" hidden>
+          <article class="card card-soon">
+            <div class="card-head">
+              <div>
+                <h2>Social media</h2>
+                <p class="card-sub">Post the dish photos you already have to Instagram and Facebook, from here.</p>
+              </div>
+              <span class="pill pill-warn">Coming soon</span>
+            </div>
+            <div class="card-body">
+              <p class="hint" style="margin-top:0">Not built yet. When it lands, connecting an account is one button, the poster is drawn from your own dish photos, and every post waits for your approval before it goes out.</p>
+              <div class="row-actions" style="margin-top:12px">
+                <button class="btn btn-outline btn-sm" type="button" disabled>Connect an account</button>
+              </div>
+            </div>
+          </article>
+        </div>
+        </div>
       </section>
 
       <!-- ---------------- documents & settings ---------------- -->
       <section class="content-in" data-pane="docs" hidden>
+        <nav class="subnav" data-subnav="settings" aria-label="Settings">
+          <button type="button" data-sub="guest" aria-selected="true">Guest page</button>
+          <button type="button" data-sub="documents" aria-selected="false">Documents</button>
+          <button type="button" data-sub="team" aria-selected="false">Team</button>
+          <button type="button" data-sub="signin" aria-selected="false">Sign-in</button>
+        </nav>
+
+        <div class="subpanes" data-subpane-group="settings">
+        <div class="subpane" data-sub="signin" hidden>
         <article class="card" id="passwordCard">
           <div class="card-head">
             <div>
@@ -589,9 +631,11 @@
             <div class="hint" id="pwGoogleHint" hidden>You signed in with Google, so this account has no password yet. Set one above and the same email will also sign in with it — the way you let a manager or the kitchen in.</div>
           </div>
         </article>
+        </div>
 
         <!-- team logins: a name and a password each, under this restaurant's own
              address. No email, nothing to verify — the owner hands both over. -->
+        <div class="subpane" data-sub="team" hidden>
         <article class="card" id="teamCard">
           <div class="card-head">
             <div>
@@ -623,7 +667,9 @@
             <div id="tmList"></div>
           </div>
         </article>
+        </div>
 
+        <div class="subpane" data-sub="documents" hidden>
         <article class="card">
           <div class="card-head">
             <div>
@@ -659,8 +705,10 @@
             </div>
           </div>
         </article>
+        </div>
 
         <!-- the restaurant's public identity: what a guest sees above the menu -->
+        <div class="subpane" data-sub="guest">
         <article class="card">
           <div class="card-head">
             <div>
@@ -669,6 +717,17 @@
             </div>
           </div>
           <div class="card-body">
+            <div class="field">
+              <label>Colour of your menu</label>
+              <div class="swatches" id="swatches" role="group" aria-label="Menu colour"></div>
+              <div class="swatch-preview" id="swatchPreview" aria-hidden="true">
+                <span class="sp-btn">Add to order</span>
+                <span class="sp-chip">Half Grilled Chicken</span>
+                <span class="sp-note">This is what guests see on the menu's buttons, the active category and the cart.</span>
+              </div>
+              <div class="hint">Six colours that hold up on the dark menu. Your logo's own colours are offered first once it is uploaded. Press <b>Save guest page</b> to publish the change.</div>
+            </div>
+
             <div class="field">
               <label for="setRestName">Restaurant name</label>
               <input class="input" id="setRestName" maxlength="80" placeholder="Spice Route">
@@ -749,6 +808,8 @@
             </div>
           </div>
         </article>
+        </div>
+        </div>
       </section>
 
       <!-- ---------------- more ---------------- -->
@@ -1021,6 +1082,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261115a"></script>
+<script src="/assets/app.js?v=20261116b"></script>
 </body>
 </html>
