@@ -50,11 +50,12 @@ const PLANS = {
   }
 };
 
-/* One yearly line each, so an add-on can be seen and stopped without touching
-   the menu subscription. */
+/* The free week is worth Pro, never Ultra: Ultra is sold, not sampled. */
+const TRIAL_PLAN = "order";
+
+/* The one add-on left. The marketing add-on is gone. */
 const ADDONS = {
-  customDomain: { label: "Custom domain", yearly: 99 },
-  marketing: { label: "Marketing only", yearly: 299 }
+  customDomain: { label: "Custom domain", yearly: 99 }
 };
 
 const PLAN_KEYS = Object.keys(PLANS);
@@ -82,33 +83,60 @@ function billable(plan) {
 
 /**
  * Every capability this restaurant has right now.
- * The seven free days are the whole product — a new restaurant sees everything
- * before anybody pays for it — so a live trial overrides the plan's limits.
+ *
+ * Order matters: a paid period delivers exactly the plan bought; the free week
+ * delivers Pro (ordering, reviews, WhatsApp — no landing page, no domain); with
+ * neither, the plan's own limits apply and nothing that costs us money is on.
  */
 function capabilities(row) {
   const r = row || {};
   const key = planOf(r);
-  const p = PLANS[key];
+  const bought = PLANS[key];
   const onTrial = Boolean(r.trial_ends && r.trial_ends >= today());
   const paid = Boolean(r.paid_through && r.paid_through >= today());
   const subscribed = paid || onTrial;
-  const addonMarketing = Boolean(r.addon_marketing);
+  /* what is entitled today: the paid plan, else the trial's Pro */
+  const source = paid ? bought : (onTrial ? PLANS[TRIAL_PLAN] : null);
 
   return {
     plan: key,
-    label: p.label,
+    label: bought.label,
     onTrial,
     paid,
     subscribed,
-    /* a menu on a QR plan is still a menu: the entitlement below decides what
-       the page offers, never whether the page exists */
-    ordering: subscribed ? (onTrial ? true : p.ordering) : false,
-    marketing: subscribed ? (onTrial ? true : (p.marketing || addonMarketing)) : false,
-    landing: subscribed ? (onTrial ? true : p.landing) : false,
-    /* the domain add-on is bought separately, so it is not implied by the plan */
-    customDomain: subscribed && (p.customDomain === true || p.customDomain === "addon"),
-    itemCap: onTrial ? null : p.itemCap
+    trialGrants: onTrial && !paid ? TRIAL_PLAN : null,
+    /* a menu on a QR plan is still a menu: these decide what the page offers,
+       never whether the page exists — that is isLive() below */
+    ordering: Boolean(source && source.ordering),
+    marketing: Boolean(source && source.marketing),
+    landing: Boolean(source && source.landing),
+    customDomain: Boolean(source && source.customDomain),
+    /* the cap belongs to the plan bought; the free week is uncapped */
+    itemCap: onTrial && !paid ? null : bought.itemCap
   };
+}
+
+/**
+ * May a guest open this menu right now?
+ *
+ * The link goes dark when the free week ends and nothing has been paid — the
+ * operator republishes it when the money is recorded (POST /api/superadmin
+ * ?payments=1 sets status back to published). Read at the edge of every guest
+ * request rather than by a nightly job: there is no scheduler, and a row that
+ * says "published" is a decision somebody made, not a promise about today.
+ */
+function isLive(row) {
+  if (!row) return false;
+  if (String(row.status) !== "published") return false;
+  return capabilities(row).subscribed;
+}
+
+/** Why a published row is shut, in words the owner can act on. */
+function darkReason(row) {
+  const cap = capabilities(row || {});
+  if (cap.subscribed) return null;
+  return "The free week has ended and no plan is active, so the menu link is unpublished. " +
+    "It comes back as soon as the payment is recorded.";
 }
 
 /** A sentence naming what is left, for a paywall refusal. */
@@ -123,4 +151,7 @@ function upgradeLine(plan) {
     PLANS[key].price.monthly + " a month) and it reopens the same day.";
 }
 
-module.exports = { PLANS, ADDONS, PLAN_KEYS, planOf, priceOf, billable, capabilities, upgradeLine };
+module.exports = {
+  PLANS, ADDONS, PLAN_KEYS, TRIAL_PLAN,
+  planOf, priceOf, billable, capabilities, isLive, darkReason, upgradeLine
+};

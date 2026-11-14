@@ -1205,6 +1205,9 @@
     showPublishProblems([]);
     applyRestaurant(r.data.restaurant);
     state.status = r.data.restaurant.status;
+    /* a successful publish means the paywall let it through, so it is open */
+    state.live = true;
+    state.darkReason = "";
     save();
     renderOverview();
     toast(status === "published"
@@ -1217,11 +1220,18 @@
      courtesy — QR Menu is the menu and its QR code, so review requests are not
      offered on it. */
   function paintEntitlements() {
-    const plan = state.plan || "qr";
-    const today = new Date().toISOString().slice(0, 10);
-    const onTrial = Boolean(state.trialEnds && state.trialEnds >= today);
-    const paid = Boolean(state.paidThrough && state.paidThrough >= today);
-    const marketing = onTrial || (paid && (plan !== "qr" || state.addonMarketing));
+    /* the server's answer, when it gave one: api/restaurant?GET returns the same
+       capabilities the handlers enforce */
+    const rights = state.rights;
+    const marketing = rights
+      ? Boolean(rights.marketing)
+      : (function () {
+        const plan = state.plan || "qr";
+        const today = new Date().toISOString().slice(0, 10);
+        const onTrial = Boolean(state.trialEnds && state.trialEnds >= today);
+        const paid = Boolean(state.paidThrough && state.paidThrough >= today);
+        return onTrial || (paid && plan !== "qr");
+      })();
     $$('[data-view="marketing"]').forEach((el) => { el.hidden = !marketing; });
   }
 
@@ -1239,20 +1249,23 @@
     $$("[data-go]").forEach((b) => b.addEventListener("click", () => showView(b.dataset.go)));
 
     const ready = items.every((it) => it.ok);
-    const live = state.status === "published";
+    /* the server's verdict, not the row's: a published row whose free week ended
+       is shut, and the dashboard has to say so */
+    const live = state.status === "published" && state.live !== false;
     const blocked = items.filter((it) => !it.ok);
     const missing = blocked.map((it) => it.label.toLowerCase());
 
     const headLine = live
       ? "Your menu is live. Guests can open it from the link below."
-      : ready
-        ? "Everything needed is here. Publish when you are happy with the menu."
-        : "Still needed: " + missing.join(", ") + ".";
+      : (state.status === "published" && state.darkReason)
+        ? state.darkReason
+        : ready
+          ? "Everything needed is here. Publish when you are happy with the menu."
+          : "Still needed: " + missing.join(", ") + ".";
 
-    /* the free week, said beside the missing list rather than over it — and said
-       with the plan it actually hands over to: QR Menu keeps the menu live, Pro
-       adds the ordering. "The menu stays private until you pay" was written when
-       there was one plan; it told a QR Menu owner their menu would go dark. */
+    /* The free week is Pro — ordering, reviews, WhatsApp, no landing page — and
+       when it ends the link is unpublished until a plan is paid. The old sentence
+       ("the menu stays private until you pay") was written for one plan. */
     const todayStr = new Date().toISOString().slice(0, 10);
     const paidNow = Boolean(state.paidThrough && state.paidThrough >= todayStr);
     let trialLine = "";
@@ -1261,9 +1274,10 @@
       if (left >= 0) {
         trialLine = "Free until " +
           new Date(state.trialEnds).toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
-          " — " + left + " day" + (left === 1 ? "" : "s") + " left with everything on. After that the menu " +
-          "stays live on QR Menu at AED " + PRICE.qr.yearly + " a year, and ordering comes with Pro at AED " +
-          PRICE.pro.monthly + " a month or AED " + PRICE.pro.yearly + " a year.";
+          " — " + left + " day" + (left === 1 ? "" : "s") + " of Pro, everything on. When it ends the link is " +
+          "unpublished until a plan is paid: QR Menu AED " + PRICE.qr.yearly + " a year, Pro AED " + PRICE.pro.monthly +
+          " a month or AED " + PRICE.pro.yearly + " a year, Ultra AED " + PRICE.ultra.monthly + " a month or AED " +
+          PRICE.ultra.yearly + " a year.";
       }
     }
 
@@ -4119,6 +4133,11 @@
         /* owner, or a staff login from 0008 — the server decides, and the page
            only makes it visible: what is hidden here is refused there anyway */
         state.role = r.data.role || "owner";
+        /* is the link actually open today, and what does the plan include. The
+           handler computes both; the dashboard must not guess at either. */
+        state.live = r.data.live !== false;
+        state.darkReason = r.data.dark_reason || "";
+        state.rights = r.data.rights || null;
       }
     } catch (e) {
       /* api() already sent us to the sign-in page on 401 */

@@ -18,6 +18,7 @@
 
 const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./db");
 const i18n = require("./i18n");
+const { capabilities, PLANS } = require("./plans");
 
 function money(v) {
   const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
@@ -44,12 +45,26 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "BAD_BODY", message: "Send { action, … }." });
   }
 
-  const actor = await actorRestaurant(user, "id");
+  const actor = await actorRestaurant(user, "id,plan,paid_through,trial_ends");
   const restaurant = actor && actor.restaurant;
   if (!restaurant) {
     return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Finish the restaurant details first." });
   }
   const rid = restaurant.id;
+
+  /* QR Menu holds 50 dishes; Pro and Ultra hold no cap, and the free week is
+     worth Pro. Checked here because the price list says so and nothing else
+     knew it.
+     `itemCap` null means no limit. */
+  const itemCap = capabilities(restaurant).itemCap;
+  const capMessage = () => PLANS.qr.label + " holds " + itemCap + " dishes. " +
+    PLANS.order.label + " (AED " + PLANS.order.price.monthly + " a month, or AED " +
+    PLANS.order.price.yearly + " a year) has no limit.";
+  const countItems = async () => {
+    const r = await rest("menu_items?restaurant_id=eq." + rid + "&select=id");
+    return r.ok ? (r.data || []).length : 0;
+  };
+  const refuseCap = () => res.status(402).json({ ok: false, code: "ITEM_CAP", message: capMessage(), cap: itemCap });
 
   /* The kitchen needs one thing from this endpoint mid-service: the sold-out
      switch. A login with orders-only access may do exactly that and nothing
@@ -88,6 +103,7 @@ module.exports = async function handler(req, res) {
         const price = money(body.price);
         if (name.length < 1) return res.status(400).json({ ok: false, code: "NAME", message: "Give the dish a name." });
         if (price === null) return res.status(400).json({ ok: false, code: "PRICE", message: "Give the dish a price." });
+        if (itemCap != null && (await countItems()) >= itemCap) return refuseCap();
 
         const made = await rest("menu_items", {
           method: "POST",
@@ -336,6 +352,11 @@ module.exports = async function handler(req, res) {
         if (!rows.length) return res.status(400).json({ ok: false, code: "NO_ROWS", message: "The file had no rows." });
         if (rows.length > 800) return res.status(400).json({ ok: false, code: "TOO_MANY", message: "Send 800 rows at a time at most." });
 
+        /* the plan's dish cap, enforced where dishes are created rather than on
+           the file size: re-importing an existing menu creates nothing and must
+           keep working on a capped plan */
+        let roomLeft = itemCap == null ? Infinity : Math.max(0, itemCap - (await countItems()));
+        let overCap = 0;
         const existing = await rest("menu_categories?restaurant_id=eq." + rid + "&select=id,name,position");
         if (!existing.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
         const catBy = new Map((existing.data || []).map((c) => [String(c.name).trim().toLowerCase(), c.id]));
@@ -407,6 +428,7 @@ module.exports = async function handler(req, res) {
             continue;
           }
 
+          if (roomLeft <= 0) { overCap++; continue; }
           const made = await rest("menu_items", {
             method: "POST",
             prefer: "return=representation",
@@ -424,6 +446,7 @@ module.exports = async function handler(req, res) {
             }]
           });
           if (made.ok && (made.data || [])[0]) {
+            roomLeft -= 1;
             const newItem = (made.data || [])[0];
             createdItems++;
             byNameInCat.set(categoryId + "|" + name.toLowerCase(), newItem);
@@ -439,7 +462,11 @@ module.exports = async function handler(req, res) {
           ok: true,
           createdCategories: createdCats,
           createdItems: createdItems,
-          updatedItems: updatedItems
+          updatedItems: updatedItems,
+          /* rows the plan would not take: the import is not silent about them */
+          overCap: overCap,
+          cap: itemCap,
+          capMessage: overCap ? capMessage() : null
         });
       }
 

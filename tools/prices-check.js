@@ -82,5 +82,23 @@ check("app.js PRICE: Pro monthly = " + PLANS.order.price.monthly, num(/pro:\s*\{
 check("app.js PRICE: Ultra yearly = " + PLANS.pro.price.yearly, num(/ultra:\s*\{\s*monthly:\s*\d+,\s*yearly:\s*(\d+)/) === PLANS.pro.price.yearly);
 check("app.js PRICE: Ultra monthly = " + PLANS.pro.price.monthly, num(/ultra:\s*\{\s*monthly:\s*(\d+)/) === PLANS.pro.price.monthly);
 
+/* the operator console offers the published plans, under the published names */
+const console_ = fs.readFileSync(path.join(root, "superadmin.html"), "utf8");
+for (const key of ["qr", "order", "pro"]) {
+  const p = PLANS[key];
+  check("superadmin: offers " + p.label, console_.indexOf(">" + p.label + " — ") !== -1,
+    "no option labelled " + p.label);
+  if (p.price.monthly != null) {
+    check("superadmin: " + p.label + " covers the monthly price",
+      console_.indexOf("AED " + p.price.monthly + " / month") !== -1);
+  }
+}
+check("superadmin: no marketing add-on is sold", console_.indexOf("dwMkt") === -1 && console_.indexOf("Website add-on") === -1);
+
+/* the QR card's dish cap is the one the handlers enforce */
+check("index.html: QR Menu states its " + PLANS.qr.itemCap + "-dish cap",
+  new RegExp("Up to " + PLANS.qr.itemCap + " menu items", "i").test(html));
+check("plans.js: only QR Menu is capped", PLANS.qr.itemCap === 50 && PLANS.order.itemCap === null && PLANS.pro.itemCap === null);
+
 console.log("\n" + (failed ? failed + " price(s) disagree" : "prices agree everywhere checked"));
 process.exit(failed ? 1 : 0);

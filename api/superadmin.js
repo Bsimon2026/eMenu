@@ -35,8 +35,7 @@ const ALL = ["view", "export", "pay_view", "pay_entry", "admins"];
    is the website's Ultra, which is why the labels come from the table too. The
    marketing add-on is one yearly line, so it can be seen and stopped without
    touching the menu subscription. */
-const { PLANS: PLAN_TABLE, ADDONS, billable, priceOf } = require("./_lib/plans");
-const ADDON_YEARLY = ADDONS.marketing.yearly;
+const { PLANS: PLAN_TABLE, ADDONS, billable, priceOf, isLive } = require("./_lib/plans");
 const PLAN_KEYS = Object.keys(PLAN_TABLE);
 const BILLING = ["monthly", "yearly"];
 
@@ -91,7 +90,7 @@ function csv(rows, cols) {
   return [cols.join(",")].concat(rows.map((r) => cols.map((c) => esc(r[c])).join(","))).join("\n");
 }
 
-const BASE_COLS = "id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,addon_marketing,order_email,custom_domain,domain_status,trial_ends,created_at";
+const BASE_COLS = "id,handle,name,status,plan,billing,paid_through,paid_amount,pay_ref,pay_method,activated_at,addon_site,order_email,custom_domain,domain_status,trial_ends,created_at";
 
 async function restaurantRows() {
   let r = await rest("restaurants?select=" + BASE_COLS + "&order=created_at");
@@ -115,7 +114,7 @@ function shape(row, perms) {
     published: row.status === "published",
     state: paid ? "paid" : (onTrial ? "trial" : "expired"),
     expires: (paid ? row.paid_through : row.trial_ends) || null,
-    addon_marketing: Boolean(row.addon_marketing),
+    addon_site: Boolean(row.addon_site),
     hasPaid: Boolean(row.paid_through),
     active: paid || onTrial, onTrial,
     trialDaysLeft: onTrial ? Math.max(0, Math.round((new Date(row.trial_ends) - new Date(today)) / 86400000)) : 0,
@@ -379,7 +378,7 @@ module.exports = async function handler(req, res) {
     if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
     if (!body || !body.handle) return res.status(400).json({ ok: false, code: "NO_HANDLE" });
 
-    let found = await rest("restaurants?handle=eq." + encodeURIComponent(String(body.handle).toLowerCase()) + "&select=id,handle,plan,billing,paid_through,trial_ends,addon_marketing");
+    let found = await rest("restaurants?handle=eq." + encodeURIComponent(String(body.handle).toLowerCase()) + "&select=id,handle,plan,billing,paid_through,trial_ends");
     if (!found.ok) {
       found = await rest("restaurants?handle=eq." + encodeURIComponent(String(body.handle).toLowerCase()) + "&select=id,handle,plan,billing,paid_through,trial_ends");
     }
@@ -395,18 +394,21 @@ module.exports = async function handler(req, res) {
     } else {
       const billing = BILLING.includes(body.billing) ? body.billing : "monthly";
       const plan = PLAN_KEYS.includes(body.plan) ? body.plan : (r0.plan || "qr");
+      if (!BILLING.includes(billing)) {
+        return res.status(400).json({ ok: false, code: "BAD_BILLING" });
+      }
+      if (plan === "qr" && billing !== "yearly") {
+        /* QR Menu is sold by the year, and silently charging a year's price as a
+           month's would show up in the ledger as a 99/month plan */
+        return res.status(400).json({ ok: false, code: "QR_YEARLY_ONLY", message: "QR Menu is sold yearly — AED " + PLANS.qr.price.yearly + " a year." });
+      }
 
-      /* the website add-on is one yearly line — AED 299. There is no setup fee
-         any more, so nothing is charged once per customer. */
-      const wantMarketing = body.marketing === true;
-      const firstMarketing = wantMarketing && !r0.addon_marketing;
-      const setup = 0; /* the one-time setup is gone: the website is AED 299 a year */
-      const addonFee = wantMarketing ? ADDON_YEARLY : 0;
-      const list = priceOf(plan, billing) + setup + addonFee;
+      /* One price list, no add-ons on this path: the marketing add-on is gone.
+         What was taken is what the operator says landed in the bank; blank means
+         the list price for this plan and billing. */
+      const list = priceOf(plan, billing);
+      const setup = 0;
 
-      /* what was actually taken. Blank means "the list price"; anything else is
-         what the operator saw land in the bank, discounts and part payments
-         included. */
       const received = body.amount === undefined || body.amount === null || body.amount === ""
         ? list
         : Math.round(Number(body.amount) * 100) / 100;
@@ -421,7 +423,10 @@ module.exports = async function handler(req, res) {
       patch.pay_ref = body.payRef ? String(body.payRef).slice(0, 120) : null;
       patch.pay_method = ["manual", "cash", "transfer", "card", "stripe"].includes(body.method) ? body.method : "manual";
       patch.activated_at = new Date().toISOString();
-      if (body.marketing !== undefined) patch.addon_marketing = wantMarketing;
+      /* Recording the payment IS the activation: the trial's end unpublished the
+         link, and this is what brings it back. */
+      patch.status = "published";
+      if (body.status === "suspended") patch.status = "suspended";
 
       /* One line per thing sold, and every line carries every column: PostgREST
          refuses a bulk insert whose objects have different keys (PGRST102), and
@@ -443,25 +448,16 @@ module.exports = async function handler(req, res) {
         recorded_by: me.name
       }, o);
 
-      const planShare = Math.round((received - setup - addonFee) * 100) / 100;
-      if (planShare < 0) {
-        /* they paid less than the add-on alone — one honest line, no invented split */
-        ledger = [line({ amount: received, plan, billing, note: "part payment of " + list })];
-      } else {
-        ledger = [line({ amount: planShare, plan, billing })];
-        if (setup) ledger.push(line({ amount: setup, kind: "setup", addon: "marketing", billing: "one-off" }));
-        if (addonFee) ledger.push(line({ amount: addonFee, kind: "addon", addon: "marketing", billing: "monthly" }));
-      }
+      /* One line, one thing sold: the plan. No setup fee, no add-on on this path,
+         so there is nothing to split — the amount is what the plan costs, or what
+         was actually received for it (a discount or a part payment). */
+      ledger = [line({
+        amount: received, plan, billing,
+        note: received === list ? null : "list price AED " + list
+      })];
     }
 
     let upd = await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: patch, prefer: "return=representation" });
-    /* addon_marketing comes with 0013: if it is not there yet, the payment is
-       still a real payment — record the money, leave the switch alone */
-    if (!upd.ok && "addon_marketing" in patch) {
-      const trimmed = { ...patch };
-      delete trimmed.addon_marketing;
-      upd = await rest("restaurants?id=eq." + r0.id, { method: "PATCH", body: trimmed, prefer: "return=representation" });
-    }
     if (!upd.ok) return res.status(502).json({ ok: false, code: "SAVE_FAILED", detail: String(upd.data).slice(0, 200) });
     const row = (upd.data || [])[0] || {};
 
@@ -513,10 +509,9 @@ module.exports = async function handler(req, res) {
     const handle = String((q.handle || "")).trim().toLowerCase();
     if (!handle) return res.status(400).json({ ok: false, code: "NO_HANDLE" });
 
-    /* addon_marketing arrives with 0013, and a select naming a column that is
-       not there yet fails the whole row — so fall back rather than reporting a
-       restaurant that plainly exists as missing */
-    let rr = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=id,handle,name,paid_through,trial_ends,addon_marketing,plan,billing");
+    /* status is read here so the ledger view can say whether the link is actually
+       open (published and paid, or published and still on its free week) */
+    let rr = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=id,handle,name,status,paid_through,trial_ends,plan,billing");
     if (!rr.ok) {
       rr = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=id,handle,name,paid_through,trial_ends,plan,billing");
     }
@@ -528,14 +523,13 @@ module.exports = async function handler(req, res) {
     const rows = pay.data || [];
     return res.status(200).json({
       ok: true,
-      restaurant: { handle: r0.handle, name: r0.name, paid_through: r0.paid_through, trial_ends: r0.trial_ends, addon_marketing: Boolean(r0.addon_marketing), plan: r0.plan, billing: r0.billing },
+      restaurant: { handle: r0.handle, name: r0.name, status: r0.status, live: isLive(r0), paid_through: r0.paid_through, trial_ends: r0.trial_ends, plan: r0.plan, billing: r0.billing },
       payments: rows,
       total: Math.round(rows.reduce((a, x) => a + Number(x.amount || 0), 0) * 100) / 100,
       prices: {
         qr: billable("qr"),
         order: billable("order"),
         pro: billable("pro"),
-        marketing: { yearly: ADDON_YEARLY },
         labels: { qr: PLAN_TABLE.qr.label, order: PLAN_TABLE.order.label, pro: PLAN_TABLE.pro.label }
       }
     });

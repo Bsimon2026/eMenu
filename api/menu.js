@@ -12,6 +12,7 @@
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
 const { canTakeOrders } = require("./_lib/ordering");
+const { isLive, darkReason } = require("./_lib/plans");
 
 /* The whole menu in one deployment slot. Vercel counts top-level functions, not
    files under _lib — so save-menu and menu-edit live there and this file routes
@@ -197,6 +198,18 @@ async function menuHandler(req, res) {
       ok: false,
       code: "NOT_FOUND",
       message: "No published menu at that address yet."
+    });
+  }
+
+  /* A row can say "published" and still be shut: the free week ended and no plan
+     is active. The link goes dark here, at the edge of the request, because
+     there is no scheduler to unpublish it at midnight — and the operator's
+     payment republishes the row in the same breath as it activates the plan. */
+  if (!isLive(restaurant)) {
+    return res.status(404).json({
+      ok: false,
+      code: "UNPUBLISHED",
+      message: darkReason(restaurant) || "This menu is not published yet."
     });
   }
 

@@ -10,7 +10,7 @@
  */
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
-const { PLANS: PLAN_TABLE, billable, upgradeLine } = require("./_lib/plans");
+const { PLANS: PLAN_TABLE, billable, upgradeLine, capabilities, isLive, darkReason } = require("./_lib/plans");
 
 /* Media belongs to the restaurant, so it rides in the same deployment slot:
    POST /api/restaurant?upload=1 and GET ?upload=1&action=sweep. */
@@ -94,7 +94,17 @@ async function restaurantHandler(req, res) {
   const role = actor ? actor.role : null;
 
   if (req.method === "GET") {
-    return res.status(200).json({ ok: true, restaurant: existing, role });
+    /* The dashboard paints from this: the row, whether the link is actually open
+       today, and the entitlements the server will enforce. Nothing here decides
+       anything — a refused request still is the rule. */
+    return res.status(200).json({
+      ok: true,
+      restaurant: existing,
+      role,
+      live: existing ? isLive(existing) : false,
+      dark_reason: existing ? darkReason(existing) : null,
+      rights: existing ? capabilities(existing) : null
+    });
   }
 
   if (req.method !== "POST") {

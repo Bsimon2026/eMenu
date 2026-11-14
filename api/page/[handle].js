@@ -13,6 +13,7 @@
  * never worth a broken menu.
  */
 const { rest, configured } = require("../_lib/db");
+const { isLive } = require("../_lib/plans");
 
 function clean(v, max) {
   return String(v == null ? "" : v).replace(/[<>&"]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -53,12 +54,14 @@ module.exports = async function page(req, res) {
          share card and the indexable title only go out once it is published. */
       const q = await rest(
         "restaurants?handle=eq." + encodeURIComponent(handle) +
-        "&select=name,tagline,city,logo_url,cover_url,status,accent"
+        "&select=name,tagline,city,logo_url,cover_url,status,accent,plan,paid_through,trial_ends"
       );
       const row = (q.ok && (q.data || [])[0]) || null;
 
       if (row && row.name) {
-        const published = row.status === "published";
+        /* a published row whose free week has ended is not live: no share card,
+           no indexable title, and the page says why */
+        const published = isLive(row);
         const name = clean(row.name, 80);
         const initial = clean(String(row.name).trim().charAt(0) || "M", 2).toUpperCase();
         const desc = clean(row.tagline || (row.city ? row.city + " \u2014 the live menu" : "The live menu"), 160);
@@ -94,7 +97,7 @@ module.exports = async function page(req, res) {
         html = html.replace(/(<div class="mlogo hero-logo" id="heroLogo">)[^<]*(<\/div>)/, "$1" + initial + "$2");
         html = html.replace(/(<div class="mlogo" id="restLogo">)[^<]*(<\/div>)/, "$1" + initial + "$2");
         const boot = '<script>window.DM_PAGE=' + JSON.stringify({
-          name: name, status: String(row.status || ""), accent: clean(row.accent || "", 20)
+          name: name, status: published ? "published" : "unpublished", accent: clean(row.accent || "", 20)
         }) + ";</script>\n";
         /* menu.html loads its script relative ("assets/menu.js"), the dashboard
            absolute — match either, or the page boots with no identity. */

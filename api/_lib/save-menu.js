@@ -18,6 +18,7 @@
  */
 
 const { rest, userFromToken, actorRestaurant, can, bearer, cors, configured } = require("./db");
+const { capabilities, PLANS } = require("./plans");
 
 function money(v) {
   const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
@@ -47,13 +48,30 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "NO_MENU", message: "There is no menu to save." });
   }
 
-  const actor = await actorRestaurant(user, "id,handle");
+  const actor = await actorRestaurant(user, "id,handle,plan,paid_through,trial_ends");
   const restaurant = actor && actor.restaurant;
   if (!restaurant) {
     return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Finish the restaurant details first — the menu needs somewhere to live." });
   }
   if (!can(actor.role, "menu")) {
     return res.status(403).json({ ok: false, code: "NOT_ALLOWED", message: "Your login can take orders, not change the menu." });
+  }
+
+  /* The plan's dish cap, checked before anything is deleted: this path replaces
+     the whole menu, so a capped plan that sent 80 dishes would otherwise lose
+     the 30 the plan does not hold. */
+  const itemCap = capabilities(restaurant).itemCap;
+  if (itemCap != null) {
+    const wouldBe = incoming.reduce((n, c) => n + ((c && Array.isArray(c.items)) ? c.items.filter((it) => it && String(it.name || "").trim()).length : 0), 0);
+    if (wouldBe > itemCap) {
+      return res.status(402).json({
+        ok: false, code: "ITEM_CAP",
+        message: PLANS.qr.label + " holds " + itemCap + " dishes, and this menu has " + wouldBe + ". " +
+          PLANS.order.label + " (AED " + PLANS.order.price.monthly + " a month, or AED " + PLANS.order.price.yearly +
+          " a year) has no limit.",
+        cap: itemCap, count: wouldBe
+      });
+    }
   }
 
   /* ----------------------------------------------- 1. flatten and validate */
