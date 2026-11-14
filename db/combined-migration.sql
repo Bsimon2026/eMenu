@@ -4,7 +4,7 @@
 -- schema.sql plus every db/000N_*.sql in order. Run it once on a new
 -- Supabase project; on an existing one, run only the migrations it lacks.
 --
--- Built: 2026-11-13T11:39:06Z
+-- Built: 2026-11-14T07:20:28Z
 
 -- =========================================================== schema.sql
 -- DigiMenu — Supabase schema (phase 1)
@@ -1011,6 +1011,14 @@ revoke all on public.discounts from anon, authenticated;
 revoke all on public.discount_redemptions from anon, authenticated;
 
 notify pgrst, 'reload schema';
+
+-- ==================================================== 0020_order_email.sql
+-- The guest's email address, so the order confirmation can be mailed to them.
+-- Name, mobile and email are all required on the guest form from now on.
+alter table orders add column if not exists email text;
+
+-- look an order up by the address it was confirmed to
+create index if not exists orders_email_idx on orders (lower(email));
 
 -- ==================================================== 0020_plan_pro.sql
 --

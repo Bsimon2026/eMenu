@@ -97,13 +97,18 @@ module.exports = async function handler(req, res) {
   if (phoneDigits.length < 7) {
     return res.status(400).json({ ok: false, code: "PHONE", message: "A mobile number is needed in case WhatsApp fails." });
   }
+  const guestEmail = clean(body.email, 120).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(guestEmail)) {
+    return res.status(400).json({ ok: false, code: "EMAIL", message: "An email address is needed for the order." });
+  }
 
   const items = Array.isArray(body.items) ? body.items.filter((i) => i && i.name).slice(0, 100) : [];
   if (!items.length) {
     return res.status(400).json({ ok: false, code: "NO_ITEMS", message: "The order had no dishes." });
   }
 
-  const found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&status=eq.published&select=id,name,whatsapp_e164,order_email");
+  const found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
+    "&status=eq.published&select=id,name,whatsapp_e164,order_email,sender_mode,wa_phone_number_id,wa_order_e164,currency");
   if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
   const restaurant = (found.data || [])[0];
   if (!restaurant) {
@@ -170,6 +175,7 @@ module.exports = async function handler(req, res) {
     address: mode === "Delivery" ? clean(body.address, 300) || null : null,
     guest_name: guestName,
     guest_phone: clean(body.phone, 30),
+    email: guestEmail,
     total,
     subtotal: subtotal,
     delivery_fee: 0,
@@ -210,6 +216,7 @@ module.exports = async function handler(req, res) {
     delete lean.delivery_fee;
     delete lean.discount_code;
     delete lean.discount_amount;
+    delete lean.email;
     made = await rest("orders", { method: "POST", body: lean, prefer: "return=representation" });
   }
   if (!made.ok) {
@@ -230,43 +237,62 @@ module.exports = async function handler(req, res) {
   const lines = rows.map((r) => ({ ...r, order_id: saved.id }));
   const lineRes = await rest("order_items", { method: "POST", body: lines, prefer: "return=minimal" });
 
-  /* Tell the restaurant, by email, in the same request. The record is already
-     stored, so a mail failure is reported in the response but never fails the
-     guest — they did their part. */
   const when = new Date().toLocaleString("en-AE", { timeZone: "Asia/Dubai", hour12: true });
   const detail =
     mode === "Dine In" ? "Dine In · table " + (order.table_no || "—")
     : mode === "Take Away" ? "Take Away · collect in " + (clean(body.pickupAt, 20) || "as soon as ready")
     : "Delivery · " + (order.address || "address on the phone");
-  const itemLines = rows.map((r) => "  " + r.qty + " × " + r.name + "  —  AED " + (r.unit_price * r.qty).toFixed(2)).join("\n");
-  const text = [
-    "New order — " + restaurant.name,
-    "",
+  const itemLines = rows.map((r) =>
+    "  " + r.qty + " × " + r.name + "  —  AED " + (r.unit_price * r.qty).toFixed(2)).join("\n");
+
+  /* The guest gets the email, not the restaurant: the order is already in the
+     panel, and the one step that can still be lost is theirs — sending it on
+     WhatsApp. So the mail carries the same prefilled link, in case the chat did
+     not open or they closed it before pressing send. */
+  const waNumber = (restaurant.sender_mode === "cloud" && restaurant.wa_phone_number_id && restaurant.wa_order_e164)
+    ? restaurant.wa_order_e164
+    : restaurant.whatsapp_e164;
+  const waText = [
+    "Order — " + restaurant.name,
     detail,
     "Guest: " + guestName,
-    "Mobile: " + order.guest_phone,
     "",
     itemLines,
     "",
-    applied ? "Subtotal: AED " + subtotal.toFixed(2) : "",
-    applied ? "Discount " + applied.code + " (" + applied.percent + "%): -AED " + applied.amount.toFixed(2) : "",
     "Total: AED " + total.toFixed(2),
-    "",
-    when,
     "Reference: " + String(saved.id).slice(0, 8)
   ].join("\n");
+  const waLink = "https://wa.me/" + String(waNumber || "").replace(/[^\d]/g, "") +
+    "?text=" + encodeURIComponent(waText);
 
-  const to = restaurant.order_email ? [restaurant.order_email] : [];
-  const cc = [process.env.NOTIFY_EMAIL || "connect@indubaicity.com"].filter((e) => e && !to.includes(e));
   let notified = false;
-  if ((to.length || cc.length) && mail.ready) {
+  if (mail.ready && guestEmail) {
+    const body = [
+      "Hello " + guestName + ",",
+      "",
+      "Your order at " + restaurant.name + " is saved.",
+      "",
+      detail,
+      "",
+      itemLines,
+      "",
+      "Total: AED " + total.toFixed(2),
+      "Reference: " + String(saved.id).slice(0, 8),
+      "",
+      "One step left: send the order on WhatsApp so the restaurant can confirm it.",
+      waLink,
+      "",
+      "If you have already sent it, there is nothing more to do — ignore this.",
+      "",
+      when
+    ].join("\n");
+
     const sent = await mail.sendMail({
-      to: to.length ? to : cc,
-      cc: to.length ? cc : [],
-      subject: "New order — " + restaurant.name + " · AED " + total.toFixed(2) + " · " + mode,
-      fromName: restaurant.name + " (DigiMenu)",
+      to: [guestEmail],
+      subject: "Your order at " + restaurant.name + " — one step left",
+      fromName: restaurant.name,
       replyTo: restaurant.order_email || undefined,
-      text
+      text: body
     }, 9000);
     notified = Boolean(sent.ok);
     if (!sent.ok) console.error("[order] mail", sent.code, sent.detail);

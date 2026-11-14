@@ -118,7 +118,7 @@
     /* the bar's button is written once in the markup and never followed the
        language: an Arabic menu still said "Review order" at the bottom */
     const barGo = document.querySelector("#barCheckout");
-    if (barGo) barGo.textContent = T("Continue", "متابعة");
+    if (barGo) barGo.textContent = T("Review & Confirm", "مراجعة وتأكيد");
     const call = document.querySelector("#heroCall span");
     if (call) call.textContent = T("Call", "اتصال");
     const web = document.querySelector("#heroWeb span");
@@ -330,7 +330,7 @@
     if (!count) {
       body.innerHTML = '<p class="cart-empty">' +
         T("Nothing added yet. Tap Add on a dish and it appears here.", "لم تُضف شيئاً بعد. اضغط أضف على أي طبق.") + '</p>';
-      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>' + T("Continue", "متابعة") + '</button>';
+      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>' + T("Review & Confirm", "مراجعة وتأكيد") + '</button>';
     } else {
       body.innerHTML = Array.from(cart.entries()).map(([id, r]) => `
         <div class="crow">
@@ -344,7 +344,7 @@
         </div>`).join("");
       foot.innerHTML =
         '<div class="cart-total"><span>Total</span><b>' + money(sum) + "</b></div>" +
-        '<button class="checkout-btn" type="button" id="goCheckout">' + T("Continue", "متابعة") + '</button>';
+        '<button class="checkout-btn" type="button" id="goCheckout">' + T("Review & Confirm", "مراجعة وتأكيد") + '</button>';
       $$("[data-inc]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.inc, 1)));
       $$("[data-dec]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.dec, -1)));
       $("#goCheckout").addEventListener("click", openSheet);
@@ -593,6 +593,7 @@
           address: address,
           name: guest,
           phone: phone,
+          email: emailRaw,
           total: totals().sum,
           discountCode: applied ? applied.code : null,
           items: Array.from(cart.values()).map((r) => ({
@@ -639,6 +640,8 @@
     ok = err("#nameErr", !$("#guestName").value.trim()) && ok;
     const phoneRaw = ($("#guestPhone").value || "").trim();
     ok = err("#phoneErr", phoneRaw.replace(/[^\d]/g, "").length < 7) && ok;
+    const emailRaw = ($("#guestEmail").value || "").trim();
+    ok = err("#emailErr", !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw)) && ok;
     if (mode === "Dine In") ok = err("#tableErr", !String(table).trim()) && ok;
     if (mode === "Take Away") ok = err("#pickErr", !pickup) && ok;
     if (mode === "Delivery") ok = err("#addrErr", !address.trim()) && ok;
