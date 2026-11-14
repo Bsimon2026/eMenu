@@ -23,15 +23,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Noto+Kufi+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/fonts.css?v=20261116b">
 <link rel="stylesheet" href="assets/base.css?v=20261111s">
-<link rel="stylesheet" href="assets/menu2.css?v=20261116c">
+<link rel="stylesheet" href="assets/menu2.css?v=20261117b">
 </head>
 <body class="menu-body">
-<!-- the .mhead is hidden on this layout; the switch lives over the hero so a
-     guest can always change language, whatever they have scrolled past -->
-<div class="lang-switch" id="langSwitch" hidden>
-  <button type="button" data-lang="en" aria-pressed="true">EN</button>
-  <button type="button" data-lang="ar" aria-pressed="false">العربية</button>
-</div>
 
 <!-- ---------- guest landing: the restaurant, before the food ---------- -->
 <section class="hero" id="hero" hidden>
@@ -101,9 +95,13 @@
 <header class="mhead">
   <div class="mhead-in">
     <div class="mlogo" id="restLogo">SR</div>
-    <div>
+    <div class="mhead-txt">
       <h1 id="restName">Spice Route</h1>
       <div class="mmeta" id="restMeta">Dubai · Dine in · Take away</div>
+    </div>
+    <div class="lang-switch" id="langSwitch" hidden>
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="ar" aria-pressed="false">العربية</button>
     </div>
     <a class="mwa" id="waLink" href="#" target="_blank" rel="noopener">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -111,6 +109,13 @@
       </svg>
       <span>Chat on WhatsApp</span>
     </a>
+  </div>
+
+  <div class="mhead-pick">
+    <label class="cat-pick" for="catSelect">
+      <span>Jump to</span>
+      <select id="catSelect" aria-label="Choose a category"></select>
+    </label>
   </div>
 </header>
 
@@ -121,10 +126,6 @@
       <span>This is a view-only menu. To order, speak to the restaurant.</span>
     </div>
     <nav class="rail" id="rail" aria-label="Menu categories"></nav>
-    <label class="cat-pick" for="catSelect">
-      <span>Jump to</span>
-      <select id="catSelect" aria-label="Choose a category"></select>
-    </label>
     <div id="sections"></div>
   </div>
 
@@ -140,7 +141,7 @@
     <div class="bc" id="barCount">0 items</div>
     <div class="bt" id="barTotal">AED 0</div>
   </div>
-  <button type="button" id="barCheckout">Review order</button>
+  <button type="button" id="barCheckout">Review &amp; Confirm</button>
 </div>
 
 <footer class="mfoot">
@@ -170,9 +171,55 @@
 
     <div class="field">
       <label for="guestPhone">Mobile number <span style="color:var(--danger)">*</span></label>
-      <input class="input" id="guestPhone" inputmode="tel" placeholder="+971 50 123 4567">
-      <div class="hint">In case WhatsApp does not reach the restaurant, they can call you.</div>
-      <div class="err" id="phoneErr">We need a mobile number in case WhatsApp fails.</div>
+      <div class="phone-row">
+        <select class="dial" id="dialCode" aria-label="Country code">
+            <option value="+971">+971 UAE</option>
+            <option value="+44">+44 UK</option>
+            <option value="+1">+1 USA</option>
+            <option value="+91">+91 India</option>
+            <option value="+966">+966 Saudi</option>
+            <option value="+974">+974 Qatar</option>
+            <option value="+965">+965 Kuwait</option>
+            <option value="+973">+973 Bahrain</option>
+            <option value="+968">+968 Oman</option>
+            <option value="+20">+20 Egypt</option>
+            <option value="+92">+92 Pakistan</option>
+            <option value="+63">+63 Philippines</option>
+            <option value="+880">+880 Bangladesh</option>
+            <option value="+94">+94 Sri Lanka</option>
+            <option value="+977">+977 Nepal</option>
+            <option value="+961">+961 Lebanon</option>
+            <option value="+962">+962 Jordan</option>
+            <option value="+212">+212 Morocco</option>
+            <option value="+90">+90 Turkey</option>
+            <option value="+7">+7 Russia</option>
+            <option value="+49">+49 Germany</option>
+            <option value="+33">+33 France</option>
+            <option value="+39">+39 Italy</option>
+            <option value="+34">+34 Spain</option>
+            <option value="+31">+31 Netherlands</option>
+            <option value="+86">+86 China</option>
+            <option value="+62">+62 Indonesia</option>
+            <option value="+60">+60 Malaysia</option>
+            <option value="+65">+65 Singapore</option>
+            <option value="+27">+27 South Africa</option>
+            <option value="+61">+61 Australia</option>
+            <option value="+64">+64 NZ</option>
+            <option value="+81">+81 Japan</option>
+            <option value="+82">+82 Korea</option>
+            <option value="+55">+55 Brazil</option>
+        </select>
+        <input class="input" id="guestPhone" inputmode="numeric" maxlength="12" autocomplete="tel-national" placeholder="50 123 4567">
+      </div>
+      <div class="hint">Pick your country code, then the number without it.</div>
+      <div class="err" id="phoneErr">Enter the mobile number without the country code.</div>
+    </div>
+
+    <div class="field">
+      <label for="guestEmail">Email <span style="color:var(--danger)">*</span></label>
+      <input class="input" id="guestEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+      <div class="hint">We email you the order and a WhatsApp link, in case the chat does not open.</div>
+      <div class="err" id="emailErr">We need an email so we can send your order.</div>
     </div>
 
     <div class="field" id="codeField">
@@ -188,7 +235,7 @@
 
     <div class="sheet-actions">
       <button class="btn btn-outline" type="button" id="closeSheet">Back to menu</button>
-      <button class="btn btn-brand" type="button" id="confirmOrder">Send on WhatsApp</button>
+      <button class="btn btn-brand" type="button" id="confirmOrder"><small class="cta-lead">Click Here to</small><span>Review &amp; Confirm</span></button>
     </div>
   </div>
 
@@ -198,13 +245,17 @@
         <path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <h2>Order ready to send</h2>
-    <p class="sub" id="doneSub">WhatsApp is opening with your order already written. Press send and the restaurant has it.</p>
+    <h2>Order received</h2>
+    <p class="sub" id="doneSub">Your order is with the restaurant. Send it on WhatsApp so they can confirm it — one tap, and it is on its way.</p>
     <div class="order-lines" id="doneReceipt"></div>
     <p class="next-steps" id="doneNext"></p>
     <div class="sheet-actions">
-      <a class="btn btn-outline" id="doneWa" href="#" target="_blank" rel="noopener">Open WhatsApp</a>
-      <button class="btn btn-brand" type="button" id="doneClose">Done</button>
+      <button class="btn btn-outline" type="button" id="doneClose">Done</button>
+      <a class="btn btn-brand" id="doneWa" href="#" target="_blank" rel="noopener">
+        <small class="cta-lead">Click Here to</small>
+        <span>Send on WhatsApp</span>
+        <small class="cta-sub">Instant Confirmation</small>
+      </a>
     </div>
   </div>
 </div>
@@ -213,6 +264,6 @@
 
 <script src="assets/config.js?v=20261111s"></script>
 <script src="assets/data.js?v=20261111s"></script>
-<script src="assets/menu.js?v=20261116b"></script>
+<script src="assets/menu.js?v=20261117f"></script>
 </body>
 </html>

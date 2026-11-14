@@ -85,6 +85,7 @@ module.exports = async function listOrders(req, res) {
   const lastIn = new Map();        /* phone -> newest inbound */
   const sentFor = new Map();       /* order id -> { thankyou, accept, ready, review } */
   const sentForPhone = new Map();  /* phone -> newest outbound, for rows with no order id */
+  const lastInByOrder = new Map(); /* order id -> newest inbound, whatever number sent it */
 
   if (orders.length) {
     const phones = Array.from(new Set(orders.map((o) => digits(o.guest_phone)).filter(Boolean)));
@@ -99,6 +100,7 @@ module.exports = async function listOrders(req, res) {
           const phone = digits(m.customer_number);
           if (m.direction === "in") {
             if (!lastIn.has(phone)) lastIn.set(phone, m.created_at);
+            if (m.order_id && !lastInByOrder.has(m.order_id)) lastInByOrder.set(m.order_id, m.created_at);
           } else if (m.order_id) {
             if (!sentFor.has(m.order_id)) sentFor.set(m.order_id, {});
             const bag = sentFor.get(m.order_id);
@@ -107,6 +109,23 @@ module.exports = async function listOrders(req, res) {
             if (!sentForPhone.has(phone)) sentForPhone.set(phone, m.type);
           }
         }
+      }
+    }
+  }
+
+  /* A reply bound to an order counts even when it came from another number: the
+     guest's WhatsApp account is often not the number they typed in the form, and
+     matching on the number alone left those orders looking unanswered. */
+  if (orders.length) {
+    const byOrder = await rest(
+      "wa_messages?restaurant_id=eq." + restaurant.id +
+      "&order_id=in.(" + orders.map((x) => encodeURIComponent(x.id)).join(",") + ")" +
+      "&select=order_id,direction,created_at&order=created_at.desc&limit=1000"
+    );
+    if (byOrder.ok) {
+      for (const m of byOrder.data || []) {
+        if (m.direction !== "in" || !m.order_id) continue;
+        if (!lastInByOrder.has(m.order_id)) lastInByOrder.set(m.order_id, m.created_at);
       }
     }
   }
@@ -132,7 +151,7 @@ module.exports = async function listOrders(req, res) {
       archivedAt: o.archived_at || null,
       archiveReason: o.archive_reason || null,
       /* the panel's buttons read these three */
-      inboundAt: lastIn.get(digits(o.guest_phone)) || null,
+      inboundAt: lastInByOrder.get(o.id) || lastIn.get(digits(o.guest_phone)) || null,
       waSent: sentFor.get(o.id) || (sentForPhone.get(digits(o.guest_phone)) ? { thankyou: true } : null),
       items: byOrder.get(o.id) || []
     }))

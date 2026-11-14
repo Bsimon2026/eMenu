@@ -15,6 +15,22 @@ const listOrders = require("./_lib/order-list");
 const discount = require("./_lib/discounts");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
+
+/* The guest picks "15 min", "30 min", "45 min" or "1 hour" — a label, not a date.
+   `new Date("30 min").toISOString()` throws RangeError, and because that ran while
+   the order row was being built, EVERY Take Away order died before it was saved:
+   the guest pressed order and nothing reached the kitchen. Turn the label into a
+   real time, and fall back to null rather than throwing. */
+function pickupWhen(value) {
+  const text = String(value == null ? "" : value).trim();
+  if (!text) return null;
+  const mins = /^(\d{1,4})\s*(m|min|mins|minute|minutes)$/i.exec(text);
+  if (mins) return new Date(Date.now() + Number(mins[1]) * 60e3);
+  const hours = /^(\d{1,2})\s*(h|hr|hrs|hour|hours)$/i.exec(text);
+  if (hours) return new Date(Date.now() + Number(hours[1]) * 3600e3);
+  const when = new Date(text);
+  return isNaN(when.getTime()) ? null : when;
+}
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 
 function clean(v, max) {
@@ -81,13 +97,18 @@ module.exports = async function handler(req, res) {
   if (phoneDigits.length < 7) {
     return res.status(400).json({ ok: false, code: "PHONE", message: "A mobile number is needed in case WhatsApp fails." });
   }
+  const guestEmail = clean(body.email, 120).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(guestEmail)) {
+    return res.status(400).json({ ok: false, code: "EMAIL", message: "An email address is needed for the order." });
+  }
 
   const items = Array.isArray(body.items) ? body.items.filter((i) => i && i.name).slice(0, 100) : [];
   if (!items.length) {
     return res.status(400).json({ ok: false, code: "NO_ITEMS", message: "The order had no dishes." });
   }
 
-  const found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&status=eq.published&select=id,name,whatsapp_e164,order_email");
+  const found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
+    "&status=eq.published&select=id,name,whatsapp_e164,order_email,sender_mode,wa_phone_number_id,wa_order_e164,currency");
   if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
   const restaurant = (found.data || [])[0];
   if (!restaurant) {
@@ -144,15 +165,18 @@ module.exports = async function handler(req, res) {
     applied = verdict;
   }
   total = applied ? applied.total : subtotal;
+  const pickupTime = mode === "Take Away" ? pickupWhen(body.pickupAt) : null;
 
+  const submitKey = clean(body.submitKey, 64) || null;
   const order = {
     restaurant_id: restaurant.id,
     mode,
     table_no: mode === "Dine In" ? clean(body.table, 20) || null : null,
-    pickup_at: mode === "Take Away" && body.pickupAt ? new Date(body.pickupAt).toISOString() : null,
+    pickup_at: mode === "Take Away" && pickupTime ? pickupTime.toISOString() : null,
     address: mode === "Delivery" ? clean(body.address, 300) || null : null,
     guest_name: guestName,
     guest_phone: clean(body.phone, 30),
+    email: guestEmail,
     total,
     subtotal: subtotal,
     delivery_fee: 0,
@@ -160,6 +184,7 @@ module.exports = async function handler(req, res) {
     discount_amount: applied ? applied.amount : 0,
     status: "awaiting_confirmation"
   };
+  if (submitKey) order.submit_key = submitKey;
 
   /* A second press of the same button, a double tap on a slow phone, or the
      same order sent twice a second apart all used to land as separate orders —
@@ -184,15 +209,36 @@ module.exports = async function handler(req, res) {
     });
   }
 
+  /* A plain insert, then read the outcome. `on_conflict=submit_key` looked
+     tidier but Postgres cannot infer a PARTIAL unique index from it, so every
+     order failed with "no unique or exclusion constraint matching the ON CONFLICT
+     specification". The partial index still enforces uniqueness, so a repeated
+     key comes back as 23505 and we answer with the row already created. */
   let made = await rest("orders", { method: "POST", body: order, prefer: "return=representation" });
-  /* 0019 may not have run yet: a deploy lands before the SQL does, so write the
-     order without the money columns rather than lose the order */
-  if (!made.ok && /subtotal|discount_|delivery_fee|column|schema/i.test(String(made.error || made.data || ""))) {
+  let duplicate = false;
+
+  const why = JSON.stringify(made.error || made.data || "");
+  if (!made.ok && submitKey && /23505|duplicate key|unique constraint/i.test(why)) {
+    const ex = await rest("orders?submit_key=eq." + encodeURIComponent(submitKey) + "&select=*&limit=1");
+    if (ex.ok && (ex.data || []).length) { made = { ok: true, data: ex.data }; duplicate = true; }
+  }
+
+  if (!made.ok && !duplicate && /submit_key|column|schema|PGRST204/i.test(why)) {
+    /* 0021 not run yet: same order, no key */
+    const noKey = Object.assign({}, order);
+    delete noKey.submit_key;
+    made = await rest("orders", { method: "POST", body: noKey, prefer: "return=representation" });
+  }
+  const why2 = JSON.stringify(made.error || made.data || "");
+  if (!made.ok && /subtotal|discount_|delivery_fee|email|column|schema|PGRST204/i.test(why2)) {
+    /* 0019 or 0020 not run yet: the money columns and the email have to go */
     const lean = Object.assign({}, order);
     delete lean.subtotal;
     delete lean.delivery_fee;
     delete lean.discount_code;
     delete lean.discount_amount;
+    delete lean.email;
+    delete lean.submit_key;
     made = await rest("orders", { method: "POST", body: lean, prefer: "return=representation" });
   }
   if (!made.ok) {
@@ -200,7 +246,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       code: "SAVE_FAILED",
       message: "The restaurant did not receive the order record.",
-      detail: String(made.data).slice(0, 200)
+      detail: JSON.stringify(made.error || made.data || "").slice(0, 300)
     });
   }
   const saved = (made.data || [])[0];
@@ -213,46 +259,99 @@ module.exports = async function handler(req, res) {
   const lines = rows.map((r) => ({ ...r, order_id: saved.id }));
   const lineRes = await rest("order_items", { method: "POST", body: lines, prefer: "return=minimal" });
 
-  /* Tell the restaurant, by email, in the same request. The record is already
-     stored, so a mail failure is reported in the response but never fails the
-     guest — they did their part. */
   const when = new Date().toLocaleString("en-AE", { timeZone: "Asia/Dubai", hour12: true });
   const detail =
     mode === "Dine In" ? "Dine In · table " + (order.table_no || "—")
-    : mode === "Take Away" ? "Take Away · collect at " + (body.pickup || "as soon as ready")
+    : mode === "Take Away" ? "Take Away · collect in " + (clean(body.pickupAt, 20) || "as soon as ready")
     : "Delivery · " + (order.address || "address on the phone");
-  const itemLines = rows.map((r) => "  " + r.qty + " × " + r.name + "  —  AED " + (r.unit_price * r.qty).toFixed(2)).join("\n");
-  const text = [
-    "New order — " + restaurant.name,
-    "",
+  const itemLines = rows.map((r) =>
+    "  " + r.qty + " × " + r.name + "  —  AED " + (r.unit_price * r.qty).toFixed(2)).join("\n");
+
+  /* The guest gets the email, not the restaurant: the order is already in the
+     panel, and the one step that can still be lost is theirs — sending it on
+     WhatsApp. So the mail carries the same prefilled link, in case the chat did
+     not open or they closed it before pressing send. */
+  const waNumber = (restaurant.sender_mode === "cloud" && restaurant.wa_phone_number_id && restaurant.wa_order_e164)
+    ? restaurant.wa_order_e164
+    : restaurant.whatsapp_e164;
+  const waText = [
+    "Order — " + restaurant.name,
     detail,
     "Guest: " + guestName,
-    "Mobile: " + order.guest_phone,
     "",
     itemLines,
     "",
-    applied ? "Subtotal: AED " + subtotal.toFixed(2) : "",
-    applied ? "Discount " + applied.code + " (" + applied.percent + "%): -AED " + applied.amount.toFixed(2) : "",
     "Total: AED " + total.toFixed(2),
-    "",
-    when,
     "Reference: " + String(saved.id).slice(0, 8)
   ].join("\n");
+  const waLink = "https://wa.me/" + String(waNumber || "").replace(/[^\d]/g, "") +
+    "?text=" + encodeURIComponent(waText);
 
-  const to = restaurant.order_email ? [restaurant.order_email] : [];
-  const cc = [process.env.NOTIFY_EMAIL || "connect@indubaicity.com"].filter((e) => e && !to.includes(e));
-  let notified = false;
-  if ((to.length || cc.length) && mail.ready) {
+  let guestNotified = false;
+  if (mail.ready && guestEmail) {
+    const body = [
+      "Hello " + guestName + ",",
+      "",
+      "Your order at " + restaurant.name + " is saved.",
+      "",
+      detail,
+      "",
+      itemLines,
+      "",
+      "Total: AED " + total.toFixed(2),
+      "Reference: " + String(saved.id).slice(0, 8),
+      "",
+      "One step left: send the order on WhatsApp so the restaurant can confirm it.",
+      waLink,
+      "",
+      "If you have already sent it, there is nothing more to do — ignore this.",
+      "",
+      when
+    ].join("\n");
+
     const sent = await mail.sendMail({
-      to: to.length ? to : cc,
-      cc: to.length ? cc : [],
+      to: [guestEmail],
+      subject: "Your order at " + restaurant.name + " — one step left",
+      fromName: restaurant.name,
+      replyTo: restaurant.order_email || undefined,
+      text: body
+    }, 9000);
+    guestNotified = Boolean(sent.ok);
+    if (!sent.ok) console.error("[order] guest mail", sent.code, sent.detail);
+  }
+
+  /* The restaurant's copy goes to ITS address — never to the platform's. If no
+     order address is set for the restaurant, the order still arrives in the
+     panel and no mail is sent. */
+  let notified = false;
+  if (mail.ready && restaurant.order_email) {
+    const body = [
+      "New order — " + restaurant.name,
+      "",
+      detail,
+      "Guest: " + guestName,
+      "Mobile: " + order.guest_phone,
+      "Email: " + guestEmail,
+      "",
+      itemLines,
+      "",
+      applied ? "Subtotal: AED " + subtotal.toFixed(2) : "",
+      applied ? "Discount " + applied.code + " (" + applied.percent + "%): -AED " + applied.amount.toFixed(2) : "",
+      "Total: AED " + total.toFixed(2),
+      "",
+      when,
+      "Reference: " + String(saved.id).slice(0, 8)
+    ].filter(function (line) { return line !== ""; }).join("\n");
+
+    const sent = await mail.sendMail({
+      to: [restaurant.order_email],
       subject: "New order — " + restaurant.name + " · AED " + total.toFixed(2) + " · " + mode,
       fromName: restaurant.name + " (DigiMenu)",
-      replyTo: restaurant.order_email || undefined,
-      text
+      replyTo: guestEmail,
+      text: body
     }, 9000);
     notified = Boolean(sent.ok);
-    if (!sent.ok) console.error("[order] mail", sent.code, sent.detail);
+    if (!sent.ok) console.error("[order] restaurant mail", sent.code, sent.detail);
   }
 
   return res.status(200).json({
@@ -264,6 +363,8 @@ module.exports = async function handler(req, res) {
     items: lines.length,
     linesSaved: lineRes.ok,
     notified,
+    guestNotified,
     mailReady: mail.ready
+
   });
 };

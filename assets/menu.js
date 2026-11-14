@@ -156,6 +156,126 @@
       cartH.textContent = T("Your order ", "طلبك ");
       if (em) cartH.appendChild(em);
     }
+    /* the bar's button is written once in the markup and never followed the
+       language: an Arabic menu still said "Review order" at the bottom */
+    const barGo = document.querySelector("#barCheckout");
+    if (barGo) barGo.textContent = T("Review order", "مراجعة الطلب");
+
+    /* the two big buttons are three lines each and were written only in English */
+    const cta = function (sel, main) {
+      const btn = document.querySelector(sel);
+      if (!btn) return;
+      const lead = btn.querySelector(".cta-lead");
+      const name = btn.querySelector("span");
+      const sub = btn.querySelector(".cta-sub");
+      if (lead) lead.textContent = T("Click Here to", "اضغط هنا لـ");
+      if (name) name.textContent = main;
+      if (sub) sub.textContent = T("Get Instant Confirmation", "تأكيد فوري");
+    };
+    cta("#confirmOrder", T("Review & Confirm", "مراجعة وتأكيد"));
+    cta("#doneWa", T("Send on WhatsApp", "أرسل على واتساب"));
+
+    /* The checkout was written once in English and never wired to the language
+       layer, so an Arabic guest read an Arabic menu and then met an English
+       form. Every string the guest sees in the sheet lives here. */
+    const S = function (sel, en, ar) {
+      const el = document.querySelector(sel);
+      if (el) el.textContent = T(en, ar);
+    };
+    const H = function (sel, en, ar) {
+      const el = document.querySelector(sel);
+      if (el) el.placeholder = T(en, ar);
+    };
+    S("#sheetTitle", "How would you like it?", "كيف تحب طلبك؟");
+    S("#sheetSub",
+      "Your order is sent to the restaurant on WhatsApp from your own phone. They reply to confirm.",
+      "يرسل طلبك إلى المطعم عبر واتساب من هاتفك، ويردون عليك للتأكيد.");
+    const modes = [
+      ['[data-mode="Dine In"]', "Dine In", "تناول في المطعم"],
+      ['[data-mode="Take Away"]', "Take Away", "استلام"],
+      ['[data-mode="Delivery"]', "Delivery", "توصيل"]
+    ];
+    modes.forEach(function (m) { S(m[0], m[1], m[2]); });
+
+    const labels = document.querySelectorAll("#sheetForm > .field > label");
+    const labelText = [
+      ["Your name", "اسمك"],
+      ["Mobile number", "رقم الجوال"],
+      ["Email", "البريد الإلكتروني"],
+      ["Discount code", "كود الخصم"]
+    ];
+    labels.forEach(function (el) {
+      labelText.forEach(function (pair) {
+        if (el.textContent.indexOf(pair[0]) === 0) {
+          el.childNodes[0].nodeValue = T(pair[0] + " ", pair[1] + " ");
+        }
+      });
+    });
+
+    H("#guestName", "So the kitchen knows whose order it is", "ليعرف المطبخ صاحب الطلب");
+    S("#nameErr", "We need a name for the order.", "نحتاج اسماً للطلب.");
+    const phoneHints = document.querySelectorAll("#sheetForm .field .hint");
+    phoneHints.forEach(function (el) {
+      if (el.textContent.indexOf("Pick your country code") === 0) {
+        el.textContent = T("Pick your country code, then the number without it.",
+          "اختر رمز الدولة ثم أدخل الرقم بدونه.");
+      } else if (el.textContent.indexOf("We email you the order") === 0) {
+        el.textContent = T("We email you the order and a WhatsApp link, in case the chat does not open.",
+          "نرسل لك الطلب ورابط واتساب على بريدك في حال لم يفتح التطبيق.");
+      }
+    });
+    S("#phoneErr", "Enter the mobile number without the country code.",
+      "أدخل رقم الجوال بدون رمز الدولة.");
+    S("#emailErr", "We need an email so we can send your order.",
+      "نحتاج بريداً إلكترونياً لإرسال طلبك.");
+    H("#discCode", "Have a code?", "لديك كود؟");
+    S("#applyCode", "Apply", "تطبيق");
+    S("#closeSheet", "Back to menu", "رجوع للقائمة");
+    S("#sheetDone h2", "Order received", "تم استلام طلبك");
+    S("#doneSub",
+      "Your order is with the restaurant. Send it on WhatsApp so they can confirm it — one tap, and it is on its way.",
+      "طلبك لدى المطعم. أرسله على واتساب ليؤكدوه — ضغطة واحدة وينطلق.");
+    S("#doneClose", "Done", "تم");
+
+    /* The mode field and the totals are built from strings by functions that live
+       inside paint(), out of reach from here, so their labels are set directly on
+       the DOM instead. Without this the table/pickup/address field and the word
+       "Total" stayed in the language the sheet was first opened in. */
+    const firstLabel = function () {
+      const l = document.querySelector("#modeFields label");
+      return l && l.childNodes.length ? l : null;
+    };
+    const setLabel = function (text) {
+      const l = firstLabel();
+      if (l) l.childNodes[0].nodeValue = text + " ";
+    };
+    if (mode === "Dine In") {
+      setLabel(T("Table number", "رقم الطاولة"));
+      const t = $("#tableNo");
+      if (t) t.placeholder = T("Printed on your table card", "مكتوب على بطاقة طاولتك");
+      S("#tableErr", "Add the table number printed on your card.",
+        "أضف رقم الطاولة المطبوع على بطاقتك.");
+    } else if (mode === "Take Away") {
+      setLabel(T("When will you Pick Up", "متى ستستلم؟"));
+      const names = {
+        "15 min": ["15 min", "١٥ دقيقة"],
+        "30 min": ["30 min", "٣٠ دقيقة"],
+        "45 min": ["45 min", "٤٥ دقيقة"],
+        "1 hour": ["1 hour", "ساعة"]
+      };
+      $$("#pickChips button").forEach(function (b) {
+        const pair = names[b.getAttribute("data-t")];
+        if (pair) b.textContent = T(pair[0], pair[1]);
+      });
+      S("#pickErr", "Choose when you will collect the order.", "اختر وقت الاستلام.");
+    } else {
+      setLabel(T("Delivery address", "عنوان التوصيل"));
+      const a = $("#addr");
+      if (a) a.placeholder = T("Building, street, area, landmark",
+        "المبنى، الشارع، المنطقة، علامة مميزة");
+      S("#addrErr", "We need an address to deliver to.", "نحتاج عنواناً للتوصيل.");
+    }
+    S("#sheetTotals .ol-row.total span", "Total", "الإجمالي");
     const call = document.querySelector("#heroCall span");
     if (call) call.textContent = T("Call", "اتصال");
     const web = document.querySelector("#heroWeb span");
@@ -185,6 +305,9 @@
        thumbs that nobody is watching — the photos would simply not come back */
     wireThumbs();
     chrome();
+    /* the table / pickup / address field is built from strings, not markup: it
+       has to be rebuilt or it stays in the language it was first drawn in */
+    if (document.querySelector("#modeFields")) renderModeFields();
   }
 
   function esc(t) {
@@ -272,14 +395,22 @@
       </section>`;
   }).join("");
 
-  document.getElementById("sections").addEventListener("click", (e) => {
-    const add = e.target.closest("[data-id].add");
-    if (add) { addToCart(add.dataset.id); syncItemRow(add.dataset.id); return; }
-    const plus = e.target.closest("[data-step-plus]");
-    if (plus) { changeQty(plus.getAttribute("data-step-plus"), 1); syncItemRow(plus.getAttribute("data-step-plus")); return; }
-    const minus = e.target.closest("[data-step-minus]");
-    if (minus) { changeQty(minus.getAttribute("data-step-minus"), -1); syncItemRow(minus.getAttribute("data-step-minus")); }
-  });
+
+
+  /* paint() runs on every language switch, and a large part of this file lives
+     inside it (brace depth 2 from the section render onwards). Every listener
+     registered on a static element was therefore added again on each repaint:
+     one Add tap became seven after six switches, and one confirm press could
+     POST the order twice. These elements exist once, so bind them once. */
+  /* The flag lives ON the element, not in a variable up here: this whole block is
+     re-executed by paint(), so any map declared here is born and dies with it. */
+  const bind = function (el, type, fn) {
+    if (!el) return;
+    const flag = "__dmBound_" + type;
+    if (el[flag]) return;
+    el[flag] = true;
+    el.addEventListener(type, fn);
+  };
 
   /* ---------- cart ---------- */
 
@@ -370,11 +501,11 @@
     } else {
       body.innerHTML = Array.from(cart.entries()).map(([id, r]) => `
         <div class="crow">
-          <span class="cn">${r.item.name}</span>
+          <span class="cn">${esc(nm(r.item))}</span>
           <span class="qty">
-            <button type="button" data-dec="${id}" aria-label="Remove one ${r.item.name}">−</button>
+            <button type="button" data-dec="${id}" aria-label="Remove one ${esc(nm(r.item))}">−</button>
             <span>${r.qty}</span>
-            <button type="button" data-inc="${id}" aria-label="Add one ${r.item.name}">+</button>
+            <button type="button" data-inc="${id}" aria-label="Add one ${esc(nm(r.item))}">+</button>
           </span>
           <span style="font-variant-numeric:tabular-nums">${money(r.qty * r.item.price)}</span>
         </div>`).join("");
@@ -395,7 +526,18 @@
     $("#mobileBar").classList.toggle("on", count > 0);
   }
 
-  $("#barCheckout").addEventListener("click", openSheet);
+  bind($("#barCheckout"), "click", openSheet);
+
+  /* One listener for the whole dish list. This used to sit inside paint(), so a
+     language switch attached a second copy and every tap counted twice. */
+  bind(document.getElementById("sections"), "click", (e) => {
+    const add = e.target.closest("[data-id].add");
+    if (add) { addToCart(add.dataset.id); syncItemRow(add.dataset.id); return; }
+    const plus = e.target.closest("[data-step-plus]");
+    if (plus) { changeQty(plus.getAttribute("data-step-plus"), 1); syncItemRow(plus.getAttribute("data-step-plus")); return; }
+    const minus = e.target.closest("[data-step-minus]");
+    if (minus) { changeQty(minus.getAttribute("data-step-minus"), -1); syncItemRow(minus.getAttribute("data-step-minus")); }
+  });
 
   /* ---------- sheet ---------- */
 
@@ -408,6 +550,7 @@
     const cb = $("#confirmOrder");
     if (cb) cb.disabled = false;
     if (!totals().count) return;
+    submitKey = newSubmitKey();
     renderModeFields();
     renderSheetTotals();
     sheet.classList.add("on");
@@ -420,12 +563,12 @@
     sheetBack.classList.remove("on");
   }
 
-  $("#closeSheet").addEventListener("click", closeSheet);
-  sheetBack.addEventListener("click", closeSheet);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+  bind($("#closeSheet"), "click", closeSheet);
+  bind(sheetBack, "click", closeSheet);
+  bind(document, "keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
   $$("#modeBtns button").forEach((b) =>
-    b.addEventListener("click", () => {
+    bind(b, "click", () => {
       mode = b.dataset.mode;
       $$("#modeBtns button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
       renderModeFields();
@@ -437,20 +580,27 @@
     if (mode === "Dine In") {
       host.innerHTML = `
         <div class="field">
-          <label for="tableNo">Table number <span style="color:var(--danger)">*</span></label>
-          <input class="input" id="tableNo" inputmode="numeric" placeholder="Printed on your table card" value="${table}">
-          <div class="err" id="tableErr">Add the table number printed on your card.</div>
+          <label for="tableNo">${T("Table number", "\u0631\u0642\u0645 \u0627\u0644\u0637\u0627\u0648\u0644\u0629")} <span style="color:var(--danger)">*</span></label>
+          <input class="input" id="tableNo" inputmode="numeric" placeholder="${T("Printed on your table card", "\u0645\u0643\u062a\u0648\u0628 \u0639\u0644\u0649 \u0628\u0637\u0627\u0642\u0629 \u0637\u0627\u0648\u0644\u062a\u0643")}" value="${table}">
+          <div class="err" id="tableErr">${T("Add the table number printed on your card.", "\u0623\u0636\u0641 \u0631\u0642\u0645 \u0627\u0644\u0637\u0627\u0648\u0644\u0629 \u0627\u0644\u0645\u0637\u0628\u0648\u0639 \u0639\u0644\u0649 \u0628\u0637\u0627\u0642\u062a\u0643.")}</div>
         </div>`;
       $("#tableNo").addEventListener("input", (e) => { table = e.target.value; });
     } else if (mode === "Take Away") {
-      const times = ["15 min", "30 min", "45 min", "1 hour"];
+      /* the value stays English because the server parses it; only the label
+         the guest reads is translated */
+      const times = [
+        { v: "15 min", en: "15 min", ar: "\u0661\u0665 \u062f\u0642\u064a\u0642\u0629" },
+        { v: "30 min", en: "30 min", ar: "\u0663\u0660 \u062f\u0642\u064a\u0642\u0629" },
+        { v: "45 min", en: "45 min", ar: "\u0664\u0665 \u062f\u0642\u064a\u0642\u0629" },
+        { v: "1 hour", en: "1 hour", ar: "\u0633\u0627\u0639\u0629" }
+      ];
       host.innerHTML = `
         <div class="field">
-          <label>Ready for pickup <span style="color:var(--danger)">*</span></label>
+          <label>${T("When will you Pick Up", "\u0645\u062a\u0649 \u0633\u062a\u0633\u062a\u0644\u0645\u061f")} <span style="color:var(--danger)">*</span></label>
           <div class="chips" id="pickChips">
-            ${times.map((t) => `<button type="button" data-t="${t}" aria-pressed="${pickup === t}">${t}</button>`).join("")}
+            ${times.map((t) => `<button type="button" data-t="${t.v}" aria-pressed="${pickup === t.v}">${T(t.en, t.ar)}</button>`).join("")}
           </div>
-          <div class="err" id="pickErr">Choose when you will collect the order.</div>
+          <div class="err" id="pickErr">${T("Choose when you will collect the order.", "\u0627\u062e\u062a\u0631 \u0648\u0642\u062a \u0627\u0644\u0627\u0633\u062a\u0644\u0627\u0645.")}</div>
         </div>`;
       $$("#pickChips button").forEach((b) =>
         b.addEventListener("click", () => {
@@ -461,9 +611,9 @@
     } else {
       host.innerHTML = `
         <div class="field">
-          <label for="addr">Delivery address <span style="color:var(--danger)">*</span></label>
-          <textarea class="input" id="addr" rows="2" placeholder="Building, street, area, landmark">${address}</textarea>
-          <div class="err" id="addrErr">We need an address to deliver to.</div>
+          <label for="addr">${T("Delivery address", "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062a\u0648\u0635\u064a\u0644")} <span style="color:var(--danger)">*</span></label>
+          <textarea class="input" id="addr" rows="2" placeholder="${T("Building, street, area, landmark", "\u0627\u0644\u0645\u0628\u0646\u0649\u060c \u0627\u0644\u0634\u0627\u0631\u0639\u060c \u0627\u0644\u0645\u0646\u0637\u0642\u0629\u060c \u0639\u0644\u0627\u0645\u0629 \u0645\u0645\u064a\u0632\u0629")}">${address}</textarea>
+          <div class="err" id="addrErr">${T("We need an address to deliver to.", "\u0646\u062d\u062a\u0627\u062c \u0639\u0646\u0648\u0627\u0646\u0627\u064b \u0644\u0644\u062a\u0648\u0635\u064a\u0644.")}</div>
         </div>`;
       $("#addr").addEventListener("input", (e) => { address = e.target.value; });
     }
@@ -477,7 +627,7 @@
     const lines = Array.from(cart.entries())
       .map(([id, r]) => `
         <div class="ol-row line">
-          <span class="ol-nm">${esc(r.item.name)}</span>
+          <span class="ol-nm">${esc(nm(r.item))}</span>
           <span class="ol-qty">
             <button class="sstep" type="button" data-sheet-minus="${id}" aria-label="${T("One less", "\u0648\u0627\u062d\u062f \u0623\u0642\u0644")}">−</button>
             <b>${r.qty}</b>
@@ -488,15 +638,15 @@
         </div>`)
       .join("");
     const off = applied && d.amount > 0
-      ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% off</span><span>− ${money(d.amount)}</span></div>`
+      ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% ${T("off", "\u062e\u0635\u0645")}</span><span>− ${money(d.amount)}</span></div>`
       : "";
     $("#sheetTotals").innerHTML = lines + off +
-      `<div class="ol-row total"><span>Total</span><span>${money(d.total)}</span></div>`;
+      `<div class="ol-row total"><span>${T("Total", "\u0627\u0644\u0625\u062c\u0645\u0627\u0644")}</span><span>${money(d.total)}</span></div>`;
   }
 
   /* the sheet's lines are redrawn on every change, so the clicks are handled
      once on the container rather than bound to each button */
-  $("#sheetTotals").addEventListener("click", (e) => {
+  bind($("#sheetTotals"), "click", (e) => {
     const plus = e.target.closest("[data-sheet-plus]");
     const minus = e.target.closest("[data-sheet-minus]");
     const drop = e.target.closest("[data-sheet-del]");
@@ -613,8 +763,14 @@
      mobile number is now required. */
   const API_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.apiBase) || "";
   let sending = false;
+  /* One key per order attempt: a double tap, a flaky connection or a retried
+     request can only ever create one order, because the server keys on this. */
+  let submitKey = "";
+  const newSubmitKey = function () {
+    try { return crypto.randomUUID(); } catch (e) { return String(Date.now()) + "-" + Math.random().toString(16).slice(2); }
+  };
 
-  async function submitOrder(guest, phone) {
+  async function submitOrder(guest, phone, email) {
     if (sending) return null;
     sending = true;
     try {
@@ -629,6 +785,8 @@
           address: address,
           name: guest,
           phone: phone,
+          email: email || "",
+          submitKey: submitKey || null,
           total: totals().sum,
           discountCode: applied ? applied.code : null,
           items: Array.from(cart.values()).map((r) => ({
@@ -646,7 +804,7 @@
   }
 
   const applyBtn = $("#applyCode");
-  if (applyBtn) applyBtn.addEventListener("click", applyCode);
+  bind(applyBtn, "click", applyCode);
   const codeInput = $("#discCode");
   if (codeInput) codeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); applyCode(); }
@@ -670,46 +828,78 @@
   window.addEventListener("resize", onScroll);
   onScroll();
 
-  $("#confirmOrder").addEventListener("click", async () => {
+  bind($("#confirmOrder"), "click", async () => {
     let ok = true;
     ok = err("#nameErr", !$("#guestName").value.trim()) && ok;
-    const phoneRaw = ($("#guestPhone").value || "").trim();
-    ok = err("#phoneErr", phoneRaw.replace(/[^\d]/g, "").length < 7) && ok;
+    /* nine digits is the UAE mobile; anywhere else, at least seven and never
+       more than fifteen, which is every number WhatsApp accepts */
+    const chosenCode = ($("#dialCode") || {}).value || "+971";
+    const localDigits = (window.__dmLocalNumber || function (v) { return String(v || "").replace(/\D/g, "").slice(0, 9); })($("#guestPhone").value);
+    const phoneRaw = chosenCode + localDigits;
+    const totalDigits = (chosenCode + localDigits).replace(/\D/g, "").length;
+    const needDigits = chosenCode === "+971" ? 9 : 6;
+    ok = err("#phoneErr", localDigits.length < needDigits || totalDigits > 15) && ok;
+    const emailRaw = ($("#guestEmail").value || "").trim();
+    ok = err("#emailErr", !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw)) && ok;
     if (mode === "Dine In") ok = err("#tableErr", !String(table).trim()) && ok;
     if (mode === "Take Away") ok = err("#pickErr", !pickup) && ok;
     if (mode === "Delivery") ok = err("#addrErr", !address.trim()) && ok;
     if (!ok) return;
 
     const guest = $("#guestName").value.trim();
-    const msg = buildMessage(guest, phoneRaw);
     const confirmBtn = $("#confirmOrder");
     if (confirmBtn) confirmBtn.disabled = true;
-    const saved = await submitOrder(guest, phoneRaw);
+    const saved = await submitOrder(guest, phoneRaw, emailRaw);
+    if (saved && saved.ok) submitKey = newSubmitKey();
+
+    /* The reference travels in the guest's own message. The WhatsApp account they
+       send from can be a different number from the one they typed, and without
+       this the reply has no way back to the order — that is how a real order sat
+       with no answer. */
+    let msg = buildMessage(guest, phoneRaw);
+    if (saved && saved.orderId) msg += "\nRef: " + String(saved.orderId).slice(0, 8);
     const url = "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent(msg);
     recordOrder(guest, msg, phoneRaw);
 
-    const place = mode === "Dine In" ? "table " + table : mode === "Take Away" ? pickup : "Delivery";
+    const place = mode === "Dine In" ? "table " + table
+      : mode === "Take Away" ? pickup
+      : (address.replace(/\s+/g, " ").trim() || "your address");
     $("#doneWa").href = url;
+    const modeAr = { "Dine In": "تناول في المطعم", "Take Away": "استلام", "Delivery": "توصيل" };
+    const countLine = LANG === "ar"
+      ? totals().count + " عناصر — " + guest
+      : totals().count + (totals().count === 1 ? " item" : " items") + " for " + guest;
     $("#doneReceipt").innerHTML =
-      `<div class="ol-row"><span>${mode} · ${place}</span><span>${money(totals().sum)}</span></div>` +
-      `<div class="ol-row"><span>${totals().count} item${totals().count === 1 ? "" : "s"} for ${guest}</span><span>${name}</span></div>`;
+      `<div class="ol-row"><span>${T(mode, modeAr[mode])} · ${place}</span><span>${money(totals().sum)}</span></div>` +
+      `<div class="ol-row"><span>${countLine}</span><span>${name}</span></div>`;
     if (saved && saved.ok === false) {
-      $("#doneNext").textContent = "WhatsApp is ready — but we could not save a copy for the restaurant. Send the message so they get it.";
+      /* Say it plainly: the panel will not show this order, so the WhatsApp
+         message is the only copy the restaurant gets. */
+      console.error("[order] not saved", saved);
+      $("#doneNext").textContent = "This order could not be saved for the restaurant — send the message below so they still receive it.";
+      $("#doneNext").classList.add("warn");
     } else {
+    $("#doneNext").classList.remove("warn");
     $("#doneNext").textContent =
       mode === "Dine In"
-        ? "The restaurant confirms your table order on WhatsApp. Payment stays at the table."
+        ? T("Your table order is saved. The restaurant confirms it on WhatsApp; payment stays at the table.",
+            "تم حفظ طلبك. يؤكده المطعم على واتساب، والدفع على الطاولة.")
         : mode === "Take Away"
-        ? "The restaurant confirms the pickup time on WhatsApp. Nothing is charged online."
-        : "The restaurant confirms the address and delivery charge on WhatsApp before sending.";
+        ? T("Your order is saved. The restaurant confirms the pickup time on WhatsApp; nothing is charged online.",
+            "تم حفظ طلبك. يؤكد المطعم وقت الاستلام على واتساب، ولا يُخصم أي مبلغ إلكترونياً.")
+        : T("Your order is saved. The restaurant confirms the address and delivery charge on WhatsApp before sending.",
+            "تم حفظ طلبك. يؤكد المطعم العنوان ورسوم التوصيل على واتساب قبل الإرسال.");
     }
 
+    /* No window.open here: it fires after an await, so the popup blocker eats it
+       on some phones, and the guest was then asked to send twice. The order is
+       already saved above — the send is one deliberate tap on the next screen,
+       which no blocker can refuse because it comes from a real gesture. */
     $("#sheetForm").hidden = true;
     $("#sheetDone").hidden = false;
-    window.open(url, "_blank", "noopener");
   });
 
-  $("#doneClose").addEventListener("click", () => {
+  bind($("#doneClose"), "click", () => {
     $("#sheetDone").hidden = true;
     $("#sheetForm").hidden = false;
     closeSheet();
@@ -718,7 +908,7 @@
   /* ---------- category picker (phones) ---------- */
   const catPick = $("#catSelect");
   if (catPick) {
-    catPick.addEventListener("change", function () {
+    bind(catPick, "change", function () {
       const sec = document.getElementById("c-" + catPick.value);
       if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -881,6 +1071,24 @@
     wireThumbs();
     hero.hidden = false;
     document.body.classList.add("has-hero");
+
+    /* The bar takes over from the hero: it holds the language switch and the
+       category picker for the rest of the page. A scroll listener rather than an
+       observer — the observer fired once at load and then never again, so the
+       bar stayed hidden however far the page was scrolled. */
+    if (!window.__headWatch) {
+      window.__headWatch = true;
+      var syncHead = function () {
+        var r = hero.getBoundingClientRect();
+        document.body.classList.toggle("scrolled", r.bottom < 72);
+      };
+      /* straight in the handler: a single bounding-box read, and rAF is not
+         guaranteed to run (it never did in the headless browser, which made the
+         bar look broken while the code was right) */
+      window.addEventListener("scroll", syncHead, { passive: true });
+      window.addEventListener("resize", syncHead, { passive: true });
+      syncHead();
+    }
   }
 
   /* ---------- when there is no menu to show ---------- */
@@ -951,6 +1159,9 @@
       const onWhite = 1.05 / (L + 0.05);
       const onInk = (L + 0.05) / (0.013 + 0.05);
       document.documentElement.style.setProperty("--accent-ink", onInk >= onWhite ? "#14120E" : "#FFFFFF");
+      /* a wash of the same colour for the header's category strip */
+      const channels = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+      document.documentElement.style.setProperty("--accent-soft", "rgba(" + channels.join(",") + ",0.16)");
     })(accent);
     handle = r.handle || wanted;
     publicLink = PUBLIC_BASE.replace(/^https?:\/\//i, "") + handle;
@@ -1003,10 +1214,52 @@
     }
 
     /* most guests are local: start the number with the restaurant's own dial code */
+    /* The country code is not the guest's to type: it is the restaurant's, shown
+       as a fixed prefix. A hand-typed code is how a number stops matching the
+       WhatsApp the guest actually sends from. */
+    const dialEl = $("#dialCode");
+    const dialCode = (String(r.whatsapp || "").match(/^\+\d{1,3}/) || ["+971"])[0];
+    if (dialEl && !dialEl.dataset.touched) {
+      /* tourists outnumber locals in Dubai, so the code is a picker, not a label.
+         It opens on the restaurant's own country and keeps whatever the guest
+         chose across repaints. */
+      if (!Array.prototype.some.call(dialEl.options, function (o) { return o.value === dialCode; })) {
+        const extra = document.createElement("option");
+        extra.value = dialCode;
+        extra.textContent = dialCode;
+        dialEl.appendChild(extra);
+      }
+      dialEl.value = dialCode;
+    }
+    if (dialEl && !dialEl.dataset.bound) {
+      dialEl.dataset.bound = "1";
+      dialEl.addEventListener("change", function () {
+        dialEl.dataset.touched = "1";
+        const inp = $("#guestPhone");
+        if (inp) inp.dispatchEvent(new Event("input"));
+      });
+    }
     const phoneInput = $("#guestPhone");
-    if (phoneInput && !phoneInput.value) {
-      const dial = (String(r.whatsapp || "").match(/^\+\d{1,3}/) || [])[0];
-      if (dial) phoneInput.value = dial + " ";
+    /* A guest who pastes "+971 50 111 2222" or types "050 111 2222" must end up
+       with the same nine digits, or the number they gave the kitchen is not the
+       number WhatsApp knows them by. */
+    const localNumber = function (raw) {
+      let d = String(raw || "").replace(/\D/g, "");
+      const chosen = String(($("#dialCode") || {}).value || dialCode);
+      const code = chosen.replace(/\D/g, "");
+      if (code && d.indexOf(code) === 0) d = d.slice(code.length);
+      while (d.charAt(0) === "0") d = d.slice(1);
+      /* UAE mobiles are nine digits; everywhere else WhatsApp accepts up to
+         fifteen digits in total, so the local part may be longer */
+      return d.slice(0, chosen === "+971" ? 9 : 12);
+    };
+    window.__dmLocalNumber = localNumber;
+    if (phoneInput) {
+      phoneInput.value = localNumber(phoneInput.value);
+      phoneInput.addEventListener("input", function () {
+        const digits = localNumber(phoneInput.value);
+        if (phoneInput.value !== digits) phoneInput.value = digits;
+      });
     }
 
     paint();

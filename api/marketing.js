@@ -407,6 +407,11 @@ async function owner(req, res) {
     }
 
     const first = String(o.guest_name || "there").split(" ")[0].slice(0, 40);
+    /* The free-form messages greet the guest by name where there is one, and
+       open as a sentence where there is not — "there, confirmed" is worse than
+       no name at all. */
+    const who = String(o.guest_name || "").trim().split(/\s+/)[0].slice(0, 40);
+    const n = function (lower, upper) { return who ? who + ", " + lower : upper; };
     const place = String(actor.restaurant.name || "").slice(0, 60);
     const total = (actor.restaurant.currency || "AED") + " " + Number(o.total || 0).toFixed(0);
 
@@ -427,10 +432,14 @@ async function owner(req, res) {
       const lines = ((items.ok && items.data) || [])
         .map(function (i) { return (i.qty || 1) + " x " + i.name; })
         .join("\n").slice(0, 800) || "Your order";
-      text = "Order confirmation: " + lines + " — " + total;
+      text = "Hello " + first + ", your order at " + place + " is " + lines +
+        " — " + total + ". Tap CONFIRM below and we'll take it from here.";
+      /* No button component: the template's quick replies are static, and Meta
+         rejects a payload parameter for a button that has no variable. It also
+         lets the owner add a second button (Cancel Order) without a code change. */
       sent = await waSend.sendTemplate(
         s, to, "order_confirm",
-        [first, place, lines, total], "CONFIRM"
+        [first, place, lines, total]
       );
     } else {
       if (!open) {
@@ -475,10 +484,14 @@ async function owner(req, res) {
         /* Written as a person at the counter would say it: one fact and what
            happens next. No "we are pleased to inform", no exclamation marks. */
         const say = {
-          accept: "Confirmed — your order is with the kitchen. We'll message you the moment it moves.",
-          ready: "Ready when you are — collect it at the counter at " + place + ".",
-          delivery: "On its way — your order has left the kitchen.",
-          meal: "Enjoy your meal. If anything isn't right, reply here and we'll fix it."
+          accept: n("confirmed. Your order is now in the hands of our kitchen, and we'll update you at every step.",
+                    "Confirmed. Your order is now in the hands of our kitchen, and we'll update you at every step."),
+          ready: n("your order is ready. Please collect it at the counter at " + place + ". We look forward to seeing you.",
+                   "Your order is ready. Please collect it at the counter at " + place + ". We look forward to seeing you."),
+          delivery: n("your order is on its way. It has just left our kitchen and will be with you shortly.",
+                      "Your order is on its way. It has just left our kitchen and will be with you shortly."),
+          meal: n("enjoy your meal. If there's anything we can make better, just reply here and we'll take care of it.",
+                  "Enjoy your meal. If there's anything we can make better, just reply here and we'll take care of it.")
         };
         text = say[kind] || "";
       }

@@ -64,6 +64,17 @@ body.menu-body {
   overflow-x: clip;
 }
 
+/* A phone could be panned a few pixels left and right: every measurement said
+   the document was exactly as wide as the viewport, so the overflow is
+   sub-pixel or engine-specific. The root now carries the same guard as the
+   body, with a `hidden` fallback for engines without `clip`, and the main
+   blocks are capped to the viewport so nothing can grow past it. */
+html { overflow-x: clip; }
+@supports not (overflow: clip) {
+  html, body { overflow-x: hidden; }
+}
+body.menu-body { overscroll-behavior-x: none; }
+.mhead, .mhead-in, .mhead-pick, .mwrap, .mfoot, .hero, .hero-in, .sec { max-width: 100%; }
 body.menu-body img { display: block; max-width: 100%; }
 body.menu-body a { color: inherit; text-decoration: none; }
 body.menu-body button { font: inherit; }
@@ -290,7 +301,68 @@ body.menu-body::before {
 .hero [hidden] { display: none !important; }
 
 /* ================================================================= head === */
-.mhead { background: var(--paper); border-bottom: 1px solid var(--rule); position: sticky; top: 0; z-index: 30; }
+.mhead {
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 60;
+}
+/* line one: the mark, the name, the language. Two rows frozen as one bar, so the
+   picker can never slide under the switch the way it did while it floated. */
+.mhead-txt { min-width: 0; flex: 1; }
+.mhead-txt h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the meta line wrapped to three lines in the narrow name column and made the
+   bar 133px tall on a phone */
+.mhead-txt .mmeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.mhead .lang-switch {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  margin-inline-start: auto;
+  box-shadow: none;
+  background: var(--paper-2);
+  border-color: var(--rule);
+}
+/* the bar is 114px tall and sticky: a section scrolled to must stop under it,
+   not behind it */
+.sec { scroll-margin-top: 122px; }
+
+/* line two: where you are in the menu, tinted with the house colour */
+.mhead-pick {
+  border-top: 1px solid var(--rule-2);
+  background: var(--accent-soft, rgba(247, 148, 29, .14));
+}
+.mhead-pick .cat-pick {
+  position: static;
+  top: auto;
+  z-index: auto;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 clamp(18px, 5vw, 48px);
+  min-height: 46px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.mhead-pick .cat-pick select option {
+  background: #FFFFFF;
+  color: #17140F;
+  font-family: var(--font-ui);
+}
+html.t-dark { color-scheme: dark; }
+html.t-dark .cat-pick select option { background: #1B1F24; color: #F3EFE7; }
+.cat-pick select { height: 44px; font-size: 14.5px; }
+@media (max-width: 599px) {
+  /* a phone has room for the name and the language, not for three more controls */
+  .mhead .mwa { display: none; }
+}
 .mhead-in {
   max-width: 1240px;
   margin: 0 auto;
@@ -311,7 +383,12 @@ body.menu-body::before {
   color: var(--paper);
 }
 /* the hero carries the identity, so the sticky header stands down */
+/* The hero already carries the mark and the name, so the bar waits: it arrives
+   once the landing has scrolled past and then stays, holding the language and
+   the category picker for the rest of the page. */
 body.has-hero .mhead { display: none; }
+body.has-hero.scrolled .mhead { display: block; animation: headIn .22s var(--ease-out) both; }
+@keyframes headIn { from { transform: translateY(-100%); } to { transform: none; } }
 
 /* ================================================================ layout === */
 .mwrap {
@@ -386,7 +463,6 @@ body:not(.has-hero) .rail { top: 64px; }
   font-weight: 500;
   color: var(--ink-3);
   white-space: nowrap;
-  scroll-snap-align: start;
   transition: background .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease);
 }
 .rail a:hover { border-color: var(--ink-4); color: var(--ink); }
@@ -396,72 +472,72 @@ body:not(.has-hero) .rail { top: 64px; }
 
 .star { width: 11px; height: 11px; fill: currentColor; display: inline-block; vertical-align: -1px; opacity: .95; }
 
-/* the phone gets a native picker: fifteen chips is a lot of sideways dragging */
-.cat-pick { display: none; }
-
-/* A wide screen can hold every category, but 22 pills was a wall three rows
-   deep. As a text index it is lighter than the food it indexes: no borders,
-   one underline for where you are. */
-@media (min-width: 900px) {
-  .rail {
-    flex-wrap: wrap;
-    overflow: visible;
-    gap: 2px 18px;
-    padding: 13px 0 11px;
-    background: linear-gradient(to bottom, var(--paper) 82%, rgba(251, 247, 240, .88));
-  }
-  .rail a {
-    height: auto;
-    padding: 3px 0;
-    border: 0;
-    border-radius: 0;
-    background: none;
-    font-size: 12.5px;
-    letter-spacing: .01em;
-    color: var(--ink-3);
-    box-shadow: inset 0 -1px 0 transparent;
-  }
-  .rail a:hover { color: var(--ink); border: 0; }
-  .rail a.on {
-    background: none;
-    border: 0;
-    color: var(--ink);
-    box-shadow: inset 0 -1px 0 var(--ink);
-  }
-  .rail a.feat { color: var(--accent); }
-  .rail a.feat.on { background: none; box-shadow: inset 0 -1px 0 var(--accent); }
+/* One navigation control at every width: a picker that names where you are and
+   takes you anywhere in one tap. The chip index cost three rows on a wide
+   screen and a sideways drag on a phone; it survives only inside the embedded
+   phone frame, which has no room for a native select. */
+.rail { display: none; }
+/* A floating control, not a hairline band: the owner could not see it. It is a
+   bordered pill with the label, the current category and a chevron, 52px tall so
+   it is a comfortable tap, and it keeps its own type so it never reads as a
+   browser widget dropped into the page. */
+.cat-pick {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 8px;
+  padding: 0 16px;
+  min-height: 52px;
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  background: var(--paper-2);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 10px 22px -16px rgba(0, 0, 0, .55);
 }
-@media (max-width: 899px) {
-  .rail { display: none; }
-  .cat-pick {
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 14px 0 2px;
-    padding: 10px 0;
-    background: linear-gradient(to bottom, var(--paper) 76%, rgba(251, 247, 240, .85));
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--rule-2);
-  }
-  .cat-pick > span { flex: none; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4); }
-  .cat-pick select {
-    flex: 1;
-    min-width: 0;
-    height: 40px;
-    padding: 0 14px;
-    appearance: none;
-    border: 1px solid var(--rule);
-    border-radius: var(--r-pill);
-    background: var(--paper);
-    color: var(--ink);
-    font: inherit;
-    font-size: 13.5px;
-    font-weight: 500;
-  }
+.cat-pick > span {
+  flex: none;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cat-pick select {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  cursor: pointer;
+}
+/* appearance: none takes the browser's arrow with it */
+.cat-pick::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  justify-self: end;
+  border-right: 2px solid var(--ink-2);
+  border-bottom: 2px solid var(--ink-2);
+  transform: rotate(45deg);
+}
+html[dir="rtl"] .cat-pick::after { margin-inline-start: 2px; transform: rotate(45deg); }
+@media (min-width: 900px) {
+  .cat-pick select { min-width: 200px; }
 }
 
 /* ============================================================== sections === */
@@ -718,10 +794,11 @@ body:not(.has-hero) .rail { top: 64px; }
   color: var(--ink-3);
 }
 .cart-total b {
-  font-family: var(--font-display);
-  font-size: 23px;
+  font-family: var(--font-ui);
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
   text-transform: none;
   font-variant-numeric: tabular-nums;
@@ -768,7 +845,7 @@ body:not(.has-hero) .rail { top: 64px; }
 }
 .mbar.on { display: flex; transform: translate3d(0, 0, 0); opacity: 1; }
 .mbar .bc { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: rgba(251, 247, 240, .6); }
-.mbar .bt { font-family: var(--font-display); font-size: 19px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.mbar .bt { font-family: var(--font-ui); font-size: 15.5px; font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .mbar button {
   height: 40px;
   padding: 0 20px;
@@ -821,21 +898,26 @@ body:not(.has-hero) .rail { top: 64px; }
   width: min(100%, 520px);
   max-height: 92dvh;
   overflow-y: auto;
-  padding: 22px clamp(18px, 5vw, 26px) calc(22px + env(safe-area-inset-bottom));
+  padding: 22px clamp(18px, 5vw, 26px) 0;
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   background: var(--paper);
   box-shadow: var(--shadow-2);
   transform: translate(-50%, 102%);
   opacity: 0;
-  transition: transform .42s var(--ease), opacity .26s var(--ease);
+  /* opacity alone leaves the panel in the hit-test tree: on a wide screen its
+     sticky footer sat over the dish list and every Add landed on
+     "Send on WhatsApp" instead of the dish. */
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .42s var(--ease), opacity .26s var(--ease), visibility 0s linear .42s;
 }
 .sheet::-webkit-scrollbar { width: 0; height: 0; }
 .sheet { scrollbar-width: none; }
 @media (min-width: 720px) {
   .sheet { top: 50%; bottom: auto; max-height: 86dvh; border-radius: var(--r-lg); transform: translate(-50%, -46%) scale(.985); }
 }
-.sheet.on { transform: translate(-50%, 0); opacity: 1; }
-@media (min-width: 720px) { .sheet.on { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+.sheet.on { transform: translate(-50%, 0); opacity: 1; visibility: visible; pointer-events: auto; transition: transform .42s var(--ease), opacity .26s var(--ease), visibility 0s; }
+@media (min-width: 720px) { .sheet.on { transform: translate(-50%, -50%) scale(1); opacity: 1; visibility: visible; pointer-events: auto; } }
 
 .sheet h2 {
   margin: 0 0 6px;
@@ -956,9 +1038,11 @@ textarea.input { resize: vertical; min-height: 68px; }
   margin-top: 8px;
   padding-top: 12px;
   border-top: 1px dashed var(--rule);
-  font-family: var(--font-display);
-  font-size: 19px;
+  font-family: var(--font-ui);
+  font-size: 17px;
   font-weight: 600;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
@@ -969,7 +1053,11 @@ textarea.input { resize: vertical; min-height: 68px; }
   padding-top: 14px;
   border-top: 1px solid var(--rule-2);
   position: sticky;
-  bottom: calc(-22px - env(safe-area-inset-bottom));
+  bottom: 0;
+  /* the footer carries the panel's bottom air itself, so its background reaches
+     the panel's edge and nothing scrolls through the strip under the buttons */
+  padding-bottom: calc(26px + env(safe-area-inset-bottom));
+  margin-bottom: 0;
   background: var(--paper);
 }
 .sheet-actions .btn { flex: 1; }
@@ -1004,9 +1092,10 @@ body.embed .mhead .mmeta { font-size: 11px; }
 body.embed .mhead .mwa { display: none; }
 body.embed .hero { display: none !important; }
 body.embed .mwrap { padding: 0 12px; grid-template-columns: minmax(0, 1fr); }
-body.embed .rail { position: sticky; top: 0; padding: 8px 0; gap: 6px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; }
+body.embed .rail { display: flex; position: sticky; top: 0; padding: 8px 0; gap: 6px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; }
 body.embed .rail a { height: 26px; font-size: 11px; padding: 0 9px; }
 body.embed .cat-pick { display: none !important; }
+body.embed .mhead-pick { display: none !important; }
 body.embed .sec { padding-top: 16px; }
 body.embed .sec-head h2 { font-size: 15px; }
 body.embed .sec-head > span { font-size: 10px; }
@@ -1095,8 +1184,10 @@ html[dir="rtl"] .item .ds { line-height: 1.75; }
   .add { height: 30px; padding: 0 13px; }
   .sec { scroll-margin-top: 58px; }
   .sec-head h2 { font-size: 19px; }
-  .sheet-actions { flex-direction: column-reverse; }
-  .sheet-actions .btn { width: 100%; }
+  .sheet-actions { flex-direction: row; gap: 10px; }
+  /* equal halves on a phone too: the primary has two lines of text, which is
+     not a reason for it to own more of the row */
+  .sheet-actions .btn { width: auto; flex: 1 1 0; min-width: 0; }
 }
 /* quantity on the row: the Add pill becomes a stepper once the count is above
    zero, so a mis-tap is undone where it happened */
@@ -1134,8 +1225,9 @@ html[dir="rtl"] .item .ds { line-height: 1.75; }
   padding: 14px clamp(18px, 5vw, 48px) 16px;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x proximity;
-  scroll-padding-inline-start: clamp(18px, 5vw, 48px);
+  /* no snap on a phone: it re-aligned the row mid-scroll and looked like the
+     page dancing sideways */
+  scroll-snap-type: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
@@ -1236,16 +1328,15 @@ html.t-clay {
 
 /* The light surfaces that were hardcoded: a dark ground has to carry them too,
    or the picker arrives as a white pill on a charcoal page. */
+html.t-dark .mhead-pick { background: var(--accent-soft, rgba(247, 148, 29, .16)); }
 html.t-dark .cat-pick {
-  background: linear-gradient(to bottom, var(--paper) 78%, rgba(20, 23, 26, .86));
-  border-bottom-color: var(--rule-2);
+  background: transparent;
+  border-color: rgba(243, 239, 231, .18);
+  box-shadow: 0 14px 26px -18px rgba(0, 0, 0, .9);
 }
-html.t-dark .cat-pick > span { color: var(--ink-4); }
-html.t-dark .cat-pick select {
-  background: var(--paper-2);
-  color: var(--ink);
-  border-color: var(--rule);
-}
+html.t-dark .cat-pick > span { color: #9AA3AD; }
+html.t-dark .cat-pick select { background: transparent; color: #F3EFE7; }
+html.t-dark .cat-pick::after { border-color: #C8CFD6; }
 html.t-dark .lang-switch {
   background: rgba(20, 23, 26, .84);
   border-color: rgba(243, 239, 231, .14);
@@ -1268,10 +1359,6 @@ html.t-dark .cart-empty, html.t-dark .hint { color: var(--ink-3); }
 /* The sticky bar had a translucent tail, so the shelf scrolling under it showed
    through as a band of orphaned dish names. Opaque reads cleaner and costs
    nothing: the content is meant to disappear underneath, not bleed through. */
-.cat-pick,
-html.t-dark .cat-pick,
-html.t-clay .cat-pick { background: var(--paper); }
-
 .rail,
 html.t-dark .rail,
 html.t-clay .rail { background: var(--paper); }
@@ -1430,15 +1517,31 @@ html.t-dark #sheet .checkout-btn:disabled {
 @media (min-width: 1024px) {
   .items, .sec.featured .items {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    column-gap: clamp(24px, 3vw, 44px);
-    row-gap: 0;
+    /* Cards beside each other, sized so nothing is hidden and nothing has to be
+       dragged sideways: a wide screen shows two or three dishes per row. */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 22px 18px;
     margin: 0;
-    padding: 6px 0 14px;
+    padding: 6px 0 16px;
     overflow: visible;
     scroll-snap-type: none;
   }
-  .items .item { width: auto; scroll-snap-align: none; }
+  .items .item,
+  .items .item.has-img {
+    display: block;
+    width: auto;
+    flex: none;
+    padding: 0;
+    border-bottom: 0;
+    scroll-snap-align: none;
+  }
+  .items .item .thumb,
+  .items .item.has-img > .thumb {
+    width: 100%;
+    height: 158px;
+    margin-bottom: 10px;
+  }
+  .items .item .nm { font-size: 14.5px; }
 }
 
 /* the order lines carry their own quantity and a way out of the order */
@@ -1507,4 +1610,150 @@ html.t-dark .mbar button:disabled {
   opacity: 1;
 }
 html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
+
+/* `.mbar` sets `color: var(--paper)` — under the charcoal palette that is the
+   bar's own colour, so the amount in the bar was dark ink on a near-black
+   surface: present, correct, and invisible. */
+html.t-dark .mbar { color: #F6F2EA; }
+html.t-dark .mbar .bt { color: #F6F2EA; }
+html.t-dark .mbar .bc { color: rgba(243, 239, 231, .74); }
+
+/* The primary action says what the guest is about to do, and the line under it
+   says what happens next: on WhatsApp the restaurant confirms, so "send" was
+   describing our plumbing rather than their experience. */
+.btn-brand small,
+.checkout-btn small {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  opacity: .8;
+}
+/* Both steps of the order are the same button: "Order on WhatsApp" in the form,
+   "Send on WhatsApp" on the confirmation screen. */
+.sheet-actions .btn-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 66px;
+  min-height: 66px;
+  padding: 0 14px;
+  line-height: 1.12;
+  border-radius: 14px;
+}
+.sheet-actions .btn-brand span { font-size: 15.5px; font-weight: 600; letter-spacing: -.012em; }
+.sheet-actions .btn-brand small {
+  margin: 0;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  opacity: .55;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* one small line above the label, one below: the tap is an invitation, the
+   second line is what the guest gets for making it */
+.sheet-actions .btn-brand .cta-lead { margin-bottom: 2px; opacity: .6; }
+.sheet-actions .btn-brand .cta-sub { margin-top: 3px; }
+
+/* the sheet's two actions: equal halves, one quiet and one decisive */
+.sheet-actions { gap: 10px; align-items: stretch; margin-top: 22px; padding-top: 16px; }
+.sheet-actions .btn {
+  flex: 1 1 0;
+  height: 66px;
+  min-height: 66px;
+  padding: 0 14px;
+  border-radius: 14px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font-family: var(--font-ui);
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+html.t-dark .sheet-actions .btn-outline {
+  border: 1px solid rgba(243, 239, 231, .22);
+  background: transparent;
+  color: #EFEAE1;
+}
+html.t-dark .sheet-actions .btn-outline:hover {
+  background: rgba(243, 239, 231, .07);
+  border-color: rgba(243, 239, 231, .44);
+}
+html.t-dark .sheet-actions .btn-brand {
+  border: 1px solid #F3EFE7;
+  background: #F3EFE7;
+  color: #14171A;
+  box-shadow: 0 12px 26px -18px rgba(0, 0, 0, .9);
+}
+html.t-dark .sheet-actions .btn-brand:hover { background: #FFFFFF; border-color: #FFFFFF; }
+/* a mouse press should not leave a ring behind on the primary action */
+.btn:focus { outline: none; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* The cart panel is sticky and the button sits at its foot: on a laptop with a
+   few dishes the panel grew past the viewport and "Review order" fell below the
+   fold where it could not be reached at all. The panel is now capped and the
+   order lines scroll inside it, so the foot stays where it can be pressed. */
+@media (min-width: 1024px) {
+  .cart {
+    display: flex;
+    flex-direction: column;
+    top: 24px;
+    max-height: calc(100dvh - 48px);
+    overflow: hidden;
+  }
+  body.scrolled .cart { top: 132px; max-height: calc(100dvh - 156px); }
+  #cartBody { overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+  #cartFoot { position: sticky; bottom: 0; background: var(--paper); padding-top: 10px; margin-top: auto; }
+}
+
+/* The country code is a picker, not free text — most guests are visitors — and the
+   local part is digits only, so the number the kitchen sees is the number
+   WhatsApp knows the guest by. */
+.phone-row { display: flex; align-items: stretch; gap: 8px; }
+.phone-row .input { flex: 1; min-width: 0; }
+.phone-row .dial {
+  flex: none;
+  padding: 0 30px 0 13px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-pill);
+  background-color: var(--paper-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  /* the chevron, drawn in currentColor so it follows the theme */
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 16px) 53%, calc(100% - 11px) 53%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.phone-row .dial option { color: #17140F; background: #FFFFFF; }
+html.t-dark #sheet .phone-row .dial {
+  background-color: #1B1F24;
+  border-color: #262C33;
+  color: #F3EFE7;
+}
+html.t-dark .phone-row .dial option { background: #1B1F24; color: #F3EFE7; }
+
+/* the order did not reach the panel: that has to be visible */
+.next-steps.warn { color: var(--danger); font-weight: 500; }
 
