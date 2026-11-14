@@ -12,21 +12,11 @@
   var nav = document.getElementById("nav");
   var ticking = false;
 
-  /* the pricing block is a cream slab in a dark page: while it covers the top of
-     the viewport the header turns to paper so its links stay readable */
-  var paper = document.getElementById("pricing");
-
   function onScroll() {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(function () {
-      if (nav) {
-        nav.classList.toggle("on", window.scrollY > 24);
-        if (paper) {
-          var r = paper.getBoundingClientRect();
-          nav.classList.toggle("on-paper", r.top <= 62 && r.bottom >= 62);
-        }
-      }
+      if (nav) nav.classList.toggle("on", window.scrollY > 24);
       ticking = false;
     });
   }
