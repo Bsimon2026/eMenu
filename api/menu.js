@@ -11,6 +11,7 @@
  */
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
+const { canTakeOrders } = require("./_lib/ordering");
 
 /* The whole menu in one deployment slot. Vercel counts top-level functions, not
    files under _lib — so save-menu and menu-edit live there and this file routes
@@ -204,29 +205,25 @@ async function menuHandler(req, res) {
     return res.status(502).json({ ok: false, code: "DB_ERROR", message: "The menu database did not answer." });
   }
 
-  /* Is this restaurant entitled to take orders? The menu plan is a menu, not a till.
-     The columns arrive with 0007 — when they are present we already have them from
-     the query above; when they are not, ask once and keep the old behaviour. */
-  /* which plans include ordering: "order", and "pro" which has no order cap */
-  const ORDERING_PLANS = ["order", "pro"];
+  /* Is this restaurant entitled to take orders? The menu plan is a menu, not a
+     till. The rule itself lives in api/_lib/ordering.js so the order handler
+     cannot answer this question differently — it did, and every restaurant in
+     its first week lost every order. The columns arrive with 0007: when they are
+     present we already have them from the query above, when they are not, ask
+     once and keep the old behaviour. */
   let ordering = true;
   let planSeen = null;
   const hasGateCols = Object.prototype.hasOwnProperty.call(restaurant, "paid_through");
   if (hasGateCols) {
-    planSeen = restaurant.plan || "qr";
-    const today = new Date().toISOString().slice(0, 10);
-    const paid = Boolean(restaurant.paid_through && restaurant.paid_through >= today);
-    const onTrial = Boolean(restaurant.trial_ends && restaurant.trial_ends >= today);
-    /* the seven free days include ordering, so a new restaurant sees the whole
-       product before anybody pays for it */
-    ordering = onTrial || (ORDERING_PLANS.indexOf(planSeen) >= 0 && paid);
+    const verdict = canTakeOrders(restaurant);
+    ordering = verdict.ok;
+    planSeen = verdict.plan;
   } else {
-    const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through");
+    const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=plan,paid_through,trial_ends");
     if (gate.ok && (gate.data || [])[0]) {
-      const g = gate.data[0];
-      planSeen = g.plan || "qr";
-      const today = new Date().toISOString().slice(0, 10);
-      ordering = ORDERING_PLANS.indexOf(planSeen) >= 0 && Boolean(g.paid_through && g.paid_through >= today);
+      const verdict = canTakeOrders(gate.data[0]);
+      ordering = verdict.ok;
+      planSeen = verdict.plan;
     }
   }
 

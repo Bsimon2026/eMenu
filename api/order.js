@@ -13,6 +13,7 @@ const { rest, cors, configured } = require("./_lib/db");
 const mail = require("./_lib/mail");
 const listOrders = require("./_lib/order-list");
 const discount = require("./_lib/discounts");
+const { canTakeOrders } = require("./_lib/ordering");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
 
@@ -115,36 +116,16 @@ module.exports = async function handler(req, res) {
     return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No published menu at that address." });
   }
 
-  /* The paywall, enforced where the order is actually written — and it has to
-     give the same answer /api/menu gives, or the guest is handed a working
-     order form that can only fail: the seven free days include ordering, and a
-     plan that includes ordering still needs a paid period after they end.
-     Kings Kebab took a dine-in order that never reached the panel because this
-     block read the plan alone and refused a restaurant that was on trial. */
+  /* The paywall, enforced where the order is actually written. The rule lives in
+     api/_lib/ordering.js and api/menu.js calls the same function — two copies of
+     this decision is how a restaurant in its free week was shown an order form
+     and then refused every order. */
   const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
     "&select=plan,paid_through,trial_ends");
-  const ORDERING_PLANS = ["order", "pro"];
   if (gate.ok && (gate.data || [])[0]) {
-    const g = gate.data[0];
-    const today = new Date().toISOString().slice(0, 10);
-    const onTrial = Boolean(g.trial_ends && g.trial_ends >= today);
-    const paid = Boolean(g.paid_through && g.paid_through >= today);
-    const planTakesOrders = ORDERING_PLANS.indexOf(g.plan || "qr") >= 0;
-    if (!onTrial) {
-      if (!planTakesOrders) {
-        return res.status(403).json({
-          ok: false,
-          code: "ORDERING_NOT_INCLUDED",
-          message: "This restaurant's menu is view-only. Call them to order."
-        });
-      }
-      if (!paid) {
-        return res.status(403).json({
-          ok: false,
-          code: "SUBSCRIPTION_INACTIVE",
-          message: "Ordering is paused for this restaurant. Please call them."
-        });
-      }
+    const verdict = canTakeOrders(gate.data[0]);
+    if (!verdict.ok) {
+      return res.status(403).json({ ok: false, code: verdict.code, message: verdict.message });
     }
   }
 
