@@ -4,7 +4,7 @@
 -- schema.sql plus every db/000N_*.sql in order. Run it once on a new
 -- Supabase project; on an existing one, run only the migrations it lacks.
 --
--- Built: 2026-11-14T08:20:12Z
+-- Built: 2026-11-14T10:47:36Z
 
 -- =========================================================== schema.sql
 -- DigiMenu — Supabase schema (phase 1)
@@ -1048,3 +1048,22 @@ alter table orders add column if not exists submit_key text;
 create unique index if not exists orders_submit_key_idx
   on orders (submit_key)
   where submit_key is not null;
+
+-- ==================================================== 0022_theme.sql
+-- The guest page's look, chosen by the owner.
+--
+-- One jsonb blob rather than three columns: the knobs a restaurant can turn are
+-- the ones the page already supports, and adding a fourth should not need a
+-- migration of its own.
+--
+-- Shape:
+--   { "ground": "dark" | "light" | "clay",
+--     "ink":    "soft" | "strong",
+--     "font":   "serif" | "grotesk" | "satoshi" }
+--
+-- Anything unrecognised is ignored by the API and the page falls back to the
+-- charcoal ground, so a value written by a newer build cannot break an older
+-- menu.
+
+alter table restaurants
+  add column if not exists theme jsonb not null default '{}'::jsonb;
