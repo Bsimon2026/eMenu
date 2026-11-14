@@ -1123,7 +1123,7 @@
         '<p class="nl-why">' + esc(message) + "</p>" +
         '<div class="nl-fix" id="nlFix" hidden></div>' +
         '<p class="nl-help">Need a hand? <a href="https://wa.me/971568911233" target="_blank" rel="noopener">WhatsApp us</a>' +
-        " · <a href=\"tel:+971568911233\">call +971 56 891 233</a></p>" +
+        " · <a href=\"tel:+971568911233\">call +971 56 891 1233</a></p>" +
       "</div>";
     if (kind === "draft") ownerProblems();
   }
