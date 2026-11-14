@@ -211,8 +211,8 @@ async function thankYou(s, row, known) {
   }
 
   const text = name
-    ? "Welcome, " + name + ". Your order has been received, and we'll confirm it here shortly."
-    : "Welcome. Your order has been received, and we'll confirm it here shortly.";
+    ? "Dear " + name + ", thank you for choosing us. We have received your order and our team is reviewing it now. We will confirm it here in just a moment."
+    : "Hello, thank you for choosing us. We have received your order and our team is reviewing it now. We will confirm it here in just a moment.";
 
   const sent = await sendText(s, row.from, text);
   if (!sent.ok) return { ok: false, error: sent.error };

@@ -406,14 +406,15 @@ async function owner(req, res) {
       return res.status(400).json({ ok: false, code: "NOT_CONNECTED", message: "Connect the Cloud API first: phone number id and access token." });
     }
 
-    const first = String(o.guest_name || "there").split(" ")[0].slice(0, 40);
-    /* The free-form messages greet the guest by name where there is one, and
-       open as a sentence where there is not — "there, confirmed" is worse than
-       no name at all. */
+    /* The template reads "Dear {{1}}, thank you for your order at {{2}}…", so a
+       blank name would render "Dear , thank you" — fall back to "guest". */
+    const first = String(o.guest_name || "guest").split(" ")[0].slice(0, 40);
+    /* The free-form messages open "Dear <first name>," and, for a guest who left
+       the name blank, "Hello,". One sentence either way: never "Dear ,". */
     const who = String(o.guest_name || "").trim().split(/\s+/)[0].slice(0, 40);
-    const n = function (lower, upper) { return who ? who + ", " + lower : upper; };
+    const dear = function (body) { return who ? "Dear " + who + ", " + body : "Hello, " + body; };
     const place = String(actor.restaurant.name || "").slice(0, 60);
-    const total = (actor.restaurant.currency || "AED") + " " + Number(o.total || 0).toFixed(0);
+    const total = (actor.restaurant.currency || "AED") + " " + Number(o.total || 0).toFixed(2);
 
     let text = "";
     let sent = null;
@@ -432,8 +433,11 @@ async function owner(req, res) {
       const lines = ((items.ok && items.data) || [])
         .map(function (i) { return (i.qty || 1) + " x " + i.name; })
         .join("\n").slice(0, 800) || "Your order";
-      text = "Hello " + first + ", your order at " + place + " is " + lines +
-        " — " + total + ". Tap CONFIRM below and we'll take it from here.";
+      /* Mirrors the approved template body word for word, so the record in the
+         panel reads the way the guest read it. */
+      text = "Dear " + first + ", thank you for your order at " + place +
+        ". Your order is " + lines + ", with a total of " + total +
+        ". Please tap CONFIRM below so we can proceed and keep you updated here.";
       /* No button component: the template's quick replies are static, and Meta
          rejects a payload parameter for a button that has no variable. It also
          lets the owner add a second button (Cancel Order) without a code change. */
@@ -484,14 +488,10 @@ async function owner(req, res) {
         /* Written as a person at the counter would say it: one fact and what
            happens next. No "we are pleased to inform", no exclamation marks. */
         const say = {
-          accept: n("confirmed. Your order is now in the hands of our kitchen, and we'll update you at every step.",
-                    "Confirmed. Your order is now in the hands of our kitchen, and we'll update you at every step."),
-          ready: n("your order is ready. Please collect it at the counter at " + place + ". We look forward to seeing you.",
-                   "Your order is ready. Please collect it at the counter at " + place + ". We look forward to seeing you."),
-          delivery: n("your order is on its way. It has just left our kitchen and will be with you shortly.",
-                      "Your order is on its way. It has just left our kitchen and will be with you shortly."),
-          meal: n("enjoy your meal. If there's anything we can make better, just reply here and we'll take care of it.",
-                  "Enjoy your meal. If there's anything we can make better, just reply here and we'll take care of it.")
+          accept: dear("your order has been confirmed and is now being prepared by our kitchen team. We will keep you updated at every step. Thank you for your patience."),
+          ready: dear("your order is ready for collection. Please visit the counter at " + place + " at your convenience. Thank you for choosing us, and we look forward to seeing you."),
+          delivery: dear("your order has left our kitchen and is on its way to you. Our delivery partner will reach you shortly. Thank you for your patience."),
+          meal: dear("we hope you enjoy your meal. Should there be anything we can improve or assist you with, please reply here and we will be glad to help.")
         };
         text = say[kind] || "";
       }
