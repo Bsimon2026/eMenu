@@ -12,11 +12,21 @@
   var nav = document.getElementById("nav");
   var ticking = false;
 
+  /* the pricing block is a cream slab in a dark page: while it covers the top of
+     the viewport the header turns to paper so its links stay readable */
+  var paper = document.getElementById("pricing");
+
   function onScroll() {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(function () {
-      if (nav) nav.classList.toggle("on", window.scrollY > 24);
+      if (nav) {
+        nav.classList.toggle("on", window.scrollY > 24);
+        if (paper) {
+          var r = paper.getBoundingClientRect();
+          nav.classList.toggle("on-paper", r.top <= 62 && r.bottom >= 62);
+        }
+      }
       ticking = false;
     });
   }
@@ -43,6 +53,61 @@
 
   /* Pricing needs no script: the sheet's three plans are one table, and both
      the monthly and the annual price are rows in it. */
+
+  /* -------------------------------------------------------------- pricing --
+     Three cards, two billing states. The numbers live on the card as data
+     attributes so the price, the per-period word and the saving cannot drift
+     apart. QR Menu is sold by the year only, so in monthly mode it keeps its
+     annual price and says so rather than showing a monthly figure it does not
+     have. */
+  var ppToggle = document.querySelector(".pp-toggle");
+  var ppCards = document.querySelectorAll(".pp-card[data-plan]");
+
+  function setBilling(period) {
+    ppCards.forEach(function (card) {
+      var yearly = card.getAttribute("data-annual");
+      var monthly = card.getAttribute("data-monthly");
+      var priceEl = card.querySelector("[data-price]");
+      var perEl = card.querySelector("[data-per]");
+      var saveEl = card.querySelector("[data-save]");
+      if (!priceEl) return;
+
+      var yearlyOnly = !monthly || monthly === "";
+      var useMonthly = period === "monthly" && !yearlyOnly;
+      var value = useMonthly ? Number(monthly) : Number(yearly);
+
+      /* a 1,999 printed in the sheet's serif needs its separator */
+      priceEl.textContent = String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      if (perEl) perEl.textContent = useMonthly ? "/ month" : "/ year";
+
+      if (card.getAttribute("data-plan") === "qr") {
+        saveEl.textContent = yearlyOnly && period === "monthly"
+          ? "Sold by the year only — less than AED 9 a month"
+          : "Everything you need to go digital";
+        return;
+      }
+
+      var saved = Number(monthly) * 12 - Number(yearly);
+      saveEl.textContent = useMonthly
+        ? "or AED " + Number(yearly).toLocaleString("en-US") + " a year — save AED " + saved
+        : "Save AED " + saved + " compared with monthly";
+    });
+
+    if (ppToggle) {
+      ppToggle.querySelectorAll("button").forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-bill") === period));
+      });
+    }
+  }
+
+  if (ppToggle) {
+    ppToggle.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-bill]");
+      if (!btn) return;
+      setBilling(btn.getAttribute("data-bill"));
+    });
+    setBilling("yearly");
+  }
 
   /* ------------------------------------------------------------------ faq ---
      <details> already opens and closes; this only makes one answer exclusive so

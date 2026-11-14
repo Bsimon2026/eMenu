@@ -26,8 +26,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261114a">
 <link rel="manifest" href="assets/site.webmanifest">
 <!-- Satoshi + Geist Mono, self-hosted. No third-party font host is contacted. -->
-<link rel="stylesheet" href="assets/fonts.css?v=20261114a">
-<link rel="stylesheet" href="assets/landing.css?v=20261114k">
+<link rel="stylesheet" href="assets/fonts.css?v=20261114i">
+<link rel="stylesheet" href="assets/landing.css?v=20261114m">
 <script>document.documentElement.classList.add("js");</script>
 <script type="application/ld+json">
 {
@@ -299,81 +299,104 @@
   </section>
 
   <!-- ============================= pricing ============================= -->
-  <section class="section pricing" id="pricing">
+  <!-- ============================= pricing ============================= -->
+  <section class="pricing" id="pricing">
     <div class="wrap">
-      <div class="section-head reveal" style="max-width:640px">
-        <span class="kicker">Pricing</span>
-        <h2 class="h2">Three plans. No commission, ever.</h2>
-        <p class="body">Start free for a week and pay only when the menu is ready to go in front of a guest. Prices in AED, including 5% VAT.</p>
+      <header class="pp-head reveal">
+        <span class="pp-kicker">Digital menu plans</span>
+        <h2 class="pp-h">A menu your guests will love. A plan that fits your restaurant.</h2>
+        <p class="pp-sub">From a beautiful QR menu to complete ordering, delivery and WhatsApp confirmations — grow at your own pace and upgrade whenever you are ready.</p>
+
+        <div class="pp-toggle" role="group" aria-label="Billing period">
+          <button type="button" data-bill="yearly" aria-pressed="true">Annual</button>
+          <button type="button" data-bill="monthly" aria-pressed="false">Monthly</button>
+        </div>
+      </header>
+
+      <div class="pp-grid">
+        <!-- QR Menu -->
+        <article class="pp-card reveal" data-plan="qr" data-annual="99" data-monthly="">
+          <h3>QR Menu</h3>
+          <p class="pp-who">Take your menu digital in minutes — bilingual, photographed and always up to date.</p>
+          <div class="pp-price">
+            <span class="cur">AED</span>
+            <b data-price>99</b>
+            <span class="per" data-per>/ year</span>
+          </div>
+          <p class="pp-save" data-save>Everything you need to go digital</p>
+          <a class="pp-cta pp-cta-line" href="login.html?mode=up">Get started</a>
+
+          <div class="pp-includes">Includes</div>
+          <ul class="pp-list">
+            <li>Full menu control, edit anytime</li>
+            <li>Bilingual menu: English &amp; Arabic</li>
+            <li>Instant sold-out switch</li>
+            <li>Easy photo &amp; item upload</li>
+            <li>Beautiful, fast QR menu view</li>
+          </ul>
+          <p class="pp-foot">Up to 50 menu items</p>
+        </article>
+
+        <!-- Pro -->
+        <article class="pp-card pp-dark reveal" data-plan="pro" data-annual="999" data-monthly="129" style="--d:80ms">
+          <span class="pp-badge">Most popular</span>
+          <h3>Pro</h3>
+          <p class="pp-who">Turn your menu into an ordering platform for dine-in, take-away and delivery.</p>
+          <div class="pp-price">
+            <span class="cur">AED</span>
+            <b data-price>999</b>
+            <span class="per" data-per>/ year</span>
+          </div>
+          <p class="pp-save" data-save>Save AED 549 compared with monthly</p>
+          <a class="pp-cta pp-cta-gold" href="login.html?mode=up">Choose Pro</a>
+
+          <div class="pp-includes">Everything in QR Menu, plus</div>
+          <ul class="pp-list">
+            <li>Online ordering platform</li>
+            <li>Table dine-in ordering</li>
+            <li>Take-away ordering</li>
+            <li>Delivery ordering</li>
+            <li>Google review collection</li>
+            <li>WhatsApp API integration</li>
+          </ul>
+          <p class="pp-foot">Unlimited menu items</p>
+        </article>
+
+        <!-- Ultra -->
+        <article class="pp-card pp-gold-edge reveal" data-plan="ultra" data-annual="1999" data-monthly="249" style="--d:160ms">
+          <h3>Ultra</h3>
+          <p class="pp-who">The complete brand experience, with your own landing page and automatic social media posting.</p>
+          <div class="pp-price">
+            <span class="cur">AED</span>
+            <b data-price>1999</b>
+            <span class="per" data-per>/ year</span>
+          </div>
+          <p class="pp-save" data-save>Save AED 989 compared with monthly</p>
+          <a class="pp-cta pp-cta-black" href="login.html?mode=up">Choose Ultra</a>
+
+          <div class="pp-includes">Everything in Pro, plus</div>
+          <ul class="pp-list">
+            <li>Exclusive branded landing page</li>
+            <li>Social media auto-posting<em>Arriving with the next release</em></li>
+            <li>Your own custom domain<em>Optional add-on, AED 99 per year</em></li>
+          </ul>
+          <p class="pp-foot">Unlimited menu items</p>
+        </article>
       </div>
 
-      <div class="compare-wrap reveal">
-        <div class="compare-title">
-          <h3>What each plan includes</h3>
-          <span>Swipe the table on a phone &rarr;</span>
+      <div class="pp-band reveal">
+        <div>
+          <h3>Not sure which plan is right for you?</h3>
+          <p>Message us and we will help you choose — and set up your menu with you.</p>
         </div>
-        <div class="table-scroll">
-          <table class="compare">
-            <thead>
-              <tr>
-                <th scope="col"><span class="pn">Plan</span></th>
-                <th scope="col" class="pcol" data-plan="qr" data-annual="99" data-monthly="0">
-                  <span class="pn">QR Menu</span>
-                  <span class="pb">Taking your menu digital in minutes</span>
-                </th>
-                <th scope="col" class="pcol hi" data-plan="pro" data-annual="999" data-monthly="129">
-                  <span class="ptag">Most popular</span>
-                  <span class="pn">Pro</span>
-                  <span class="pb">Dine-in, take-away and delivery ordering</span>
-                </th>
-                <th scope="col" class="pcol" data-plan="ultra" data-annual="1999" data-monthly="249">
-                  <span class="pn">Ultra</span>
-                  <span class="pb">Your complete brand experience</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><th scope="row">Monthly price</th><td><span class="muted">Annual only</span></td><td class="pd">129</td><td class="pd">249</td></tr>
-              <tr><th scope="row">Annual price</th><td class="pd">99</td><td class="pd">999</td><td class="pd">1,999</td></tr>
-              <tr><th scope="row">You save with annual</th><td class="no">&mdash;</td><td><span class="pd">549</span><span class="pct">35%</span></td><td><span class="pd">989</span><span class="pct">33%</span></td></tr>
-
-              <tr class="group"><th colspan="4">The menu</th></tr>
-              <tr><th scope="row">Menu items</th><td>50</td><td>Unlimited</td><td>Unlimited</td></tr>
-              <tr><th scope="row">Full menu control, edit any time</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Bilingual menu &mdash; English and Arabic</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Instant sold-out switch</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Photo and item upload</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">QR menu page, fast on any phone</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-
-              <tr class="group"><th colspan="4">Ordering</th></tr>
-              <tr><th scope="row">Online ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Table dine-in ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Take-away ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Delivery ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-
-              <tr class="group"><th colspan="4">Growth and branding</th></tr>
-              <tr><th scope="row">Google review collection</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">WhatsApp API integration</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Your own custom domain</th><td class="no">&mdash;</td><td class="no">&mdash;</td><td>Add-on<span class="addon">AED 99 / year</span></td></tr>
-              <tr><th scope="row">Exclusive branded landing page</th><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="yes">&#10003;</td></tr>
-              <tr><th scope="row">Social media auto-posting</th><td class="no">&mdash;</td><td class="no">&mdash;</td><td><span class="soon">soon</span></td></tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <td></td>
-                <td><a class="btn btn-line btn-block" href="login.html?mode=up">Start with QR Menu</a></td>
-                <td><a class="btn btn-brand btn-block" href="login.html?mode=up">Start with Pro</a></td>
-                <td><a class="btn btn-line btn-block" href="login.html?mode=up">Start with Ultra</a></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <p class="price-note">
-          Nothing is charged at sign-up, and no card is stored. You pay by transfer or on WhatsApp and the menu goes
-          live the same day. Cancel any time; the QR stays live until the period you paid for ends. The WhatsApp Business
-          API carries Meta's own per-message fee, which is separate from us.
-        </p>
+        <a href="mailto:connect@indubaicity.com?subject=DigiMenu%20plan%20advice">connect@indubaicity.com</a>
       </div>
+
+      <p class="pp-note">
+        Prices in AED, including 5% VAT. Nothing is charged at sign-up and no card is stored: you pay by transfer or on
+        WhatsApp and the menu goes live the same day. Cancel any time — the QR stays live until the period you paid for
+        ends. The WhatsApp Business API carries Meta's own per-message fee, which is separate from us.
+      </p>
     </div>
   </section>
 
@@ -475,7 +498,7 @@
   </div>
 </footer>
 
-<script src="assets/landing.js?v=20261114b"></script>
+<script src="assets/landing.js?v=20261114k"></script>
 <noscript>
   <style>
     .reveal { opacity: 1 !important; transform: none !important; }
