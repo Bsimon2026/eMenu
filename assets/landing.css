@@ -1108,3 +1108,24 @@ table.compare tfoot .btn { width: 100%; }
   table.compare tfoot .btn { font-size: 10px; line-height: 1.2; padding: 9px 3px; white-space: normal; }
   .compare-title span { display: none; }
 }
+
+/* the strongest proof a QR product has: the menu itself, one tap away */
+.hero-proof {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 20px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+  transition: color .18s var(--ease), border-color .18s var(--ease);
+}
+.hero-proof:hover { color: var(--ink); border-bottom-color: var(--brand); }
+.hero-proof .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(99, 192, 140, .18);
+  flex: none;
+}

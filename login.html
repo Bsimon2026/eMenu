@@ -5,165 +5,224 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Restaurant sign in — DigiMenu by Ogle.live</title>
-<meta name="theme-color" content="#F7941D">
-<link rel="icon" href="/assets/favicon.ico?v=20261111a" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20261111a">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon-180.png?v=20261111a">
-  <link rel="manifest" href="/assets/site.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/base.css?v=20261111s">
-<link rel="stylesheet" href="/assets/site.css?v=20261111s">
+<meta name="theme-color" content="#0A0B0C">
+<link rel="icon" href="/assets/favicon.ico?v=20261114a" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=20261114a">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon-180.png?v=20261114a">
+<link rel="manifest" href="/assets/site.webmanifest">
+<!-- Satoshi + Geist Mono, self-hosted. Same faces as the marketing page. -->
+<link rel="stylesheet" href="/assets/fonts.css?v=20261114a">
+<link rel="stylesheet" href="/assets/auth.css?v=20261114a">
 </head>
-<body class="auth-body">
-
-<header class="auth-top">
-  <div class="wrap nav-in">
-    <a class="nav-logo" href="/index.html" aria-label="Indubaicity DigiMenu home">
-      <img src="/assets/indubaicity-mark.png?v=20261111s" alt="Indubaicity">
-      <span class="prod">DigiMenu</span>
-    </a>
-    <div class="nav-right">
-      <a class="btn btn-outline btn-sm" href="/index.html">Back to site</a>
-    </div>
-  </div>
-</header>
+<body class="auth">
 
 <main class="auth-main">
-  <div>
-    <div class="auth-card">
-      <div class="tabs" role="tablist">
-        <button role="tab" aria-selected="true" data-mode="in">Sign in</button>
-        <button role="tab" aria-selected="false" data-mode="up">Create account</button>
-      </div>
 
-      <!-- sign in -->
-      <div id="paneIn">
-        <h1>Restaurant sign in</h1>
-        <p class="lede">Manage your menu, download your QR and see the orders that came in.</p>
+  <header class="auth-top">
+    <a class="brand" href="/index.html">
+      <img src="/assets/indubaicity-mark.png?v=20261114a" alt="Ogle.live">
+      <span>DigiMenu</span>
+    </a>
+    <a class="back" href="/index.html">Back to the site</a>
+  </header>
 
-        <button class="btn-google" type="button" id="btnGoogle">
-          <svg viewBox="0 0 48 48" aria-hidden="true" width="18" height="18">
-            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5Z"/>
-            <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-2.8-.4-4.1H24v8.4h12.5c-.3 2.1-1.6 5.2-4.7 7.3l7.6 5.9c4.5-4.2 6.7-10.3 6.7-17.5Z"/>
-            <path fill="#FBBC05" d="M10.4 28.7a14.5 14.5 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1Z"/>
-            <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.4-5.6l-7.6-5.9c-2 1.4-4.7 2.4-7.8 2.4-6.4 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48Z"/>
-          </svg>
-          Continue with Google
-        </button>
-        <div class="or-line"><span>or use your email</span></div>
+  <div class="auth-card">
 
-        <form id="formIn" novalidate>
-          <div class="field">
-            <label for="inEmail">Email</label>
-            <input class="input" id="inEmail" autocomplete="username" placeholder="owner@restaurant.com">
-            <div class="error-msg" id="inEmailErr">Enter the email you signed up with.</div>
-          </div>
-          <div class="field">
-            <label for="inPass">Password</label>
-            <input class="input" id="inPass" type="password" autocomplete="current-password" placeholder="Your password">
-            <div class="error-msg" id="inPassErr">Password is required.</div>
-          </div>
-          <button class="btn btn-brand btn-block" type="submit" style="margin-top:6px">Sign in</button>
-          <div class="auth-foot">
-            <span>Forgot your password?</span>
-            <button class="btn-quiet" type="button" id="forgot">Reset it by email</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- create account -->
-      <div id="paneUp" hidden>
-        <h1>Create your account</h1>
-        <p class="lede">Four short steps. Nothing is public until your menu is finished — then everything is free for seven days.</p>
-
-        <!-- the same door as sign-in: Google first, email second, on both panes -->
-        <button class="btn-google" type="button" id="btnGoogleUp">
-          <svg viewBox="0 0 48 48" aria-hidden="true" width="18" height="18">
-            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5Z"/>
-            <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-2.8-.4-4.1H24v8.4h12.5c-.3 2.1-1.6 5.2-4.7 7.3l7.6 5.9c4.5-4.2 6.7-10.3 6.7-17.5Z"/>
-            <path fill="#FBBC05" d="M10.4 28.7a14.5 14.5 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1Z"/>
-            <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.4-5.6l-7.6-5.9c-2 1.4-4.7 2.4-7.8 2.4-6.4 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48Z"/>
-          </svg>
-          Sign up with Google
-        </button>
-        <div class="or-line"><span>or use your email</span></div>
-
-        <form id="formUp" novalidate>
-          <div class="field">
-            <label for="upName">Your name</label>
-            <input class="input" id="upName" autocomplete="name" placeholder="Who is setting this up">
-            <div class="error-msg" id="upNameErr">Please tell us your name.</div>
-          </div>
-          <div class="field">
-            <label for="upMobile">Mobile number</label>
-            <div class="phone-group">
-              <select class="input" id="upCC" aria-label="Country code"></select>
-              <input class="input" id="upMobile" inputmode="tel" autocomplete="tel-national" placeholder="52 575 7079">
-            </div>
-            <div class="hint">This is the number the guest's WhatsApp opens, and where your order copies are sent. Use the restaurant's WhatsApp Business line.</div>
-            <div class="error-msg" id="upMobileErr">Enter a mobile number we can reach you on.</div>
-          </div>
-          <div class="field">
-            <label for="upEmail">Email</label>
-            <input class="input" id="upEmail" type="email" autocomplete="email" placeholder="owner@restaurant.com">
-            <div class="error-msg" id="upEmailErr">That email does not look complete.</div>
-          </div>
-          <div class="field">
-            <label for="upPass">Password</label>
-            <input class="input" id="upPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
-            <div class="hint">This account signs you in to the dashboard and is how we send you order copies.</div>
-            <div class="error-msg" id="upPassErr">Use at least 8 characters.</div>
-          </div>
-          <button class="btn btn-brand btn-block" type="submit" style="margin-top:6px">Continue to step 1 of 4</button>
-          <div class="auth-foot">
-            <span>Already have an account?</span>
-            <button class="btn-quiet" type="button" data-jump="in">Sign in instead</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- the staff door: a name and a password, at the restaurant's own address.
-           No email, no Google, no sign-up — the owner hands both fields over. -->
-      <div id="paneStaff" hidden>
-        <h1>Staff sign in</h1>
-        <p class="lede">Your owner gives you a name and a password for this restaurant. Type them here — nothing is sent to an email.</p>
-
-        <form id="formStaff" novalidate>
-          <div class="field">
-            <label for="stName">Name</label>
-            <input class="input" id="stName" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="The name your owner set">
-            <div class="error-msg" id="stNameErr">Enter the name your owner gave you.</div>
-          </div>
-          <div class="field">
-            <label for="stPass">Password</label>
-            <input class="input" id="stPass" type="password" autocomplete="current-password" placeholder="The password your owner set">
-            <div class="error-msg" id="stPassErr">Enter your password.</div>
-          </div>
-          <button class="btn btn-brand btn-block" type="submit" style="margin-top:6px">Sign in</button>
-          <div class="auth-foot">
-            <span>This is your restaurant?</span>
-            <button class="btn-quiet" type="button" id="stOwner">Owner sign-in</button>
-          </div>
-        </form>
-      </div>
-
+    <div class="tabs auth-tabs" role="tablist" aria-label="Sign in or create an account">
+      <button role="tab" type="button" id="tabIn" aria-controls="paneIn" aria-selected="true" data-mode="in">Sign in</button>
+      <button role="tab" type="button" id="tabUp" aria-controls="paneUp" aria-selected="false" data-mode="up">Create account</button>
     </div>
 
-    <p class="auth-aside">
-      DigiMenu is a product of Ogle.live Technologies, Dubai.<br>
-      Need help? <a href="mailto:connect@indubaicity.com" style="color:var(--brand-text)">connect@indubaicity.com</a>
+    <!-- ------------------------------- sign in ------------------------------- -->
+    <div id="paneIn" role="tabpanel" aria-labelledby="tabIn">
+      <h1>Restaurant sign in</h1>
+      <p class="lede">Manage your menu, download your QR and see the orders that came in.</p>
+
+      <div class="errsum" id="sumIn" role="alert" tabindex="-1" aria-labelledby="sumInH">
+        <h2 id="sumInH">Check these fields</h2>
+        <ul></ul>
+      </div>
+
+      <button class="btn btn-google btn-block" type="button" id="btnGoogle">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5Z"/>
+          <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-2.8-.4-4.1H24v8.4h12.5c-.3 2.1-1.6 5.2-4.7 7.3l7.6 5.9c4.5-4.2 6.7-10.3 6.7-17.5Z"/>
+          <path fill="#FBBC05" d="M10.4 28.7a14.5 14.5 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1Z"/>
+          <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.4-5.6l-7.6-5.9c-2 1.4-4.7 2.4-7.8 2.4-6.4 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48Z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="or"><span>or use your email</span></div>
+
+      <form id="formIn" novalidate>
+        <div class="field">
+          <label for="inEmail">Email</label>
+          <input class="input" id="inEmail" name="email" type="email" autocomplete="username" inputmode="email"
+                 spellcheck="false" placeholder="owner@restaurant.com" aria-describedby="inEmailErr">
+          <p class="err-msg" id="inEmailErr">Enter the email you signed up with.</p>
+        </div>
+
+        <div class="field">
+          <label for="inPass">Password</label>
+          <div class="pwd">
+            <input class="input" id="inPass" name="password" type="password" autocomplete="current-password"
+                   placeholder="Your password" aria-describedby="inPassErr">
+            <button class="pwd-btn" type="button" data-pwd="inPass" aria-pressed="false" aria-label="Show password">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.2 12S5.9 6 12 6s9.8 6 9.8 6-3.7 6-9.8 6-9.8-6-9.8-6Z"/><circle cx="12" cy="12" r="2.6"/></svg>
+            </button>
+          </div>
+          <p class="err-msg" id="inPassErr">Password is required.</p>
+        </div>
+
+        <div class="row-between">
+          <button class="link-btn" type="button" id="forgot">Forgot your password?</button>
+        </div>
+
+        <button class="btn btn-brand btn-block" type="submit">Sign in</button>
+      </form>
+
+      <p class="auth-foot">
+        <span>No account yet?</span>
+        <button class="link-btn" type="button" data-jump="up">Create one in a minute</button>
+      </p>
+    </div>
+
+    <!-- ---------------------------- create account ---------------------------- -->
+    <div id="paneUp" role="tabpanel" aria-labelledby="tabUp" hidden>
+      <h1>Create your account</h1>
+      <p class="lede">Four short steps. Nothing is public until your menu is finished — then everything is free for seven days.</p>
+
+      <div class="errsum" id="sumUp" role="alert" tabindex="-1" aria-labelledby="sumUpH">
+        <h2 id="sumUpH">Check these fields</h2>
+        <ul></ul>
+      </div>
+
+      <button class="btn btn-google btn-block" type="button" id="btnGoogleUp">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5Z"/>
+          <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-2.8-.4-4.1H24v8.4h12.5c-.3 2.1-1.6 5.2-4.7 7.3l7.6 5.9c4.5-4.2 6.7-10.3 6.7-17.5Z"/>
+          <path fill="#FBBC05" d="M10.4 28.7a14.5 14.5 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1Z"/>
+          <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.4-5.6l-7.6-5.9c-2 1.4-4.7 2.4-7.8 2.4-6.4 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48Z"/>
+        </svg>
+        Sign up with Google
+      </button>
+
+      <div class="or"><span>or use your email</span></div>
+
+      <form id="formUp" novalidate>
+        <div class="field">
+          <label for="upName">Your name</label>
+          <input class="input" id="upName" autocomplete="name" placeholder="Who is setting this up" aria-describedby="upNameErr">
+          <p class="err-msg" id="upNameErr">Please tell us your name.</p>
+        </div>
+
+        <div class="field">
+          <label for="upMobile">Mobile number</label>
+          <div class="phone-group">
+            <select class="input" id="upCC" aria-label="Country code"></select>
+            <input class="input" id="upMobile" inputmode="tel" autocomplete="tel-national" placeholder="52 575 7079" aria-describedby="upMobileErr">
+          </div>
+          <p class="hint">The guest's WhatsApp opens on this number and your order copies are sent to it. Use the restaurant's WhatsApp Business line.</p>
+          <p class="err-msg" id="upMobileErr">Enter a mobile number we can reach you on.</p>
+        </div>
+
+        <div class="field">
+          <label for="upEmail">Email</label>
+          <input class="input" id="upEmail" type="email" autocomplete="email" inputmode="email" spellcheck="false"
+                 placeholder="owner@restaurant.com" aria-describedby="upEmailErr">
+          <p class="err-msg" id="upEmailErr">That email does not look complete.</p>
+        </div>
+
+        <div class="field">
+          <label for="upPass">Password</label>
+          <div class="pwd">
+            <input class="input" id="upPass" type="password" autocomplete="new-password"
+                   placeholder="At least 8 characters" aria-describedby="upPassErr">
+            <button class="pwd-btn" type="button" data-pwd="upPass" aria-pressed="false" aria-label="Show password">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.2 12S5.9 6 12 6s9.8 6 9.8 6-3.7 6-9.8 6-9.8-6-9.8-6Z"/><circle cx="12" cy="12" r="2.6"/></svg>
+            </button>
+          </div>
+          <p class="hint">This account signs you in to the dashboard and is how order copies reach you.</p>
+          <p class="err-msg" id="upPassErr">Use at least 8 characters.</p>
+        </div>
+
+        <button class="btn btn-brand btn-block" type="submit">Continue to step 1 of 4</button>
+      </form>
+
+      <p class="auth-foot">
+        <span>Already have an account?</span>
+        <button class="link-btn" type="button" data-jump="in">Sign in instead</button>
+      </p>
+    </div>
+
+    <!-- ------------------------------- staff door -------------------------------
+         Reached at /<handle>/login. The address decides which restaurant the name
+         belongs to; the owner hands the name and password over in person. -->
+    <div id="paneStaff" role="tabpanel" aria-labelledby="tabIn" hidden>
+      <h1>Staff sign in</h1>
+      <p class="lede">Your owner gives you a name and a password for this restaurant. Type them here — nothing is sent to an email.</p>
+
+      <div class="errsum" id="sumStaff" role="alert" tabindex="-1" aria-labelledby="sumStaffH">
+        <h2 id="sumStaffH">Check these fields</h2>
+        <ul></ul>
+      </div>
+
+      <form id="formStaff" novalidate>
+        <div class="field">
+          <label for="stName">Name</label>
+          <input class="input" id="stName" autocomplete="username" autocapitalize="none" spellcheck="false"
+                 placeholder="The name your owner set" aria-describedby="stNameErr">
+          <p class="err-msg" id="stNameErr">Enter the name your owner gave you.</p>
+        </div>
+
+        <div class="field">
+          <label for="stPass">Password</label>
+          <div class="pwd">
+            <input class="input" id="stPass" type="password" autocomplete="current-password"
+                   placeholder="The password your owner set" aria-describedby="stPassErr">
+            <button class="pwd-btn" type="button" data-pwd="stPass" aria-pressed="false" aria-label="Show password">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.2 12S5.9 6 12 6s9.8 6 9.8 6-3.7 6-9.8 6-9.8-6-9.8-6Z"/><circle cx="12" cy="12" r="2.6"/></svg>
+            </button>
+          </div>
+          <p class="err-msg" id="stPassErr">Enter your password.</p>
+        </div>
+
+        <button class="btn btn-brand btn-block" type="submit">Sign in</button>
+      </form>
+
+      <p class="auth-foot">
+        <span>This is your restaurant?</span>
+        <button class="link-btn" type="button" id="stOwner">Owner sign-in</button>
+      </p>
+    </div>
+
+    <p class="auth-legal">
+      A product of Ogle.live Technologies, Dubai.<br>
+      Need help? <a href="mailto:connect@indubaicity.com">connect@indubaicity.com</a>
     </p>
+
   </div>
 </main>
 
-<script src="/api/config?v=20261111s"></script>
+<aside class="auth-art" aria-label="A live DigiMenu guest menu">
+  <img src="/assets/photos/hero-dish.jpg" alt="" aria-hidden="true">
+  <div class="auth-art-in">
+    <a class="demo-pill" href="/menu.html?r=spice-route">
+      <span class="dot" aria-hidden="true"></span>
+      Open a live menu
+    </a>
+    <h2>The menu your guests see is the one you are signing in to edit.</h2>
+    <p>Change a price, mark a dish sold out, and the page on every table is correct before you put the phone down.</p>
+  </div>
+</aside>
 
-<script src="/assets/config.js?v=20261111s"></script>
-<script src="/assets/auth.js?v=20261111s"></script>
-<script src="/assets/data.js?v=20261111s"></script>
-<script src="/assets/phone.js?v=20261111s"></script>
+<script src="/api/config?v=20261114a"></script>
+
+<script src="/assets/config.js?v=20261114a"></script>
+<script src="/assets/auth.js?v=20261114a"></script>
+<script src="/assets/data.js?v=20261114a"></script>
+<script src="/assets/phone.js?v=20261114a"></script>
 <script>
 (function () {
   "use strict";
@@ -419,6 +478,154 @@
     };
     saveState(s);
     location.href = "app.html?onboard=2";
+  });
+})();
+</script>
+
+<!-- Sign-in craft, kept out of the flow above so a failure here can never stop a
+     sign-in: reveal the password, arrow through the tabs, and keep a focusable
+     error summary in step with the inline errors. -->
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+  /* ---- show / hide the password ---- */
+  $$("[data-pwd]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var el = document.getElementById(btn.getAttribute("data-pwd"));
+      if (!el) return;
+      var show = el.type === "password";
+      el.type = show ? "text" : "password";
+      btn.setAttribute("aria-pressed", String(show));
+      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      el.focus({ preventScroll: true });
+    });
+  });
+
+  /* ---- tabs behave like tabs, not like two buttons ---- */
+  var tabs = $$(".auth-tabs [role=tab]");
+  tabs.forEach(function (t, i) {
+    t.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      e.preventDefault();
+      var n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      n.focus();
+      n.click();
+    });
+  });
+
+  /* ---- one error summary per pane, linked to its fields ---- */
+  var PANES = [
+    { pane: "#paneIn", sum: "#sumIn" },
+    { pane: "#paneUp", sum: "#sumUp" },
+    { pane: "#paneStaff", sum: "#sumStaff" }
+  ];
+
+  var lastSig = "";
+
+  function labelFor(el) {
+    var l = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+    return l ? l.textContent.trim() : (el.getAttribute("placeholder") || "This field");
+  }
+
+  function sync(paneSel, sumSel) {
+    var pane = $(paneSel), sum = $(sumSel);
+    if (!pane || !sum) return false;
+    var bad = $$(paneSel + " input.input.err, " + paneSel + " select.input.err");
+    var ul = sum.querySelector("ul");
+
+    bad.forEach(function (el) { el.setAttribute("aria-invalid", "true"); });
+    $$(paneSel + " input.input, " + paneSel + " select.input").forEach(function (el) {
+      if (bad.indexOf(el) === -1) el.removeAttribute("aria-invalid");
+    });
+
+    if (!bad.length) {
+      sum.classList.remove("show");
+      ul.innerHTML = "";
+      lastSig = "";
+      return false;
+    }
+
+    /* build the list first and touch the DOM only when it changed: a summary
+       rewritten on every mutation re-triggers its own observer, forever */
+    var items = bad.map(function (el) {
+      var errId = el.getAttribute("aria-describedby");
+      var errEl = errId ? document.getElementById(errId) : null;
+      var text = errEl && errEl.textContent.trim() ? errEl.textContent.trim() : "This field needs a value.";
+      var lb = labelFor(el);
+      /* "Password: Password is required." says it twice */
+      var line = text.toLowerCase().indexOf(lb.toLowerCase()) === 0 ? text : lb + ": " + text;
+      return { id: el.id, text: line };
+    });
+
+    var sig = items.map(function (it) { return it.id + "|" + it.text; }).join("~");
+    if (sig !== lastSig) {
+      lastSig = sig;
+      ul.innerHTML = "";
+      items.forEach(function (it) {
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.href = "#" + it.id;
+        a.textContent = it.text;
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          var el = document.getElementById(it.id);
+          if (!el) return;
+          el.focus();
+          el.scrollIntoView({ block: "center" });
+        });
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+    }
+
+    sum.classList.add("show");
+    return true;
+  }
+
+  PANES.forEach(function (p) {
+    if (!$(p.pane)) return;
+
+    /* inline errors appear and change after an await; watch them instead of
+       guessing when the request came back */
+    var mo = new MutationObserver(function () { sync(p.pane, p.sum); });
+    /* watch the form, never the pane: the summary sits beside the form, and a
+       summary rebuilt from its own observer never stops rebuilding */
+    mo.observe($(p.pane).querySelector("form") || $(p.pane), {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
+      childList: true,
+      characterData: true
+    });
+
+    var form = $(p.pane).querySelector("form");
+    if (!form) return;
+
+    var tried = false;
+    form.addEventListener("submit", function () {
+      tried = true;
+      var sum = $(p.sum);
+      if (sum) { sum.classList.remove("show"); sum.querySelector("ul").innerHTML = ""; }
+      /* after the handler has validated: put the reader on the summary */
+      window.setTimeout(function () {
+        if (sync(p.pane, p.sum) && sum) {
+          sum.focus();
+          sum.scrollIntoView({ block: "nearest" });
+        }
+      }, 0);
+    });
+
+    /* a field emptied after a first attempt is a mistake we can name early */
+    form.addEventListener("focusout", function (e) {
+      if (!tried) return;
+      var el = e.target;
+      if (!el || !el.matches || !el.matches("input.input")) return;
+      if (!el.value.trim()) return;
+      window.setTimeout(function () { sync(p.pane, p.sum); }, 0);
+    });
   });
 })();
 </script>
