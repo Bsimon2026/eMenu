@@ -118,7 +118,7 @@
     /* the bar's button is written once in the markup and never followed the
        language: an Arabic menu still said "Review order" at the bottom */
     const barGo = document.querySelector("#barCheckout");
-    if (barGo) barGo.textContent = T("Review & Confirm", "مراجعة وتأكيد");
+    if (barGo) barGo.textContent = T("Review order", "مراجعة الطلب");
 
     /* the two big buttons are three lines each and were written only in English */
     const cta = function (sel, main) {
@@ -344,7 +344,7 @@
     if (!count) {
       body.innerHTML = '<p class="cart-empty">' +
         T("Nothing added yet. Tap Add on a dish and it appears here.", "لم تُضف شيئاً بعد. اضغط أضف على أي طبق.") + '</p>';
-      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>' + T("Review & Confirm", "مراجعة وتأكيد") + '</button>';
+      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>' + T("Review order", "مراجعة الطلب") + '</button>';
     } else {
       body.innerHTML = Array.from(cart.entries()).map(([id, r]) => `
         <div class="crow">
@@ -358,7 +358,7 @@
         </div>`).join("");
       foot.innerHTML =
         '<div class="cart-total"><span>Total</span><b>' + money(sum) + "</b></div>" +
-        '<button class="checkout-btn" type="button" id="goCheckout">' + T("Review & Confirm", "مراجعة وتأكيد") + '</button>';
+        '<button class="checkout-btn" type="button" id="goCheckout">' + T("Review order", "مراجعة الطلب") + '</button>';
       $$("[data-inc]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.inc, 1)));
       $$("[data-dec]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.dec, -1)));
       $("#goCheckout").addEventListener("click", openSheet);
@@ -592,7 +592,7 @@
   const API_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.apiBase) || "";
   let sending = false;
 
-  async function submitOrder(guest, phone) {
+  async function submitOrder(guest, phone, email) {
     if (sending) return null;
     sending = true;
     try {
@@ -607,7 +607,7 @@
           address: address,
           name: guest,
           phone: phone,
-          email: emailRaw,
+          email: email || "",
           total: totals().sum,
           discountCode: applied ? applied.code : null,
           items: Array.from(cart.values()).map((r) => ({
@@ -670,7 +670,7 @@
     const guest = $("#guestName").value.trim();
     const confirmBtn = $("#confirmOrder");
     if (confirmBtn) confirmBtn.disabled = true;
-    const saved = await submitOrder(guest, phoneRaw);
+    const saved = await submitOrder(guest, phoneRaw, emailRaw);
 
     /* The reference travels in the guest's own message. The WhatsApp account they
        send from can be a different number from the one they typed, and without
@@ -687,8 +687,13 @@
       `<div class="ol-row"><span>${mode} · ${place}</span><span>${money(totals().sum)}</span></div>` +
       `<div class="ol-row"><span>${totals().count} item${totals().count === 1 ? "" : "s"} for ${guest}</span><span>${name}</span></div>`;
     if (saved && saved.ok === false) {
-      $("#doneNext").textContent = "We could not save a copy for the restaurant just now — send the message below so they still get your order.";
+      /* Say it plainly: the panel will not show this order, so the WhatsApp
+         message is the only copy the restaurant gets. */
+      console.error("[order] not saved", saved);
+      $("#doneNext").textContent = "This order could not be saved for the restaurant — send the message below so they still receive it.";
+      $("#doneNext").classList.add("warn");
     } else {
+    $("#doneNext").classList.remove("warn");
     $("#doneNext").textContent =
       mode === "Dine In"
         ? "Your table order is saved. The restaurant confirms it on WhatsApp; payment stays at the table."

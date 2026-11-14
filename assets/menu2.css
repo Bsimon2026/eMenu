@@ -1754,3 +1754,6 @@ html.t-dark #sheet .phone-row .dial {
 }
 html.t-dark .phone-row .dial option { background: #1B1F24; color: #F3EFE7; }
 
+/* the order did not reach the panel: that has to be visible */
+.next-steps.warn { color: var(--danger); font-weight: 500; }
+
