@@ -250,14 +250,7 @@
       </section>`;
   }).join("");
 
-  document.getElementById("sections").addEventListener("click", (e) => {
-    const add = e.target.closest("[data-id].add");
-    if (add) { addToCart(add.dataset.id); syncItemRow(add.dataset.id); return; }
-    const plus = e.target.closest("[data-step-plus]");
-    if (plus) { changeQty(plus.getAttribute("data-step-plus"), 1); syncItemRow(plus.getAttribute("data-step-plus")); return; }
-    const minus = e.target.closest("[data-step-minus]");
-    if (minus) { changeQty(minus.getAttribute("data-step-minus"), -1); syncItemRow(minus.getAttribute("data-step-minus")); }
-  });
+
 
   /* ---------- cart ---------- */
 
@@ -375,6 +368,17 @@
 
   $("#barCheckout").addEventListener("click", openSheet);
 
+  /* One listener for the whole dish list. This used to sit inside paint(), so a
+     language switch attached a second copy and every tap counted twice. */
+  document.getElementById("sections").addEventListener("click", (e) => {
+    const add = e.target.closest("[data-id].add");
+    if (add) { addToCart(add.dataset.id); syncItemRow(add.dataset.id); return; }
+    const plus = e.target.closest("[data-step-plus]");
+    if (plus) { changeQty(plus.getAttribute("data-step-plus"), 1); syncItemRow(plus.getAttribute("data-step-plus")); return; }
+    const minus = e.target.closest("[data-step-minus]");
+    if (minus) { changeQty(minus.getAttribute("data-step-minus"), -1); syncItemRow(minus.getAttribute("data-step-minus")); }
+  });
+
   /* ---------- sheet ---------- */
 
   const sheet = $("#sheet");
@@ -386,6 +390,7 @@
     const cb = $("#confirmOrder");
     if (cb) cb.disabled = false;
     if (!totals().count) return;
+    submitKey = newSubmitKey();
     renderModeFields();
     renderSheetTotals();
     sheet.classList.add("on");
@@ -591,6 +596,12 @@
      mobile number is now required. */
   const API_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.apiBase) || "";
   let sending = false;
+  /* One key per order attempt: a double tap, a flaky connection or a retried
+     request can only ever create one order, because the server keys on this. */
+  let submitKey = "";
+  const newSubmitKey = function () {
+    try { return crypto.randomUUID(); } catch (e) { return String(Date.now()) + "-" + Math.random().toString(16).slice(2); }
+  };
 
   async function submitOrder(guest, phone, email) {
     if (sending) return null;
@@ -608,6 +619,7 @@
           name: guest,
           phone: phone,
           email: email || "",
+          submitKey: submitKey || null,
           total: totals().sum,
           discountCode: applied ? applied.code : null,
           items: Array.from(cart.values()).map((r) => ({
@@ -671,6 +683,7 @@
     const confirmBtn = $("#confirmOrder");
     if (confirmBtn) confirmBtn.disabled = true;
     const saved = await submitOrder(guest, phoneRaw, emailRaw);
+    if (saved && saved.ok) submitKey = newSubmitKey();
 
     /* The reference travels in the guest's own message. The WhatsApp account they
        send from can be a different number from the one they typed, and without
@@ -681,7 +694,9 @@
     const url = "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent(msg);
     recordOrder(guest, msg, phoneRaw);
 
-    const place = mode === "Dine In" ? "table " + table : mode === "Take Away" ? pickup : "Delivery";
+    const place = mode === "Dine In" ? "table " + table
+      : mode === "Take Away" ? pickup
+      : (address.replace(/\s+/g, " ").trim() || "your address");
     $("#doneWa").href = url;
     $("#doneReceipt").innerHTML =
       `<div class="ol-row"><span>${mode} · ${place}</span><span>${money(totals().sum)}</span></div>` +

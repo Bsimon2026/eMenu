@@ -167,6 +167,7 @@ module.exports = async function handler(req, res) {
   total = applied ? applied.total : subtotal;
   const pickupTime = mode === "Take Away" ? pickupWhen(body.pickupAt) : null;
 
+  const submitKey = clean(body.submitKey, 64) || null;
   const order = {
     restaurant_id: restaurant.id,
     mode,
@@ -183,6 +184,7 @@ module.exports = async function handler(req, res) {
     discount_amount: applied ? applied.amount : 0,
     status: "awaiting_confirmation"
   };
+  if (submitKey) order.submit_key = submitKey;
 
   /* A second press of the same button, a double tap on a slow phone, or the
      same order sent twice a second apart all used to land as separate orders —
@@ -207,17 +209,35 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  let made = await rest("orders", { method: "POST", body: order, prefer: "return=representation" });
-  /* 0019 may not have run yet: a deploy lands before the SQL does, so write the
-     order without the money columns rather than lose the order */
+  /* The duplicate check above is read-then-write, so two requests arriving
+     together both pass it — that is how one tap became two orders and two
+     emails. With a submit key the insert is idempotent: the second request is
+     answered with the row the first one created. */
+  let made = await rest(
+    submitKey ? "orders?on_conflict=submit_key" : "orders",
+    {
+      method: "POST",
+      body: order,
+      prefer: submitKey ? "return=representation,resolution=ignore-duplicates" : "return=representation"
+    }
+  );
+  let duplicate = false;
+  if (submitKey && made.ok && !(made.data || []).length) {
+    const ex = await rest("orders?submit_key=eq." + encodeURIComponent(submitKey) + "&select=*&limit=1");
+    if (ex.ok && (ex.data || []).length) { made = { ok: true, data: ex.data }; duplicate = true; }
+  }
+
+  /* 0019/0020/0021 may not have run yet: a deploy lands before the SQL does, so
+     write what will fit rather than lose the order */
   const why = JSON.stringify(made.error || made.data || "");
-  if (!made.ok && /subtotal|discount_|delivery_fee|email|column|schema|PGRST204/i.test(why)) {
+  if (!made.ok && /subtotal|discount_|delivery_fee|email|submit_key|column|schema|PGRST204/i.test(why)) {
     const lean = Object.assign({}, order);
     delete lean.subtotal;
     delete lean.delivery_fee;
     delete lean.discount_code;
     delete lean.discount_amount;
     delete lean.email;
+    delete lean.submit_key;
     made = await rest("orders", { method: "POST", body: lean, prefer: "return=representation" });
   }
   if (!made.ok) {
