@@ -27,7 +27,7 @@
 <link rel="manifest" href="assets/site.webmanifest">
 <!-- Satoshi + Geist Mono, self-hosted. No third-party font host is contacted. -->
 <link rel="stylesheet" href="assets/fonts.css?v=20261114a">
-<link rel="stylesheet" href="assets/landing.css?v=20261114h">
+<link rel="stylesheet" href="assets/landing.css?v=20261114i">
 <script>document.documentElement.classList.add("js");</script>
 <script type="application/ld+json">
 {
@@ -263,126 +263,77 @@
   <!-- ============================= pricing ============================= -->
   <section class="section pricing" id="pricing">
     <div class="wrap">
-      <div class="price-head reveal">
-        <div class="section-head" style="max-width:640px">
-          <span class="kicker">Pricing</span>
-          <h2 class="h2">Three plans. No commission, ever.</h2>
-          <p class="body">Start free for a week and pay only when the menu is ready to go in front of a guest. Prices in AED, including 5% VAT.</p>
-        </div>
-        <div class="toggle" role="group" aria-label="Billing period">
-          <button type="button" data-bill="yearly" aria-pressed="true">Yearly <em>save up to 35%</em></button>
-          <button type="button" data-bill="monthly" aria-pressed="false">Monthly</button>
-        </div>
+      <div class="section-head reveal" style="max-width:640px">
+        <span class="kicker">Pricing</span>
+        <h2 class="h2">Three plans. No commission, ever.</h2>
+        <p class="body">Start free for a week and pay only when the menu is ready to go in front of a guest. Prices in AED, including 5% VAT.</p>
       </div>
 
-      <div class="plans">
-        <!-- QR Menu -->
-        <article class="plan reveal" data-plan="qr" data-annual="99" data-monthly="99">
-          <div class="plan-name">QR Menu</div>
-          <p class="plan-who">For a restaurant that wants the menu on the table, today.</p>
-          <div class="plan-price">
-            <span class="cur">AED</span>
-            <b data-price>99</b>
-            <span data-period>/ year</span>
-          </div>
-          <div class="plan-save" data-save>Annual plan only · less than AED 9 a month</div>
-          <ul class="plan-ul">
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Live QR menu, permanent link, unlimited scans</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Up to 50 dishes, a photo on each</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Instant sold-out switch, promo shelves</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>English and Arabic</span></li>
-            <li class="off"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v2H6z"/></svg><span>No online ordering</span></li>
-          </ul>
-          <a class="btn btn-line btn-block" href="login.html?mode=up">Start with QR Menu</a>
-        </article>
-
-        <!-- Pro -->
-        <article class="plan plan-hi reveal" data-plan="pro" data-annual="999" data-monthly="129" style="--d:80ms">
-          <span class="ribbon">Most restaurants pick this</span>
-          <div class="plan-name">Pro</div>
-          <p class="plan-who">Dine-in, take-away and delivery ordering, in one thread.</p>
-          <div class="plan-price">
-            <span class="cur">AED</span>
-            <b data-price>999</b>
-            <span data-period>/ year</span>
-          </div>
-          <div class="plan-save" data-save>Save AED 549 a year · AED 83 a month</div>
-          <ul class="plan-ul">
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span><b>Everything in QR Menu</b>, unlimited dishes</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Table, take-away and delivery ordering</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>WhatsApp Business integration and the full order history</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Google review collection</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Bulk price changes across the whole menu</span></li>
-          </ul>
-          <a class="btn btn-brand btn-block" href="login.html?mode=up">Start with Pro</a>
-        </article>
-
-        <!-- Ultra -->
-        <article class="plan reveal" data-plan="ultra" data-annual="1999" data-monthly="249" style="--d:160ms">
-          <div class="plan-name">Ultra</div>
-          <p class="plan-who">Your own brand, beyond the QR code.</p>
-          <div class="plan-price">
-            <span class="cur">AED</span>
-            <b data-price>1999</b>
-            <span data-period>/ year</span>
-          </div>
-          <div class="plan-save" data-save>Save AED 989 a year · AED 167 a month</div>
-          <ul class="plan-ul">
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span><b>Everything in Pro</b>, all three order modes</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>An exclusive branded landing page — your dishes, your story</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Your own domain, as an add-on</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Social media auto-posting <span class="soon">soon</span></span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Google reviews and WhatsApp integration</span></li>
-          </ul>
-          <a class="btn btn-line btn-block" href="login.html?mode=up">Start with Ultra</a>
-        </article>
-      </div>
-
-      <!-- the full comparison -->
       <div class="compare-wrap reveal">
         <div class="compare-title">
-          <h3>Everything, side by side</h3>
-          <span>Swipe the table on a phone →</span>
+          <h3>What each plan includes</h3>
+          <span>Swipe the table on a phone &rarr;</span>
         </div>
         <div class="table-scroll">
           <table class="compare">
             <thead>
               <tr>
-                <th scope="col">What you get</th>
-                <th scope="col">QR Menu</th>
-                <th scope="col" class="hi">Pro</th>
-                <th scope="col">Ultra</th>
+                <th scope="col"><span class="pn">Plan</span></th>
+                <th scope="col" class="pcol" data-plan="qr" data-annual="99" data-monthly="0">
+                  <span class="pn">QR Menu</span>
+                  <span class="pb">Taking your menu digital in minutes</span>
+                </th>
+                <th scope="col" class="pcol hi" data-plan="pro" data-annual="999" data-monthly="129">
+                  <span class="ptag">Most popular</span>
+                  <span class="pn">Pro</span>
+                  <span class="pb">Dine-in, take-away and delivery ordering</span>
+                </th>
+                <th scope="col" class="pcol" data-plan="ultra" data-annual="1999" data-monthly="249">
+                  <span class="pn">Ultra</span>
+                  <span class="pb">Your complete brand experience</span>
+                </th>
               </tr>
             </thead>
             <tbody>
+              <tr><th scope="row">Monthly price</th><td><span class="muted">Annual only</span></td><td class="pd">129</td><td class="pd">249</td></tr>
+              <tr><th scope="row">Annual price</th><td class="pd">99</td><td class="pd">999</td><td class="pd">1,999</td></tr>
+              <tr><th scope="row">You save with annual</th><td class="no">&mdash;</td><td><span class="pd">549</span><span class="pct">35%</span></td><td><span class="pd">989</span><span class="pct">33%</span></td></tr>
+
               <tr class="group"><th colspan="4">The menu</th></tr>
               <tr><th scope="row">Menu items</th><td>50</td><td>Unlimited</td><td>Unlimited</td></tr>
-              <tr><th scope="row">Full menu control, edit any time</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Bilingual menu — English and Arabic</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Instant sold-out switch</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Photo and item upload</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">QR menu page, fast on any phone</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><th scope="row">Full menu control, edit any time</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Bilingual menu &mdash; English and Arabic</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Instant sold-out switch</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Photo and item upload</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">QR menu page, fast on any phone</th><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
 
               <tr class="group"><th colspan="4">Ordering</th></tr>
-              <tr><th scope="row">Online ordering</th><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Table dine-in ordering</th><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Take-away ordering</th><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Delivery ordering</th><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+              <tr><th scope="row">Online ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Table dine-in ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Take-away ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Delivery ordering</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
 
               <tr class="group"><th colspan="4">Growth and branding</th></tr>
-              <tr><th scope="row">Google review collection</th><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">WhatsApp API integration</th><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Your own custom domain</th><td class="no">—</td><td class="no">—</td><td>Add-on<span class="addon">AED 99 / year</span></td></tr>
-              <tr><th scope="row">Exclusive branded landing page</th><td class="no">—</td><td class="no">—</td><td class="yes">✓</td></tr>
-              <tr><th scope="row">Social media auto-posting</th><td class="no">—</td><td class="no">—</td><td><span class="soon">soon</span></td></tr>
+              <tr><th scope="row">Google review collection</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">WhatsApp API integration</th><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Your own custom domain</th><td class="no">&mdash;</td><td class="no">&mdash;</td><td>Add-on<span class="addon">AED 99 / year</span></td></tr>
+              <tr><th scope="row">Exclusive branded landing page</th><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="yes">&#10003;</td></tr>
+              <tr><th scope="row">Social media auto-posting</th><td class="no">&mdash;</td><td class="no">&mdash;</td><td><span class="soon">soon</span></td></tr>
             </tbody>
+            <tfoot>
+              <tr>
+                <td></td>
+                <td><a class="btn btn-line btn-block" href="login.html?mode=up">Start with QR Menu</a></td>
+                <td><a class="btn btn-brand btn-block" href="login.html?mode=up">Start with Pro</a></td>
+                <td><a class="btn btn-line btn-block" href="login.html?mode=up">Start with Ultra</a></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
         <p class="price-note">
-          The free week starts when you create the account, and nothing is charged at sign-up. After that you pay by
-          transfer or on WhatsApp and the menu goes live the same day — no card is stored and nothing renews by itself.
-          Cancel any time; the QR stays live until the period you paid for ends. WhatsApp charges Meta's own per-message
-          fee on the Business API, which is separate from us.
+          Nothing is charged at sign-up, and no card is stored. You pay by transfer or on WhatsApp and the menu goes
+          live the same day. Cancel any time; the QR stays live until the period you paid for ends. The WhatsApp Business
+          API carries Meta's own per-message fee, which is separate from us.
         </p>
       </div>
     </div>

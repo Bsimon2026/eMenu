@@ -1046,3 +1046,65 @@ td .addon {
 }
 
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 4px; }
+
+/* ---------- pricing: one table, three plan columns (the plan sheet) ------- */
+table.compare { table-layout: fixed; }
+table.compare th[scope="row"], table.compare thead th:first-child { width: 34%; }
+table.compare td { width: 22%; }
+
+table.compare thead th.pcol, table.compare thead th:first-child { padding-top: 30px; padding-bottom: 22px; }
+table.compare thead th:first-child { vertical-align: top; }
+/* keep sticky: a relative th here silently unpins the three plan columns */
+table.compare thead th.pcol { vertical-align: top; white-space: normal; }
+
+table.compare thead th .pn {
+  display: block; font-family: var(--ui); font-size: 16px; font-weight: 600;
+  letter-spacing: -.01em; text-transform: none; color: var(--ink); white-space: normal;
+}
+table.compare thead th.hi .pn { color: var(--brand); }
+
+table.compare thead th .pb {
+  display: block; margin-top: 7px; font-family: var(--ui); font-size: 11.5px; font-weight: 400;
+  letter-spacing: 0; text-transform: none; line-height: 1.45; color: var(--ink-4);
+  white-space: normal; max-width: 26ch;
+}
+
+table.compare thead th .ptag {
+  position: absolute; top: 11px; left: 18px; padding: 3px 7px; border-radius: 3px;
+  background: var(--brand); color: var(--brand-ink); font-family: var(--ui);
+  font-size: 9.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+}
+
+table.compare td.pd, table.compare td .pd {
+  font-family: var(--mono); font-size: 15px; color: var(--ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+table.compare td .pct { display: block; margin-top: 3px; font-family: var(--mono); font-size: 10.5px; color: var(--ok); }
+table.compare .muted { font-size: 11.5px; color: var(--ink-4); }
+
+/* a horizontal scroll container is also a scroll port, which kills a sticky
+   table head — the table fits a desktop without one */
+.table-scroll { overflow: visible; }
+/* the sticky plan names must sit below the sticky site nav, not under it */
+table.compare thead th { top: 64px; }
+table.compare tfoot td { padding: 22px 14px 18px; border-bottom: 0; }
+table.compare tfoot .btn { width: 100%; }
+
+/* the three plans must all be on screen at 390px — the one we recommend is
+   worthless if it needs a swipe to find */
+@media (max-width: 640px) {
+  table.compare { min-width: 0; font-size: 12px; }
+  table.compare th, table.compare td { padding: 9px 8px; }
+  table.compare thead th.pcol, table.compare thead th:first-child { padding-top: 27px; padding-bottom: 14px; }
+  table.compare thead th:first-child { padding-top: 12px; }
+  table.compare thead th .pn { font-size: 12.5px; }
+  table.compare thead th .pb { display: none; }
+  table.compare thead th .ptag { top: 6px; left: 6px; font-size: 7px; padding: 2px 3px; letter-spacing: 0; white-space: nowrap; }
+  table.compare th[scope="row"] { width: 39%; font-size: 11.5px; line-height: 1.3; }
+  table.compare td { width: 20.33%; }
+  table.compare td.pd, table.compare td .pd { font-size: 12.5px; }
+  table.compare .addon { font-size: 9px; padding: 1px 4px; }
+  table.compare tfoot td { padding: 14px 2px 12px; }
+  table.compare tfoot .btn { font-size: 10px; line-height: 1.2; padding: 9px 3px; white-space: normal; }
+  .compare-title span { display: none; }
+}
