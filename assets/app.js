@@ -1239,8 +1239,12 @@
       }
     }
 
-    const pillText = live ? "Published" : ready ? "Ready to publish" : "Draft";
-    const pillCls = "pill " + (live || ready ? "pill-ok" : "pill-warn");
+    /* One word for the state, and it is the state: Published or Unpublished.
+       "Draft", "Trial" and "Ready to publish" said three different things about
+       one flag, so the owner could not tell whether the menu was live. What is
+       still missing, and whether it is ready, is said in the sentence below. */
+    const pillText = live ? "Published" : "Unpublished";
+    const pillCls = "pill " + (live ? "pill-ok" : "pill-warn");
     /* one status, printed twice: the Publishing pane and the Today summary */
     [["#publishPill", "#publishHint"], ["#ovPubPill", "#ovPubHint"]].forEach(([pSel, hSel]) => {
       const p = $(pSel), h = $(hSel);
@@ -1270,9 +1274,16 @@
     if (ovNote) ovNote.textContent = live ? publicLink(state.handle) : "";
     if (!blocked.length && !publishErrorSticky) showPublishProblems([]);
 
-    $("#topStatus").className = "pill " + (live ? "pill-ok" : ready ? "pill-warn" : "pill-warn");
-    $("#topStatus").textContent = live ? "Live" : ready ? "Ready to publish" : "Trial";
-    $("#sideStatus").textContent = live ? "Live · published" : ready ? "Ready to publish" : "Trial · not published";
+    $("#topStatus").className = "pill " + (live ? "pill-ok" : "pill-warn");
+    $("#topStatus").textContent = live ? "Published" : "Unpublished";
+    $("#sideStatus").textContent = live
+      ? "Published · guests can open it"
+      : "Unpublished · guests cannot open it yet";
+    const navState = $("#navPubState");
+    if (navState) {
+      navState.className = "nv-state " + (live ? "ok" : "off");
+      navState.textContent = live ? "Published" : "Unpublished";
+    }
     $("#sideDot").className = "dot" + (live ? " live" : "");
     $("#sideRest").textContent = state.restaurant.name || "Your restaurant";
 

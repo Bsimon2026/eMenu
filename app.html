@@ -12,7 +12,7 @@
   <link rel="manifest" href="/assets/site.webmanifest">
 <link rel="stylesheet" href="/assets/fonts.css?v=20261115a">
 <link rel="stylesheet" href="/assets/base.css?v=20261114a">
-<link rel="stylesheet" href="/assets/app-v2.css?v=20261118a">
+<link rel="stylesheet" href="/assets/app-v2.css?v=20261118b">
 </head>
 <body class="app-body">
 
@@ -45,6 +45,7 @@
       <a href="#" data-view="publish">
         <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.4"/><path d="M10 3v2.2M10 14.8V17M3 10h2.2M14.8 10H17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         <span>Publishing</span>
+        <span class="nv-state" id="navPubState">—</span>
       </a>
       <a href="#" data-view="import">
         <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 13V4m0 0L6.5 7.5M10 4l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 14v1.5A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5V14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -97,11 +98,11 @@
     <header class="topbar">
       <div class="tb-id">
         <div class="tb-rest"><span class="dot" id="sideDot"></span><span id="sideRest">Your restaurant</span></div>
-        <div class="tb-status" id="sideStatus">Trial · not published</div>
+        <div class="tb-status" id="sideStatus">Unpublished · guests cannot open it yet</div>
       </div>
       <h1 id="pageTitle">Orders</h1>
       <div class="tb-right">
-        <span class="pill pill-warn" id="topStatus">Trial</span>
+        <span class="pill pill-warn" id="topStatus">Unpublished</span>
         <a class="btn btn-outline btn-sm" id="guestViewTop" href="/menu.html" target="_blank" rel="noopener">Guest view</a>
         <button class="btn btn-brand btn-sm" type="button" data-view="import">Import menu</button>
       </div>
@@ -119,7 +120,7 @@
               <h2>Publishing</h2>
               <p id="ovPubHint">Two things are needed before guests can see this menu.</p>
             </div>
-            <span class="pill pill-warn" id="ovPubPill">Draft</span>
+            <span class="pill pill-warn" id="ovPubPill">Unpublished</span>
           </div>
           <div class="card-body">
             <div class="publish-row">
@@ -184,7 +185,7 @@
               <h2>Publish your menu</h2>
               <p id="publishHint">Two things are needed before guests can see this menu.</p>
             </div>
-            <span class="pill pill-warn" id="publishPill">Draft</span>
+            <span class="pill pill-warn" id="publishPill">Unpublished</span>
           </div>
           <div class="card-body">
             <div class="publish-error" id="publishError" role="alert" hidden></div>
@@ -932,6 +933,8 @@
           <a href="#" data-view="feedback"><span class="mi-t">Feedback</span><span class="mi-d">What guests said after they ate</span></a>
           <a href="#" data-view="docs"><span class="mi-t">Settings</span><span class="mi-d">Documents, team logins, sign-in, guest page</span></a>
           <a href="/menu.html" id="guestViewMore" target="_blank" rel="noopener"><span class="mi-t">Guest view</span><span class="mi-d">What a guest sees when they scan the table card</span></a>
+          <a href="https://wa.me/971568911233" target="_blank" rel="noopener"><span class="mi-t">Support</span><span class="mi-d">+971 56 891 233 · WhatsApp</span></a>
+          <a href="tel:+971568911233"><span class="mi-t">Call support</span><span class="mi-d">+971 56 891 233</span></a>
           <button type="button" id="signOutMore"><span class="mi-t">Sign out</span><span class="mi-d">Ends this session on this device</span></button>
         </div>
       </section>
@@ -1193,6 +1196,6 @@
 <script src="/assets/phone.js?v=20261111s"></script>
 <script src="/assets/vendor/xlsx.full.min.js?v=20261111s"></script>
 <script src="/assets/vendor/qrcode-generator.js?v=20261111s"></script>
-<script src="/assets/app.js?v=20261118a"></script>
+<script src="/assets/app.js?v=20261118b"></script>
 </body>
 </html>

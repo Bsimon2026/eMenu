@@ -2220,3 +2220,18 @@ select.input {
   white-space: nowrap;
 }
 .side-foot .ss-btn:hover { border-color: var(--ink-4); background: #141A1B; color: var(--ink); }
+
+/* the publishing state, in the nav: Published or Unpublished, nothing softer */
+.nv-state {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-2);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+.nv-state.ok { color: var(--ok); border-color: #23553F; background: var(--ok-bg); }
+.nv-state.off { color: #E5B36A; border-color: #4A3A1B; background: var(--warn-bg); }
