@@ -759,6 +759,10 @@
      mobile number is now required. */
   const API_BASE = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.apiBase) || "";
   let sending = false;
+  /* the done panel exactly as shipped, so a retry after a failed save can put
+     its own words back */
+  const DONE_TITLE = ($("#doneTitle") || {}).textContent || "Order received";
+  const DONE_SUB = ($("#doneSub") || {}).textContent || "";
   /* One key per order attempt: a double tap, a flaky connection or a retried
      request can only ever create one order, because the server keys on this. */
   let submitKey = "";
@@ -869,12 +873,22 @@
       `<div class="ol-row"><span>${T(mode, modeAr[mode])} · ${place}</span><span>${money(totals().sum)}</span></div>` +
       `<div class="ol-row"><span>${countLine}</span><span>${name}</span></div>`;
     if (saved && saved.ok === false) {
-      /* Say it plainly: the panel will not show this order, so the WhatsApp
-         message is the only copy the restaurant gets. */
+      /* Say it plainly, and say it at the top: the panel will not show this
+         order, so the WhatsApp message is the only copy the restaurant gets. A
+         "Order received" headline over a small warning is how a guest walks
+         away believing the kitchen has it. */
       console.error("[order] not saved", saved);
+      const title = $("#doneTitle");
+      if (title) title.textContent = "Not saved — send it on WhatsApp";
+      const sub = $("#doneSub");
+      if (sub) sub.textContent = "The restaurant's dashboard did not take this order. Send the message below and they will still receive it.";
       $("#doneNext").textContent = "This order could not be saved for the restaurant — send the message below so they still receive it.";
       $("#doneNext").classList.add("warn");
     } else {
+    const title = $("#doneTitle");
+    if (title) title.textContent = DONE_TITLE;
+    const sub = $("#doneSub");
+    if (sub) sub.textContent = DONE_SUB;
     $("#doneNext").classList.remove("warn");
     $("#doneNext").textContent =
       mode === "Dine In"
