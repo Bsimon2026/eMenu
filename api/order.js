@@ -227,10 +227,19 @@ module.exports = async function handler(req, res) {
     if (ex.ok && (ex.data || []).length) { made = { ok: true, data: ex.data }; duplicate = true; }
   }
 
-  /* 0019/0020/0021 may not have run yet: a deploy lands before the SQL does, so
-     write what will fit rather than lose the order */
+  /* Migrations are pasted by hand, so the deploy can land first. Peel the payload
+     back one layer at a time — dropping everything at once used to cost the
+     guest's email every time a single new column was missing. */
   const why = JSON.stringify(made.error || made.data || "");
-  if (!made.ok && /subtotal|discount_|delivery_fee|email|submit_key|column|schema|PGRST204/i.test(why)) {
+  if (!made.ok && /submit_key|column|schema|PGRST204/i.test(why) && !duplicate) {
+    /* 0021 not run yet: same order, no key */
+    const noKey = Object.assign({}, order);
+    delete noKey.submit_key;
+    made = await rest("orders", { method: "POST", body: noKey, prefer: "return=representation" });
+  }
+  const why2 = JSON.stringify(made.error || made.data || "");
+  if (!made.ok && /subtotal|discount_|delivery_fee|email|column|schema|PGRST204/i.test(why2)) {
+    /* 0019 or 0020 not run yet: the money columns and the email have to go */
     const lean = Object.assign({}, order);
     delete lean.subtotal;
     delete lean.delivery_fee;
