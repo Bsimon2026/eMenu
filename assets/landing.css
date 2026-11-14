@@ -329,8 +329,8 @@ button { font: inherit; color: inherit; }
   align-self: end;
   margin: 0 10px 8px 0;
   width: min(336px, 100%);
-  background: rgba(18, 22, 26, .86);
-  border: 1px solid rgba(255, 255, 255, .13);
+  background: rgba(12, 14, 17, .9);
+  border: 1px solid rgba(255, 255, 255, .15);
   border-radius: var(--r-lg);
   padding: 16px 16px 14px;
   backdrop-filter: blur(18px) saturate(150%);
@@ -1128,4 +1128,85 @@ table.compare tfoot .btn { width: 100%; }
   background: var(--ok);
   box-shadow: 0 0 0 3px rgba(99, 192, 140, .18);
   flex: none;
+}
+
+/* ============ the photograph: a charcoal grill, not a burger ================
+   The dish sits centre-left in its frame with the sauces along the bottom, so
+   the crop leans left and slightly down; the grade warms the skin of the bird
+   and lets the plate fall into the ground. Desktop only: below 1024px the photo
+   goes full-bleed behind the copy and its own near-solid scrim is what keeps
+   the words readable — overriding that here made the phone hero unreadable. */
+@media (min-width: 1024px) {
+.hero-photo { width: 50%; }
+.hero-photo img {
+  object-position: 52% 44%;
+  filter: saturate(1.05) contrast(1.04) brightness(.96);
+}
+.hero-photo::after {
+  background:
+    linear-gradient(90deg,
+      var(--bg) 0%,
+      rgba(10, 11, 12, .88) 10%,
+      rgba(10, 11, 12, .34) 26%,
+      rgba(10, 11, 12, .02) 46%,
+      rgba(10, 11, 12, .22) 100%),
+    linear-gradient(180deg,
+      rgba(10, 11, 12, .82) 0%,
+      rgba(10, 11, 12, .06) 24%,
+      rgba(10, 11, 12, .12) 74%,
+      rgba(10, 11, 12, .94) 100%);
+}
+}
+
+/* ============ the problem band ============
+   Three failures, set as a ruled block rather than three cards: this page has
+   already used its card budget on the dashboard. */
+.problem {
+  border-top: 1px solid var(--rule);
+  padding-bottom: clamp(48px, 5vw, 76px);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 54px;
+  border-top: 1px solid var(--rule);
+}
+.prob {
+  padding: 30px 34px 34px 0;
+  border-right: 1px solid var(--rule);
+}
+.prob:last-child { border-right: 0; padding-right: 0; }
+.prob + .prob { padding-left: 34px; }
+
+.prob-n {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: var(--brand);
+  margin-bottom: 14px;
+}
+.prob .h3 { font-size: clamp(17px, 1.5vw, 20px); }
+.prob .body { margin-top: 9px; font-size: 14.5px; line-height: 1.55; }
+
+.problem-close {
+  margin: 34px 0 0;
+  padding-top: 26px;
+  border-top: 1px solid var(--rule);
+  font-size: clamp(15px, 1.4vw, 18px);
+  line-height: 1.5;
+  letter-spacing: -.01em;
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+@media (max-width: 860px) {
+  .problem-grid { grid-template-columns: 1fr; margin-top: 40px; }
+  .prob, .prob + .prob {
+    padding: 24px 0 26px;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .prob:last-child { border-bottom: 0; }
 }
