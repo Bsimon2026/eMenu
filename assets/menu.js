@@ -115,6 +115,10 @@
       cartH.textContent = T("Your order ", "طلبك ");
       if (em) cartH.appendChild(em);
     }
+    /* the bar's button is written once in the markup and never followed the
+       language: an Arabic menu still said "Review order" at the bottom */
+    const barGo = document.querySelector("#barCheckout");
+    if (barGo) barGo.textContent = T("Continue", "متابعة");
     const call = document.querySelector("#heroCall span");
     if (call) call.textContent = T("Call", "اتصال");
     const web = document.querySelector("#heroWeb span");
@@ -326,7 +330,7 @@
     if (!count) {
       body.innerHTML = '<p class="cart-empty">' +
         T("Nothing added yet. Tap Add on a dish and it appears here.", "لم تُضف شيئاً بعد. اضغط أضف على أي طبق.") + '</p>';
-      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>' + T("Review order", "مراجعة الطلب") + '</button>';
+      foot.innerHTML = '<button class="checkout-btn" type="button" disabled>' + T("Continue", "متابعة") + '</button>';
     } else {
       body.innerHTML = Array.from(cart.entries()).map(([id, r]) => `
         <div class="crow">
@@ -340,7 +344,7 @@
         </div>`).join("");
       foot.innerHTML =
         '<div class="cart-total"><span>Total</span><b>' + money(sum) + "</b></div>" +
-        '<button class="checkout-btn" type="button" id="goCheckout">' + T("Review order", "مراجعة الطلب") + '</button>';
+        '<button class="checkout-btn" type="button" id="goCheckout">' + T("Continue", "متابعة") + '</button>';
       $$("[data-inc]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.inc, 1)));
       $$("[data-dec]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.dec, -1)));
       $("#goCheckout").addEventListener("click", openSheet);
