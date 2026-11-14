@@ -421,11 +421,11 @@
     } else {
       body.innerHTML = Array.from(cart.entries()).map(([id, r]) => `
         <div class="crow">
-          <span class="cn">${r.item.name}</span>
+          <span class="cn">${esc(nm(r.item))}</span>
           <span class="qty">
-            <button type="button" data-dec="${id}" aria-label="Remove one ${r.item.name}">−</button>
+            <button type="button" data-dec="${id}" aria-label="Remove one ${esc(nm(r.item))}">−</button>
             <span>${r.qty}</span>
-            <button type="button" data-inc="${id}" aria-label="Add one ${r.item.name}">+</button>
+            <button type="button" data-inc="${id}" aria-label="Add one ${esc(nm(r.item))}">+</button>
           </span>
           <span style="font-variant-numeric:tabular-nums">${money(r.qty * r.item.price)}</span>
         </div>`).join("");
