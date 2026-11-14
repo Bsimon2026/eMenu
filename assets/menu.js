@@ -257,13 +257,13 @@
      registered on a static element was therefore added again on each repaint:
      one Add tap became seven after six switches, and one confirm press could
      POST the order twice. These elements exist once, so bind them once. */
-  const __bound = new WeakMap();
+  /* The flag lives ON the element, not in a variable up here: this whole block is
+     re-executed by paint(), so any map declared here is born and dies with it. */
   const bind = function (el, type, fn) {
     if (!el) return;
-    let types = __bound.get(el);
-    if (!types) { types = {}; __bound.set(el, types); }
-    if (types[type]) return;
-    types[type] = true;
+    const flag = "__dmBound_" + type;
+    if (el[flag]) return;
+    el[flag] = true;
     el.addEventListener(type, fn);
   };
 
