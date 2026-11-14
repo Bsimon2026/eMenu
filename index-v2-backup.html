@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DigiMenu by Ogle.live | The menu that takes the order</title>
+<meta name="description" content="Photograph your menu and DigiMenu rebuilds it as a page your guests order from. Orders arrive in your WhatsApp with a copy by email. Built by Ogle.live for UAE restaurants.">
+<meta name="theme-color" content="#0B0C0E">
+<!-- A restaurant's own domain points at this same deployment. On any host that
+     is not ours, the root is their menu, not our marketing page. This runs
+     before anything paints, and returns immediately on our own hostnames. -->
+<script>
+(function () {
+  var h = (location.hostname || "").toLowerCase();
+  if (/^(www\.)?(digimenu\.indubaicity\.com|digimenu[-a-z0-9]*\.vercel\.app)$/.test(h)) return;
+  if (location.pathname !== "/" && location.pathname !== "/index.html") return;
+  location.replace("/menu.html");
+})();
+</script>
+<link rel="icon" href="assets/favicon.ico?v=20261111s" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261111s">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261111s">
+  <link rel="manifest" href="assets/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/base.css?v=20261111s">
+<link rel="stylesheet" href="assets/site.css?v=20261113b">
+<script>document.documentElement.classList.add("js");</script>
+</head>
+<body class="site">
+
+<header class="mnav" id="nav">
+  <div class="mwrap mnav-in">
+    <a class="mnav-logo" href="index.html" aria-label="Indubaicity DigiMenu">
+      <img src="assets/indubaicity-mark.png?v=20261111s" alt="Indubaicity">
+      <span class="p">DigiMenu</span>
+    </a>
+    <nav class="mnav-links">
+      <a href="#product">The product</a>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+    <div class="mnav-cta">
+      <a class="mbtn mbtn-ghost mbtn-sm" href="login.html">Sign in</a>
+      <a class="mbtn mbtn-brand mbtn-sm" href="login.html?mode=up">Start building</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================ hero ============================ -->
+  <section class="hero">
+    <div class="mwrap hero-grid">
+      <div class="hero-in" id="heroCopy">
+        <h1 class="mh mh-xl">A menu that takes the order.</h1>
+        <p class="lede">
+          DigiMenu is the menu platform for restaurants. Photograph your menu, or add the dishes
+          yourself — guests then order from the page we build, and <b>every order lands in your
+          WhatsApp</b>, with a copy in your inbox.
+        </p>
+        <div class="hero-actions">
+          <a class="mbtn mbtn-brand" href="login.html?mode=up">Start building</a>
+          <a class="mbtn mbtn-ghost" href="#pricing">See the price</a>
+        </div>
+        <div class="hero-facts">
+          <div><b>No app</b>Guests order in the browser</div>
+          <div><b>No commission</b>We never take a cut</div>
+          <div><b>No hardware</b>The phone in your pocket</div>
+        </div>
+      </div>
+
+      <div class="artifact" id="heroArtifact">
+        <div class="phone">
+          <div class="phone-screen">
+            <iframe src="menu.html?r=spice-route&amp;embed=1" title="Live guest menu" loading="eager"></iframe>
+          </div>
+        </div>
+        <div class="qchip">
+          <img id="heroQr" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="QR code for the demo menu" width="66" height="66">
+          <div>
+            <div class="qt">A real menu built here. Scan it.</div>
+            <div class="qs" id="heroLink">digimenu.indubaicity.com/spice-route</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= talk to us, straight away ======================= -->
+  <section class="cta-band" aria-label="Contact Indubaicity">
+    <div class="mwrap cta-in">
+      <div class="cta-lead" id="contactLead">
+        <h2 class="cta-h">Not sure which one you need? Ask before you pay.</h2>
+        <p class="cta-p">Send us your current menu — a photo is enough — and we will tell you what it takes to get it live.</p>
+      </div>
+      <div class="cta-links" id="contactBand">
+        <a class="cta-btn cta-wa" data-k="whatsapp" href="#">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.4A10 10 0 1 0 12 2Zm5 14.1c-.2.6-1.2 1.1-1.7 1.2-.5 0-1 .1-1.7-.2a12 12 0 0 1-5.6-4.9c-.4-.7-.9-1.6-.9-2.4 0-.9.5-1.4.8-1.7.2-.2.4-.3.7-.3h.5c.2 0 .4 0 .5.4l.7 1.6c0 .2 0 .3-.1.5l-.4.6c-.2.2-.2.3 0 .6.5.9 1.4 1.8 2.4 2.3.3.1.4.1.6-.1l.6-.7c.2-.2.3-.2.5-.1l1.6.8c.3.1.4.2.4.3.1.2 0 .9-.2 1.3Z"/></svg>
+          WhatsApp
+        </a>
+        <a class="cta-btn" data-k="call" href="#">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1l-2.3 2.3Z"/></svg>
+          Call
+        </a>
+        <a class="cta-btn" data-k="maps" href="#">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+          Find us
+        </a>
+        <a class="cta-btn" data-k="review" href="#">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.7 1.7-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.5 4.8 1.7 7z"/></svg>
+          Google review
+        </a>
+        <a class="cta-btn" data-k="instagram" href="#">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c2.7 0 3 0 4 .1 1.1 0 1.8.2 2.4.5.6.2 1.1.5 1.6 1 .5.5.8 1 1 1.6.3.6.4 1.3.5 2.4 0 1 .1 1.3.1 4s0 3-.1 4c0 1.1-.2 1.8-.5 2.4a4.4 4.4 0 0 1-1 1.6c-.5.5-1 .8-1.6 1-.6.3-1.3.4-2.4.5-1 0-1.3.1-4 .1s-3 0-4-.1c-1.1 0-1.8-.2-2.4-.5a4.4 4.4 0 0 1-1.6-1 4.4 4.4 0 0 1-1-1.6c-.3-.6-.4-1.3-.5-2.4C2 15 2 14.7 2 12s0-3 .1-4c0-1.1.2-1.8.5-2.4a4.4 4.4 0 0 1 1-1.6c.5-.5 1-.8 1.6-1 .6-.3 1.3-.4 2.4-.5C9 2 9.3 2 12 2Zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm5.5-3.3a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"/></svg>
+          Instagram
+        </a>
+        <a class="cta-btn" data-k="email" href="#">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18c.6 0 1 .4 1 1v12c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1V6c0-.6.4-1 1-1Zm9 7.3 8-5.3H4l8 5.3Zm0 2.2L4 9v8h16V9l-8 5.5Z"/></svg>
+          Email
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="proof">
+    <div class="mwrap proof-in">
+      <span>Built by <b>Ogle.live</b>. Web and software for 500+ businesses across the UAE and India since 2019.</span>
+      <span>Dubai · <b>connect@indubaicity.com</b></span>
+    </div>
+  </div>
+
+  <!-- ============================ chapter: owner side ============================ -->
+  <section class="chapter chapter-first" id="product">
+    <div class="mwrap split-2">
+      <div>
+        <h2 class="mh mh-lg">The whole restaurant side is one screen.</h2>
+        <p class="mbody">
+          The menu your guests see is the menu you edit. Change a price, add a dish, or take something
+          off at 9pm because the kitchen has run out, and the guest page is already correct.
+        </p>
+        <ul class="points">
+          <li>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 8.5 6 12l7.5-7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span><b>Sold out in one tap.</b> The dish stays visible, struck through, and cannot be ordered.</span>
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 8.5 6 12l7.5-7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span><b>Every order is kept.</b> Recorded with its table, time and total, and emailed to you.</span>
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 8.5 6 12l7.5-7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span><b>Your QR, download ready.</b> One address, one code, printable for every table at once.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="browser">
+        <div class="browser-bar">
+          <i></i><i></i><i></i>
+          <span class="url">digimenu.indubaicity.com/spice-route/dashboard</span>
+        </div>
+        <div class="browser-view">
+          <iframe src="app.html?demo=1" title="DigiMenu dashboard" loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ the QR code ============================ -->
+  <section class="qr-band" id="qr">
+    <div class="mwrap qr-grid">
+      <div class="qr-copy">
+        <h2 class="mh mh-lg">One square of ink on the table, and the menu is in their hand.</h2>
+        <p class="qr-lead">A guest points a phone at it and the menu opens where they already are — the browser. Nothing to find, nothing to install, and it is the same menu the kitchen is editing.</p>
+
+        <ul class="qr-list">
+          <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="9" y="9" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg><div><b>Nothing to install</b><span>The phone's own camera opens the menu in the browser. No app store, no download, no account for the guest.</span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4l9.5-9.5a2.1 2.1 0 0 0-3-3L5 17v3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" stroke="currentColor" stroke-width="1.6"/></svg><div><b>Change a price and every table knows</b><span>Edit it once in the dashboard. A printed menu is the thing the QR replaces — no reprint, no stickers over the old price.</span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/></svg><div><b>Sold out means sold out</b><span>Mark a dish off at four in the afternoon and it comes off the menu at four-oh-one, on every phone that scans it.</span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="4.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3.5" y="14.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="14.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg><div><b>One code, or one per table</b><span>Print the same code for the whole restaurant, or give each table its own and see which ones actually order.</span></div></li>
+        </ul>
+
+        <div class="qr-actions">
+          <a class="mbtn mbtn-brand" href="login.html?mode=up">Get your QR menu</a>
+          <a class="mbtn mbtn-line" href="/spice-route">See a live menu</a>
+        </div>
+      </div>
+
+      <div class="qr-card">
+        <div class="qr-frame">
+          <img src="assets/qr-example.png?v=20261111s" width="664" height="664" alt="QR code that opens the Spice Route menu">
+        </div>
+        <div class="qr-cap">
+          <b>Spice Route, Dubai</b>
+          <span>Point a camera at it. That is a real menu, not a picture of one.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ steps ============================ -->
+  <section class="chapter" id="how" style="padding-top:0">
+    <div class="mwrap">
+      <h2 class="mh mh-lg" style="margin-bottom:34px">From a photo to the first order.</h2>
+
+      <div class="steps-list">
+        <div class="step">
+          <div class="step-n">01</div>
+          <div>
+            <h3>Claim your address</h3>
+            <p>Search your restaurant name. If it is free it becomes yours at digimenu.indubaicity.com/your-name, and the QR is generated from that address.</p>
+          </div>
+          <div class="meta">The address never changes once claimed, so a printed table card stays valid.</div>
+        </div>
+
+        <div class="step">
+          <div class="step-n">02</div>
+          <div>
+            <h3>Add your logo and licence</h3>
+            <p>Two documents and the menu can go public. You can build the whole thing, and preview it, before either is uploaded.</p>
+          </div>
+          <div class="meta">A Google Maps link is optional. It only fills in your address and hours.</div>
+        </div>
+
+        <div class="step">
+          <div class="step-n">03</div>
+          <div>
+            <h3>Bring the menu in</h3>
+            <p>A photo, a PDF, a spreadsheet, or the link to your page on a delivery platform. We read the categories, dishes and prices and show you every line to correct.</p>
+          </div>
+          <div class="meta">Anything under 90% confidence is flagged rather than guessed. Nothing publishes without your review.</div>
+        </div>
+
+        <div class="step">
+          <div class="step-n">04</div>
+          <div>
+            <h3>Take the order</h3>
+            <p>The guest picks dishes and chooses dine-in, takeaway or delivery. WhatsApp opens on their phone with the order already written: table number, pickup time or address included.</p>
+          </div>
+          <div class="meta">The same order is emailed to the restaurant and kept in your dashboard.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ two demonstrations ============================ -->
+  <section class="demo-band">
+    <div class="mwrap" style="padding-top:88px;padding-bottom:88px">
+      <div class="demo-grid">
+        <div class="tile">
+          <h3>Run out at nine o'clock.</h3>
+          <p>This is the switch your staff will use most. Try it.</p>
+
+          <div class="sold-demo" id="soldDemo">
+            <div class="sold-row" data-row>
+              <span class="nm"><span class="dot"></span>Hummus with Toasted Pita</span>
+              <span class="pr">AED 24</span>
+              <button class="sw" type="button" role="switch" aria-checked="true" aria-label="Hummus available"></button>
+            </div>
+            <div class="sold-row" data-row>
+              <span class="nm"><span class="dot non"></span>Chicken 65</span>
+              <span class="pr">AED 34</span>
+              <button class="sw" type="button" role="switch" aria-checked="true" aria-label="Chicken 65 available"></button>
+            </div>
+            <div class="sold-row" data-row>
+              <span class="nm"><span class="dot non"></span>Koliwada Prawns</span>
+              <span class="pr">AED 46</span>
+              <button class="sw" type="button" role="switch" aria-checked="true" aria-label="Koliwada Prawns available"></button>
+            </div>
+            <div class="sold-row" data-row>
+              <span class="nm"><span class="dot"></span>Fattoush</span>
+              <span class="pr">AED 28</span>
+              <button class="sw" type="button" role="switch" aria-checked="true" aria-label="Fattoush available"></button>
+            </div>
+            <div class="sold-row" data-row>
+              <span class="nm"><span class="dot non"></span>Butter Chicken</span>
+              <span class="pr">AED 54</span>
+              <button class="sw" type="button" role="switch" aria-checked="true" aria-label="Butter Chicken available"></button>
+            </div>
+            <div class="sold-row" data-row>
+              <span class="nm"><span class="dot"></span>Butter Naan</span>
+              <span class="pr">AED 9</span>
+              <button class="sw" type="button" role="switch" aria-checked="true" aria-label="Butter Naan available"></button>
+            </div>
+          </div>
+          <p class="sold-hint">On the guest page the dish greys out, keeps its place in the category, and refuses to be added to the cart.</p>
+        </div>
+
+        <div class="tile">
+          <h3>It arrives where the staff already are.</h3>
+          <p>No new screen behind the counter. The guest sends from their own WhatsApp to your number, and we send you the same order by email.</p>
+
+          <div class="chat">
+            <div class="chat-day">Today</div>
+            <div class="bubble">
+<span class="bt">New order — Spice Route</span>
+Type: Dine In
+Table: 12
+Guest: Biju
+
+2 × Butter Chicken — AED 108
+1 × Butter Naan — AED 9
+1 × Jeera Rice — AED 18
+
+<span class="btotal">Total: AED 135</span>
+              <time>19:42</time>
+            </div>
+          </div>
+          <p class="chat-cap">The message a guest's phone produces at checkout. Your staff reply and confirm exactly as they do today.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ pricing ============================ -->
+  <section class="chapter" id="pricing">
+    <div class="mwrap">
+      <h2 class="mh mh-lg" style="margin-bottom:12px">Three ways to put your menu on the table.</h2>
+      <p class="mbody" style="margin-bottom:40px">
+        Nothing is charged at sign-up. You build the menu, add your photos and set what is off today —
+        then pay once and it goes live. No commission on any order, and orders past 999 in a month are
+        AED 1 each. No card is stored.
+      </p>
+
+      <div class="plans">
+        <div class="plan">
+          <h3>QR Menu</h3>
+          <p class="who">For a restaurant that wants the menu on the table.</p>
+          <div class="price"><b>AED 99</b><span>/ year</span></div>
+          <div class="year">One year, one payment. Up to 50 dishes, unlimited scans.</div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Live menu page, QR code and permanent link</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Up to 50 dishes, a photo on each</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Mark a dish out of stock in one tap</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Categories and promo shelves, you arrange them</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Import from a photo, PDF, Excel or a delivery link</span></li>
+<li class="off"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v2H6z"/></svg><span>No online ordering, take away or delivery</span></li>
+          </ul>
+          <a class="mbtn mbtn-line cta" href="login.html?mode=up">Start with QR menu</a>
+        </div>
+
+        <div class="plan hi">
+          <span class="ribbon">Most restaurants pick this</span>
+          <h3>QR Menu + Ordering</h3>
+          <p class="who">For a restaurant that wants the order as well.</p>
+          <div class="price"><b>AED 99</b><span>/ month</span></div>
+          <div class="year">or <b>AED 999</b> for the year — save AED 189</div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span><b>Everything in QR Menu</b>, with unlimited dishes</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Orders for dine in, take away and delivery</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Each order lands in your WhatsApp and in the dashboard</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Order management: what to cook, and a full history by date</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Bulk price adjustments across the whole menu</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span><b>Google Review Collector</b> — ask after the meal; the 4s and 5s go to your Google page</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span><b>WhatsApp Business integration included</b> — connect your own number; Meta bills per message</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>999 orders a month included, then AED 1 an order</span></li>
+          </ul>
+          <a class="mbtn mbtn-brand cta" href="login.html?mode=up">Start with ordering</a>
+        </div>
+
+        <div class="plan">
+          <h3>Ordering Unlimited</h3>
+          <p class="who">For a restaurant that does not want to count orders.</p>
+          <div class="price"><b>AED 249</b><span>/ month</span></div>
+          <div class="year">or <b>AED 1,990</b> for the year — save AED 998</div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span><b>Everything in QR Menu + Ordering</b></span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span><b>Unlimited orders</b> — no count, no per-order fee</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Dine in, take away and delivery, in WhatsApp and the dashboard</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Google Review Collector and the WhatsApp Business integration</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Bulk price adjustments and the full order history by date</span></li>
+          </ul>
+          <a class="mbtn mbtn-line cta" href="login.html?mode=up">Start unlimited</a>
+        </div>
+      </div>
+
+      <div class="addon">
+        <div class="plan launch" id="launch">
+          <h3>Add-on · Your own website</h3>
+          <p class="who">A custom domain and an exclusive landing page, written and built for you.</p>
+          <div class="price"><b>AED 299</b><span>/ year</span></div>
+          <div class="year">Billed yearly, on top of a menu plan.</div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Your own domain, registered in the restaurant's name</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>An exclusive landing page — your dishes, your photos, your story</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Hours, map, phone and a button straight into your menu</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Set up alongside the menu, not weeks later</span></li>
+<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 16.6 5 12l1.4-1.4 3.2 3.2 8-8L19 7.2z"/></svg><span>Domain, DNS and page updates kept running while the yearly fee is paid</span></li>
+          </ul>
+          <a class="mbtn mbtn-line cta" href="mailto:connect@indubaicity.com?subject=DigiMenu+website+add-on">Add the website</a>
+        </div>
+      </div>
+
+      <p class="price-note">
+        Prices in AED, including the 5% VAT. Nothing is charged automatically: you pay by transfer or on
+        WhatsApp and the menu goes live the same day. Cancel any time — the QR stays live until the period you paid for ends.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ closing ============================ -->
+  <section class="closing">
+    <div class="mwrap closing-in">
+      <div>
+        <h2 class="mh mh-lg">Try it with your own menu.</h2>
+        <p>Build the whole menu first — dishes, photos, prices, out-of-stock switches. You only pay once it is ready to go in front of a guest.</p>
+      </div>
+      <a class="mbtn mbtn-brand" href="login.html?mode=up">Start building</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="mfoot">
+  <div class="mwrap">
+    <div class="mfoot-in">
+      <div class="mfoot-brand">
+        <img src="assets/indubaicity-mark.png?v=20261111s" alt="Indubaicity">
+        <p>DigiMenu is a product of Ogle.live Technologies, Dubai. Building web, software and AI systems for businesses in the UAE and India since 2019.</p>
+      </div>
+      <div class="mfoot-cols">
+        <div class="mfoot-col">
+          <h4>Product</h4>
+          <a href="#product">The product</a>
+          <a href="#qr">The QR code</a>
+          <a href="#how">How it works</a>
+          <a href="#pricing">Pricing</a>
+          <a href="login.html">Restaurant sign in</a>
+        </div>
+        <div class="mfoot-col">
+          <h4>Contact</h4>
+          <a href="mailto:connect@indubaicity.com">connect@indubaicity.com</a>
+          <a href="tel:+971568911233">+971 56 891 1233</a>
+          <a href="https://indubaicity.com" target="_blank" rel="noopener">indubaicity.com</a>
+        </div>
+        <div class="mfoot-col">
+          <h4>Legal</h4>
+          <a href="#">Terms of service</a>
+          <a href="#">Privacy policy</a>
+          <a href="#">Data retention</a>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot-legal">
+      <span>© <span id="yr">2026</span> Ogle.live Technologies. All rights reserved.</span>
+      <span>Dubai, United Arab Emirates</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/vendor/qrcode-generator.js?v=20261111s"></script>
+<script src="assets/contact.js?v=20261111s"></script>
+<script>
+(function () {
+  "use strict";
+  document.getElementById("yr").textContent = new Date().getFullYear();
+
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* the one authored moment: copy lines, then the artifact settles from blur */
+  // run it as soon as the markup is parsed: never let a slow font or the
+  // embedded menu hold the hero invisible
+  var copyEl = document.getElementById("heroCopy");
+  var artEl = document.getElementById("heroArtifact");
+  if (reduce) {
+    copyEl.classList.add("in");
+    artEl.classList.add("in");
+  } else {
+    setTimeout(function () {
+      copyEl.classList.add("in");
+      setTimeout(function () { artEl.classList.add("in"); }, 120);
+    }, 0);
+  }
+
+  /* nav: solid after the first scroll, and it takes its tone from whatever is
+     actually behind the bar — read from the stack under that point, not guessed */
+  var nav = document.getElementById("nav");
+  var ticking = false;
+
+  function behindIsDark() {
+    if (!document.elementsFromPoint) return true;
+    var stack = document.elementsFromPoint(30, 36) || [];
+    for (var i = 0; i < stack.length; i++) {
+      var el = stack[i];
+      if (el.closest && el.closest(".mnav")) continue;
+      return !!el.closest(".hero, .closing, .mfoot");
+    }
+    return true;
+  }
+
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      nav.classList.toggle("solid", window.scrollY > 24);
+      nav.classList.toggle("light", !behindIsDark());
+      ticking = false;
+    });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  onScroll();
+
+  /* the dashboard artifact inside the browser frame: scale it to the column */
+  function fitBrowser() {
+    var view = document.querySelector(".browser-view");
+    if (!view) return;
+    var frame = view.querySelector("iframe");
+    if (!frame) return;
+    var base = 1180;
+    var scale = Math.min(1, view.clientWidth / base);
+    frame.style.transform = "scale(" + scale + ")";
+    view.style.height = Math.round(860 * scale) + "px";
+  }
+  fitBrowser();
+  window.addEventListener("resize", fitBrowser);
+  var bframe = document.querySelector(".browser-view iframe");
+  if (bframe) bframe.addEventListener("load", fitBrowser);
+
+  /* sold-out demo: the switch changes the row the way the guest page does */
+  document.querySelectorAll("#soldDemo .sw").forEach(function (sw) {
+    sw.addEventListener("click", function () {
+      var on = sw.getAttribute("aria-checked") === "true";
+      sw.setAttribute("aria-checked", String(!on));
+      sw.closest("[data-row]").classList.toggle("off", on);
+    });
+  });
+
+  /* a cold load with #pricing or #qr in the URL jumps before the photos and
+     fonts settle, and lands hundreds of pixels past the section */
+  window.addEventListener("load", function () {
+    if (!location.hash) return;
+    setTimeout(function () {
+      var el = document.querySelector(location.hash);
+      if (el) el.scrollIntoView({ block: "start" });
+    }, 350);
+  });
+
+  /* QR for the demo menu, encoded against wherever this is being served */
+  var base = location.origin + "/";
+  var label = base.replace(/^https?:\/\//i, "") + "spice-route";
+  var labelEl = document.getElementById("heroLink");
+  if (labelEl) labelEl.textContent = label;
+
+  try {
+    var qr = window.qrcode(0, "M");
+    qr.addData(base + "spice-route");
+    qr.make();
+    var n = qr.getModuleCount(), quiet = 2, px = 7, size = (n + quiet * 2) * px;
+    var c = document.createElement("canvas");
+    c.width = c.height = size;
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#12161a";
+    for (var r = 0; r < n; r++) {
+      for (var col = 0; col < n; col++) {
+        if (qr.isDark(r, col)) ctx.fillRect((col + quiet) * px, (r + quiet) * px, px, px);
+      }
+    }
+    var img = document.getElementById("heroQr");
+    img.src = c.toDataURL("image/png");
+    img.alt = "QR code for " + label;
+  } catch (e) { /* the label still stands in */ }
+})();
+</script>
+</body>
+</html>
