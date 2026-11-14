@@ -96,7 +96,9 @@ module.exports = async function page(req, res) {
         const boot = '<script>window.DM_PAGE=' + JSON.stringify({
           name: name, status: String(row.status || ""), accent: clean(row.accent || "", 20)
         }) + ";</script>\n";
-        html = html.replace(/<script src="\/assets\/menu\.js/, boot + '<script src="/assets/menu.js');
+        /* menu.html loads its script relative ("assets/menu.js"), the dashboard
+           absolute — match either, or the page boots with no identity. */
+        html = html.replace(/<script src="\/?assets\/menu\.js/, boot + '<script src="/assets/menu.js');
       }
     }
   } catch (e) {
