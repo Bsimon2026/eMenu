@@ -77,7 +77,41 @@ module.exports = async function handler(req, res) {
     const subtotal = Math.max(0, Number(body.subtotal) || 0);
     const verdict = await discount.check(dress.id, body.code, subtotal, body.phone);
     if (!verdict.ok) return res.status(200).json(verdict);
-    return res.status(200).json({
+    /* The restaurant's copy goes to ITS address — never to the platform's. If no
+     order address is set for the restaurant, the order still arrives in the
+     panel and no mail is sent. */
+  let notified = false;
+  if (mail.ready && restaurant.order_email) {
+    const body = [
+      "New order — " + restaurant.name,
+      "",
+      detail,
+      "Guest: " + guestName,
+      "Mobile: " + order.guest_phone,
+      "Email: " + guestEmail,
+      "",
+      itemLines,
+      "",
+      applied ? "Subtotal: AED " + subtotal.toFixed(2) : "",
+      applied ? "Discount " + applied.code + " (" + applied.percent + "%): -AED " + applied.amount.toFixed(2) : "",
+      "Total: AED " + total.toFixed(2),
+      "",
+      when,
+      "Reference: " + String(saved.id).slice(0, 8)
+    ].filter(function (line) { return line !== ""; }).join("\n");
+
+    const sent = await mail.sendMail({
+      to: [restaurant.order_email],
+      subject: "New order — " + restaurant.name + " · AED " + total.toFixed(2) + " · " + mode,
+      fromName: restaurant.name + " (DigiMenu)",
+      replyTo: guestEmail,
+      text: body
+    }, 9000);
+    notified = Boolean(sent.ok);
+    if (!sent.ok) console.error("[order] restaurant mail", sent.code, sent.detail);
+  }
+
+  return res.status(200).json({
       ok: true,
       code: verdict.code,
       percent: verdict.percent,
@@ -266,7 +300,7 @@ module.exports = async function handler(req, res) {
   const waLink = "https://wa.me/" + String(waNumber || "").replace(/[^\d]/g, "") +
     "?text=" + encodeURIComponent(waText);
 
-  let notified = false;
+  let guestNotified = false;
   if (mail.ready && guestEmail) {
     const body = [
       "Hello " + guestName + ",",
@@ -295,8 +329,8 @@ module.exports = async function handler(req, res) {
       replyTo: restaurant.order_email || undefined,
       text: body
     }, 9000);
-    notified = Boolean(sent.ok);
-    if (!sent.ok) console.error("[order] mail", sent.code, sent.detail);
+    guestNotified = Boolean(sent.ok);
+    if (!sent.ok) console.error("[order] guest mail", sent.code, sent.detail);
   }
 
   return res.status(200).json({
@@ -308,6 +342,8 @@ module.exports = async function handler(req, res) {
     items: lines.length,
     linesSaved: lineRes.ok,
     notified,
+    guestNotified,
     mailReady: mail.ready
+
   });
 };
