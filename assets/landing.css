@@ -1055,7 +1055,7 @@ table.compare td { width: 22%; }
 table.compare thead th.pcol, table.compare thead th:first-child { padding-top: 30px; padding-bottom: 22px; }
 table.compare thead th:first-child { vertical-align: top; }
 /* keep sticky: a relative th here silently unpins the three plan columns */
-table.compare thead th.pcol { vertical-align: top; white-space: normal; }
+table.compare thead th.pcol { vertical-align: top; white-space: normal; text-align: center; }
 
 table.compare thead th .pn {
   display: block; font-family: var(--ui); font-size: 16px; font-weight: 600;
@@ -1066,11 +1066,11 @@ table.compare thead th.hi .pn { color: var(--brand); }
 table.compare thead th .pb {
   display: block; margin-top: 7px; font-family: var(--ui); font-size: 11.5px; font-weight: 400;
   letter-spacing: 0; text-transform: none; line-height: 1.45; color: var(--ink-4);
-  white-space: normal; max-width: 26ch;
+  white-space: normal; max-width: 26ch; margin-inline: auto;
 }
 
 table.compare thead th .ptag {
-  position: absolute; top: 11px; left: 18px; padding: 3px 7px; border-radius: 3px;
+  position: absolute; top: 11px; left: 50%; transform: translateX(-50%); padding: 3px 7px; border-radius: 3px;
   background: var(--brand); color: var(--brand-ink); font-family: var(--ui);
   font-size: 9.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
 }
@@ -1099,7 +1099,7 @@ table.compare tfoot .btn { width: 100%; }
   table.compare thead th:first-child { padding-top: 12px; }
   table.compare thead th .pn { font-size: 12.5px; }
   table.compare thead th .pb { display: none; }
-  table.compare thead th .ptag { top: 6px; left: 6px; font-size: 7px; padding: 2px 3px; letter-spacing: 0; white-space: nowrap; }
+  table.compare thead th .ptag { top: 5px; left: 50%; transform: translateX(-50%); font-size: 7px; padding: 2px 4px; letter-spacing: 0; white-space: nowrap; }
   table.compare th[scope="row"] { width: 39%; font-size: 11.5px; line-height: 1.3; }
   table.compare td { width: 20.33%; }
   table.compare td.pd, table.compare td .pd { font-size: 12.5px; }

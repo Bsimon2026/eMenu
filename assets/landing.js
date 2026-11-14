@@ -41,55 +41,8 @@
     reveals.forEach(function (el) { el.classList.add("in"); });
   }
 
-  /* -------------------------------------------------------------- pricing --
-     One source per plan: the numbers live on the card as data attributes, so the
-     toggle cannot disagree with the comparison table below it. Prices are whole
-     dirhams and print without a separator — a mono "1,999" opens a gap at the
-     comma that reads as two numbers. */
-  var toggle = document.querySelector(".toggle");
-  var plans = document.querySelectorAll(".plan[data-plan]");
-
-  function setBilling(period) {
-    plans.forEach(function (card) {
-      var yearly = Number(card.getAttribute("data-annual"));
-      var monthly = Number(card.getAttribute("data-monthly"));
-      var priceEl = card.querySelector("[data-price]");
-      var periodEl = card.querySelector("[data-period]");
-      var saveEl = card.querySelector("[data-save]");
-      if (!priceEl) return;
-
-      var isMonthly = period === "monthly" && monthly && monthly !== yearly;
-      var value = isMonthly ? monthly : yearly;
-
-      priceEl.textContent = String(value);
-      if (periodEl) periodEl.textContent = isMonthly ? "/ month" : "/ year";
-      if (!saveEl) return;
-
-      if (card.getAttribute("data-plan") === "qr") {
-        saveEl.textContent = "Annual plan only · less than AED 9 a month";
-      } else {
-        var saved = monthly * 12 - value;
-        saveEl.innerHTML = isMonthly
-          ? "Billed monthly · cancel any time"
-          : "Save AED " + saved + " a year · AED " + Math.round(value / 12) + " a month";
-      }
-    });
-
-    if (toggle) {
-      toggle.querySelectorAll("button").forEach(function (b) {
-        b.setAttribute("aria-pressed", String(b.getAttribute("data-bill") === period));
-      });
-    }
-  }
-
-  if (toggle) {
-    toggle.addEventListener("click", function (e) {
-      var btn = e.target.closest("button[data-bill]");
-      if (!btn) return;
-      setBilling(btn.getAttribute("data-bill"));
-    });
-    setBilling("yearly");
-  }
+  /* Pricing needs no script: the sheet's three plans are one table, and both
+     the monthly and the annual price are rows in it. */
 
   /* ------------------------------------------------------------------ faq ---
      <details> already opens and closes; this only makes one answer exclusive so
