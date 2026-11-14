@@ -1777,3 +1777,75 @@ html.t-dark .hero-actions .lang-switch {
 html.t-dark .hero-actions .lang-switch button { color: #D5CFC4; }
 html.t-dark .hero-actions .lang-switch button[aria-pressed="true"] { background: #F3EFE7; color: #14171A; }
 
+
+/* ---------- the page when there is no menu to show ----------
+   A draft, or an address with nothing behind it. It keeps the restaurant's
+   name and initial, says the reason in one sentence, and (for the owner, who
+   is signed in on this origin) lists what the publish gate is still waiting
+   for. No exclamation marks, no apology — the fact and the next step. */
+
+.nl {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: clamp(48px, 12vh, 96px) 24px 64px;
+  text-align: center;
+}
+
+.nl-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin: 0 auto 18px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: 22px;
+}
+
+.nl-name {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 5vw, 32px);
+  line-height: 1.15;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+
+.nl-why {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.nl-fix {
+  margin: 22px auto 0;
+  padding: 16px 18px;
+  max-width: 400px;
+  text-align: left;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.nl-fix b { display: block; color: var(--ink); margin-bottom: 6px; }
+.nl-fix ul { margin: 0 0 12px; padding-left: 18px; }
+.nl-fix li { margin: 2px 0; }
+.nl-fix .nl-go {
+  display: inline-block;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: var(--accent-ink, #17140F);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.nl-help {
+  margin: 26px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-4);
+}
+.nl-help a { color: var(--ink-2); text-decoration: underline; }

@@ -161,6 +161,7 @@
 
   const VIEW_TITLES = {
     overview: "Today",
+    publish: "Publishing",
     menu: "Menu",
     import: "Import menu",
     qr: "QR & link",
@@ -190,7 +191,7 @@
     if (name === "docs") { renderDocs(); renderProfile(); renderTeam(); }
     if (name === "qr") renderQrPane();
     renderGuestLinks();
-    if (name === "overview") renderOverview();
+    if (name === "overview" || name === "publish") renderOverview();
   }
 
   $$("[data-view]").forEach((el) =>
@@ -1096,7 +1097,74 @@
 
   /* ---------------- overview ---------------- */
 
+  /* What the server will refuse a publish for, with the fix in the same
+     sentence. One list feeds the checklist, the "still needed" line and the
+     error the Publish button shows when it is clicked too early. */
+  function publishItems() {
+    const { logo, license } = state.docs;
+    const hasMenu = !!(state.menu || state.menuImported);
+    return [
+      { key: "logo", label: "Restaurant logo", ok: !!logo, go: "docs",
+        note: logo ? "Added" : "Used on the menu header",
+        fix: "upload it in Settings → Documents" },
+      { key: "lic", label: "Trade licence copy", ok: !!license, go: "docs",
+        note: license ? "Added" : "Needed before publishing",
+        fix: "upload it in Settings → Documents" },
+      { key: "menu", label: "Menu content", ok: hasMenu, go: "import",
+        note: hasMenu ? "Imported · review any time" : "Import a photo or a link",
+        fix: "import your dishes, or add one by hand" },
+      { key: "maps", label: "Google Maps link", ok: !!(state.restaurant && state.restaurant.mapsUrl), go: "docs",
+        note: state.restaurant && state.restaurant.mapsUrl ? "Added" : "Needed before publishing",
+        fix: "paste the link in Settings → Documents" }
+    ];
+  }
+
+  /* The server names its reasons in its own words ("logo", "licence",
+     "at least one dish"); map them back to the checklist's labels so the same
+     missing thing is called the same thing everywhere. */
+  const SERVER_REASON = {
+    logo: "Restaurant logo",
+    licence: "Trade licence copy",
+    "google maps link": "Google Maps link",
+    "at least one dish": "Menu content"
+  };
+
+  /* Set when the *server* refused a publish: the checklist can look complete in
+     this browser while the database disagrees (an expired free week, a row that
+     lost its licence). The pane must not wipe that answer on the next repaint. */
+  let publishErrorSticky = false;
+
+  function showPublishProblems(items) {
+    const box = $("#publishError");
+    if (!box) return;
+    if (!items.length) { box.hidden = true; box.innerHTML = ""; publishErrorSticky = false; return; }
+    box.innerHTML = "<b>This menu cannot go live yet</b><ul>" +
+      items.map((it) =>
+        "<li>" + it.label + " — " + (it.fix || "needed before publishing") +
+        (it.go ? ' <button class="lnk" type="button" data-fix="' + it.go + '">Fix this</button>' : "") +
+        "</li>"
+      ).join("") + "</ul>" +
+      '<button class="err-ok" type="button" data-dismiss>Got it</button>';
+    box.hidden = false;
+    $$("#publishError [data-fix]").forEach((b) =>
+      b.addEventListener("click", () => showView(b.dataset.fix))
+    );
+    const dismiss = $("#publishError [data-dismiss]");
+    if (dismiss) dismiss.addEventListener("click", () => showPublishProblems([]));
+  }
+
   async function setStatus(status) {
+    /* A click is the question "why not?". Answer it here, in the open, before
+       a round trip — a greyed-out button taught the owner nothing, and the
+       toast that used to answer this was gone before it could be read. */
+    if (status === "published") {
+      const blocked = publishItems().filter((it) => !it.ok);
+      if (blocked.length) {
+        showPublishProblems(blocked);
+        return;
+      }
+    }
+
     const btn = $("#publishBtn");
     const label = btn ? btn.textContent : "";
     if (btn) { btn.disabled = true; btn.textContent = status === "published" ? "Publishing…" : "Working…"; }
@@ -1106,12 +1174,24 @@
     if (btn) { btn.disabled = false; btn.textContent = label; }
 
     if (!r.ok) {
-      const list = (r.data && r.data.missing) || [];
-      toast(list.length ? "Still needed: " + list.join(", ") : (r.data.message || "That did not work."));
+      const reasons = (r.data && r.data.missing) || [];
+      publishErrorSticky = true;
+      if (reasons.length) {
+        const byLabel = {};
+        publishItems().forEach((it) => { byLabel[it.label.toLowerCase()] = it; });
+        showPublishProblems(reasons.map((k) => {
+          const key = String(k).toLowerCase();
+          const hit = byLabel[SERVER_REASON[key] ? SERVER_REASON[key].toLowerCase() : key];
+          return hit || { label: String(k), fix: "needed before publishing" };
+        }));
+      } else {
+        showPublishProblems([{ label: (r.data && r.data.message) || "That did not work", fix: "try again, or message support" }]);
+      }
       renderOverview();
       return;
     }
 
+    showPublishProblems([]);
     applyRestaurant(r.data.restaurant);
     state.status = r.data.restaurant.status;
     save();
@@ -1122,21 +1202,13 @@
   }
 
   function renderOverview() {
-    const { logo, license } = state.docs;
-    const hasMenu = !!(state.menu || state.menuImported);
-    const items = [
-      { key: "logo", label: "Restaurant logo", note: logo ? "Added" : "Used on the menu header", ok: !!logo, go: "docs" },
-      { key: "lic", label: "Trade licence copy", note: license ? "Added" : "Needed before publishing", ok: !!license, go: "docs" },
-      { key: "menu", label: "Menu content", note: hasMenu ? "Imported · review any time" : "Import a photo or a link", ok: hasMenu, go: "import" },
-      { key: "maps", label: "Google Maps link", note: state.restaurant.mapsUrl ? "Added" : "Needed before publishing", ok: !!state.restaurant.mapsUrl, go: "docs" }
-    ];
+    const items = publishItems();
 
     $("#checkList").innerHTML = items.map((it) => `
       <div class="check-row ${it.ok ? "ok" : "todo"}">
         <span class="ic">${it.ok ? "✓" : "!"}</span>
         <span class="lbl"><b>${it.label}</b><span>${it.note}</span></span>
         ${it.ok ? '<span class="pill pill-ok">Done</span>'
-                : it.optional ? '<span class="pill">Optional</span>'
                 : `<button class="btn btn-outline btn-sm" type="button" data-go="${it.go}">Add</button>`}
       </div>`).join("");
 
@@ -1144,42 +1216,59 @@
 
     const ready = items.every((it) => it.ok);
     const live = state.status === "published";
-    const missing = items.filter((it) => !it.ok).map((it) => it.label.toLowerCase());
+    const blocked = items.filter((it) => !it.ok);
+    const missing = blocked.map((it) => it.label.toLowerCase());
 
-    $("#publishPill").className = "pill " + (live ? "pill-ok" : ready ? "pill-ok" : "pill-warn");
-    $("#publishPill").textContent = live ? "Published" : ready ? "Ready to publish" : "Draft";
-    $("#publishHint").textContent = live
+    const headLine = live
       ? "Your menu is live. Guests can open it from the link below."
       : ready
         ? "Everything needed is here. Publish when you are happy with the menu."
         : "Still needed: " + missing.join(", ") + ".";
 
-    /* The trial sentence used to overwrite the "still needed" line unconditionally,
-       so every new restaurant — always on trial — was told how many days were
-       left and never what was actually blocking the publish. The missing list
-       wins while something is missing; the free-week note keeps the line when
-       nothing is. */
+    /* the free week, said beside the missing list rather than over it */
     const todayStr = new Date().toISOString().slice(0, 10);
     const paidNow = Boolean(state.paidThrough && state.paidThrough >= todayStr);
-    if ((live || ready) && state.trialEnds && !paidNow) {
+    let trialLine = "";
+    if (state.trialEnds && !paidNow) {
       const left = Math.round((new Date(state.trialEnds) - new Date(todayStr)) / 86400000);
       if (left >= 0) {
-        $("#publishHint").textContent = "Free until " +
+        trialLine = "Free until " +
           new Date(state.trialEnds).toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
           " — " + left + " day" + (left === 1 ? "" : "s") + " left with everything on. After that the menu stays " +
           "private until you pay, and everything you built is kept.";
       }
     }
 
+    const pillText = live ? "Published" : ready ? "Ready to publish" : "Draft";
+    const pillCls = "pill " + (live || ready ? "pill-ok" : "pill-warn");
+    /* one status, printed twice: the Publishing pane and the Today summary */
+    [["#publishPill", "#publishHint"], ["#ovPubPill", "#ovPubHint"]].forEach(([pSel, hSel]) => {
+      const p = $(pSel), h = $(hSel);
+      if (p) { p.className = pillCls; p.textContent = pillText; }
+      if (h) h.textContent = blocked.length ? headLine : (trialLine || headLine);
+    });
+
     const pubBtn = $("#publishBtn");
     if (pubBtn) {
-      pubBtn.disabled = !ready || live;
+      /* Never disabled for "not ready": the gate is enforced by the handler,
+         and clicking is how the owner learns what is missing. */
+      pubBtn.disabled = live;
       pubBtn.textContent = live ? "Published" : "Publish my menu";
-      const un = $("#unpublishBtn");
-      if (un) un.hidden = !live;
-      const note = $("#publishNote");
-      if (note) note.textContent = live ? publicLink(state.handle) : "";
     }
+    const un = $("#unpublishBtn");
+    if (un) un.hidden = !live;
+    const note = $("#publishNote");
+    if (note) note.textContent = live ? "Guests can open it now." : "";
+    const liveLink = $("#publishLiveLink");
+    if (liveLink && state.handle) {
+      liveLink.textContent = publicLink(state.handle);
+      liveLink.href = PUBLIC_BASE + encodeURIComponent(state.handle);
+    }
+    const ovBtn = $("#ovPublishBtn");
+    if (ovBtn) ovBtn.textContent = live ? "Manage publishing" : ready ? "Publish my menu" : "See what is needed";
+    const ovNote = $("#ovPubNote");
+    if (ovNote) ovNote.textContent = live ? publicLink(state.handle) : "";
+    if (!blocked.length && !publishErrorSticky) showPublishProblems([]);
 
     $("#topStatus").className = "pill " + (live ? "pill-ok" : ready ? "pill-warn" : "pill-warn");
     $("#topStatus").textContent = live ? "Live" : ready ? "Ready to publish" : "Trial";

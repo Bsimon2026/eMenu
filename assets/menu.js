@@ -1089,15 +1089,78 @@
 
   /* ---------- when there is no menu to show ---------- */
 
-  function unavailable(message) {
-    document.title = "Menu not available — DigiMenu";
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  /* The page a guest opens when there is no menu to show. It stays the
+     restaurant's own page — its name, its initial — because that is the link
+     the owner checks, and it says why in a sentence rather than the empty shell
+     it used to leave behind. The owner, signed in on this origin, also gets the
+     list of what is missing and a way into the dashboard. */
+  function unavailable(message, kind) {
+    const boot = window.DM_PAGE || {};
+    /* the server names the page; with no name (an old cached shell, or a host
+       that cannot inject) the address itself still identifies it */
+    const fromHandle = handle ? handle.replace(/-/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); }) : "";
+    const rn = boot.name || name || fromHandle || "";
+    document.title = kind === "draft"
+      ? (rn || "Menu") + " — not live yet"
+      : "Menu not available — DigiMenu";
     const rail = $("#rail");
     if (rail) rail.innerHTML = "";
+    ["#hero", "#cart", "#sheet", "#picker", "#mbar"].forEach(function (sel) {
+      const el = $(sel);
+      if (el) el.hidden = true;
+    });
+    const initial = (String(rn).trim().charAt(0) || "M").toUpperCase();
     $("#sections").innerHTML =
-      '<div style="padding:64px 24px;text-align:center;max-width:420px;margin:0 auto">' +
-        '<h2 style="margin:0 0 10px;font-size:20px">This menu is not available</h2>' +
-        '<p style="margin:0;color:var(--ink-3);line-height:1.6">' + message + '</p>' +
-      '</div>';
+      '<div class="nl">' +
+        '<div class="mlogo nl-logo">' + esc(initial) + "</div>" +
+        (rn ? '<h1 class="nl-name">' + esc(rn) + "</h1>" : "") +
+        '<p class="nl-why">' + esc(message) + "</p>" +
+        '<div class="nl-fix" id="nlFix" hidden></div>' +
+        '<p class="nl-help">Need a hand? <a href="https://wa.me/971568911233" target="_blank" rel="noopener">WhatsApp us</a>' +
+        " · <a href=\"tel:+971568911233\">call +971 56 891 233</a></p>" +
+      "</div>";
+    if (kind === "draft") ownerProblems();
+  }
+
+  /* Signed in as this restaurant? Say exactly what is missing, and the way in.
+     A guest sees only the sentence above — nothing of the owner's business. */
+  async function ownerProblems() {
+    let tok = "";
+    try {
+      tok = (JSON.parse(localStorage.getItem("digimenu.session.v1") || "null") || {}).access_token || "";
+    } catch (e) { tok = ""; }
+    if (!tok || !handle) return;
+    let row = null;
+    try {
+      const api = (window.DIGIMENU_CONFIG && window.DIGIMENU_CONFIG.apiBase) || "";
+      const r = await fetch(api + "/api/restaurant", { headers: { Authorization: "Bearer " + tok } });
+      if (!r.ok) return;
+      row = (await r.json()).restaurant || null;
+    } catch (e) { return; }
+    if (!row || String(row.handle || "").toLowerCase() !== String(handle).toLowerCase()) return;
+
+    const missing = [];
+    if (!row.logo_url) missing.push("restaurant logo");
+    if (!row.licence_url) missing.push("trade licence copy");
+    if (!row.maps_url) missing.push("Google Maps link");
+    const box = $("#nlFix");
+    if (!box) return;
+    const live = String(row.status) === "published";
+    box.innerHTML =
+      "<b>" + (live
+        ? "You are the owner of this menu. It is published — reload in a moment."
+        : missing.length
+          ? "You are the owner of this menu. It cannot go live until these are added:"
+          : "You are the owner of this menu. Everything needed is here — it just is not published.") + "</b>" +
+      (missing.length ? "<ul>" + missing.map(function (m) { return "<li>" + esc(m) + "</li>"; }).join("") + "</ul>" : "") +
+      '<a class="nl-go" href="/app.html#publish">Open dashboard → Publishing</a>';
+    box.hidden = false;
   }
 
   /* ---------- load, then paint ---------- */
@@ -1126,7 +1189,19 @@
     }
 
     if (!res.ok || !data.ok) {
-      unavailable((data && data.message) || "This menu is not published yet.");
+      /* A draft and a wrong address are different sentences: the server says
+         which when it injected the page, and a 404 from /api/menu on a handle
+         that exists is a menu that has not been published yet. */
+      const boot = window.DM_PAGE || {};
+      const draft = boot.status
+        ? boot.status !== "published"
+        : (res.status === 404 && /publish/i.test(String((data && data.message) || "")));
+      unavailable(
+        draft
+          ? "This menu is not published yet. The restaurant has not opened it to guests."
+          : ((data && data.message) || "This menu is not available."),
+        draft ? "draft" : "gone"
+      );
       return;
     }
 
