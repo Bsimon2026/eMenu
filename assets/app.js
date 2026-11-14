@@ -3342,6 +3342,93 @@
     set("#setTt", soc.tiktok);
     set("#setWeb", soc.website);
     renderPalette();
+    renderAppearance();
+  }
+
+  /* ---------------- appearance ----------------
+     The guest page's own look, mirrored from menu2.css: three grounds, two ink
+     tones, three display faces. The values are duplicated here on purpose — the
+     preview has to paint what the real sheet paints, and the sheet cannot be
+     read from this page. A mismatch shows up as a preview that promises
+     something the menu will not do, so change both together. */
+  const GROUNDS = {
+    light: { title: "Bone", paper: "#FBF7F0", paper2: "#F3ECE1", ink: "#17140F", ink3: "#6C6357", rule: "#E4DACA" },
+    dark: { title: "Charcoal", paper: "#14171A", paper2: "#1B1F24", ink: "#F3EFE7", ink3: "#9CA4AC", rule: "#262C33" },
+    clay: { title: "Clay", paper: "#EFE2D0", paper2: "#E6D6BE", ink: "#241C14", ink3: "#7A6A57", rule: "#D6C3A9" }
+  };
+
+  const FACES = {
+    serif: '"Fraunces", Georgia, serif',
+    grotesk: '"Outfit", system-ui, sans-serif',
+    satoshi: '"Satoshi", system-ui, sans-serif'
+  };
+
+  function appearance() {
+    const t = state.theme && typeof state.theme === "object" ? state.theme : {};
+    return {
+      ground: GROUNDS[t.ground] ? t.ground : "dark",
+      ink: t.ink === "strong" ? "strong" : "soft",
+      font: FACES[t.font] ? t.font : "serif"
+    };
+  }
+
+  function renderAppearance() {
+    const a = appearance();
+    const g = GROUNDS[a.ground];
+    const mark = (sel, key) => $$(sel).forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.dataset[key] === a[key])));
+
+    mark("[data-ground]", "ground");
+    mark("[data-ink]", "ink");
+    mark("[data-font]", "font");
+
+    const look = $("#lookPreview");
+    if (look) {
+      look.style.setProperty("--look-paper", g.paper);
+      look.style.setProperty("--look-paper-2", g.paper2);
+      look.style.setProperty("--look-ink", a.ink === "strong" ? (a.ground === "dark" ? "#FFFFFF" : "#000000") : g.ink);
+      look.style.setProperty("--look-ink-3", g.ink3);
+      look.style.setProperty("--look-rule", g.rule);
+      look.style.setProperty("--look-brand", state.accent || "#F7941D");
+      look.style.setProperty("--look-accent-ink", accentInk(state.accent));
+      look.style.setProperty("--look-font", FACES[a.font]);
+    }
+
+    const nm = $("#lookName");
+    if (nm) nm.textContent = state.restaurant.name || "Your restaurant";
+    const tag = $("#lookTag");
+    if (tag) tag.textContent = g.title + (a.ink === "strong" ? " · high contrast" : "");
+  }
+
+  /* one delegated listener for the three choice rows */
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-ground],[data-ink],[data-font]");
+    if (!el) return;
+    const t = Object.assign({}, state.theme || {});
+    if (el.dataset.ground) t.ground = el.dataset.ground;
+    if (el.dataset.ink) t.ink = el.dataset.ink;
+    if (el.dataset.font) t.font = el.dataset.font;
+    state.theme = t;
+    save();
+    renderAppearance();
+  });
+
+  const saveLook = $("#saveAppearance");
+  if (saveLook) {
+    saveLook.addEventListener("click", async () => {
+      const label = saveLook.textContent;
+      saveLook.disabled = true;
+      saveLook.textContent = "Saving…";
+      const r = await window.Auth.api("/api/restaurant", {
+        method: "POST",
+        body: JSON.stringify({ accent: state.accent, theme: appearance() })
+      });
+      saveLook.disabled = false;
+      saveLook.textContent = label;
+      if (!r.ok) { toast(r.data.message || "Could not save the appearance."); return; }
+      if (r.data && r.data.restaurant) applyRestaurant(r.data.restaurant);
+      toast("Appearance saved — your guest page is updated");
+    });
   }
 
   /* ---------------- menu colour ----------------
@@ -3419,7 +3506,8 @@
     state.accent = sw.dataset.accent;
     save();
     renderPalette();
-    toast("Colour set to " + sw.dataset.accent + " — press Save guest page");
+    renderAppearance();
+    toast("Colour set to " + sw.dataset.accent + " — press Save appearance");
   });
 
   const cleanBtn = $("#cleanFiles");
@@ -3778,6 +3866,8 @@
     state.restaurant.mapsUrl = r.maps_url || "";
     state.handle = r.handle || state.handle;
     state.accent = r.accent || state.accent;
+    /* the guest page's look, when the row has one */
+    if (r.theme && typeof r.theme === "object") state.theme = r.theme;
     state.status = r.status || "trial";
     /* the free week: kept in state so the overview can say how long is left */
     state.trialEnds = r.trial_ends || null;

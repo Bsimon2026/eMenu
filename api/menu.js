@@ -173,12 +173,17 @@ async function menuHandler(req, res) {
      fails the whole select, so it is tried last and dropped on its own — the
      cover photo and the Arabic must not disappear because one column is new. */
   const FULL_ORDER = FULL_COLS + ",wa_order_e164";
+  /* 0021 adds the guest page's look (ground, ink, font). Same rule as the order
+     number: asked for first, dropped on its own, so the cover photo and the
+     Arabic survive a deployment that lands before the migration. */
+  const FULL_THEME = FULL_ORDER + ",theme";
   const query = (cols) =>
     "restaurants?" + lookup + "&status=eq.published&select=" + cols;
 
   /* 0004 adds the identity columns; a deployment can land before the migration
      is run, so fall back to the original columns instead of failing the page */
-  let found = await rest(query(FULL_ORDER));
+  let found = await rest(query(FULL_THEME));
+  if (!found.ok) found = await rest(query(FULL_ORDER));
   if (!found.ok) found = await rest(query(FULL_COLS));
   if (!found.ok) found = await rest(query(BASE_COLS));
   if (!found.ok) {
@@ -261,6 +266,9 @@ async function menuHandler(req, res) {
         : restaurant.whatsapp_e164,
       city: restaurant.city || "",
       accent: restaurant.accent || "#f7941d",
+      /* the owner's chosen look; an older row has no theme and the page falls
+         back to its charcoal ground */
+      theme: restaurant.theme && typeof restaurant.theme === "object" ? restaurant.theme : {},
       logoUrl: restaurant.logo_url || null,
       mapsUrl: restaurant.maps_url || null,
       currency: restaurant.currency || "AED",

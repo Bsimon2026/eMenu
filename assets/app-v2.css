@@ -1769,40 +1769,155 @@ select.input {
   box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink), inset 0 0 0 1px rgba(255, 255, 255, .16);
 }
 
-.swatch-preview {
-  --brand: #F7941D;
-  --accent-ink: #14120E;
+/* ---------- appearance: the guest page, previewed ----------
+   The preview paints from the same tokens the guest sheet uses (--look-* are
+   fed by renderAppearance), so what an owner picks is what a guest gets. */
+
+/* two columns above 900px: a phone-shaped preview beside its controls.
+   A full-bleed preview strip read as a widget, not as the guest's screen. */
+.appearance-body {
+  display: grid;
+  grid-template-columns: 292px minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+.appearance-controls { min-width: 0; }
+.appearance-controls .opt-row:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+.look {
+  --look-paper: #14171A;
+  --look-paper-2: #1B1F24;
+  --look-ink: #F3EFE7;
+  --look-ink-3: #9CA4AC;
+  --look-rule: #262C33;
+  --look-brand: #F7941D;
+  --look-accent-ink: #14120E;
+  --look-font: "Fraunces", Georgia, serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 296px;
+  background: var(--look-paper);
+  color: var(--look-ink);
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  padding: 18px 16px 16px;
+  /* no transition on background/color here: Chrome leaves a property whose value
+     comes from a custom property that changed on this same element stuck at its
+     old value, so the preview would switch its label but keep the old ground.
+     An instant swap is the correct, honest behaviour. */
+}
+
+.look-head { display: flex; flex-direction: column; gap: 2px; }
+.look-name {
+  font-family: var(--look-font);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--look-ink);
+}
+.look-meta {
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--look-ink-3);
+}
+.look-sec {
+  font-family: var(--look-font);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--look-ink-3);
+  margin: 14px 0 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--look-rule);
+}
+.look-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 4px 0; }
+.look-dish { font-size: 13px; color: var(--look-ink); }
+.look-price {
+  font-family: var(--look-font);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--look-ink);
+  white-space: nowrap;
+}
+.look-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--look-rule);
   flex-wrap: wrap;
-  margin-top: 14px;
-  padding: 12px 13px;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: #101416;
 }
-.sp-btn {
+.look-btn {
   display: inline-flex;
   align-items: center;
-  height: 32px;
-  padding: 0 15px;
+  height: 30px;
+  padding: 0 14px;
   border-radius: 999px;
-  background: var(--brand);
-  color: var(--accent-ink);
-  font-size: 12.5px;
+  background: var(--look-brand);
+  color: var(--look-accent-ink);
+  font-size: 12px;
   font-weight: 600;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18);
 }
-.sp-chip {
+.look-tag {
   font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--ink-2);
-  border: 1px solid var(--rule-2);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--look-ink-3);
+  border: 1px solid var(--look-rule);
   border-radius: 999px;
-  padding: 5px 11px;
+  padding: 4px 9px;
 }
-.sp-note { flex: 1 1 180px; font-size: 11.5px; color: var(--ink-4); line-height: 1.5; }
+
+.opt-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 4px 14px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+  margin-top: 12px;
+}
+.opt-label { font-size: 12px; color: var(--ink-4); letter-spacing: .02em; }
+.opt-set { display: flex; gap: 6px; flex-wrap: wrap; }
+.opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-2);
+  background: #141A1B;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+.opt:hover { color: var(--ink); border-color: #3B4649; }
+.opt[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: #1B2224; }
+.opt .sw {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: block;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22);
+}
+.sw-bone { background: #FBF7F0; }
+.sw-char { background: #14171A; }
+.sw-clay { background: #EFE2D0; }
+
+@media (max-width: 899px) {
+  .appearance-body { grid-template-columns: 1fr; gap: 16px; }
+  .look { min-height: 0; }
+  .look-actions { margin-top: 8px; }
+}
+
+@media (max-width: 600px) {
+  .opt-row { grid-template-columns: 1fr; gap: 8px; }
+}
 
 /* a panel whose feature is honestly not built yet */
 .card-soon { border-style: dashed; }

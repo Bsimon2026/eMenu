@@ -20,6 +20,22 @@ const E164 = /^\+[1-9][0-9]{7,14}$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
 const PURPOSES = ["Dine In", "Take Away", "Delivery"];
 
+/* The guest page's look. These three lists are the contract: a value outside
+   them is dropped rather than stored, so a menu never receives a ground class
+   or a font stack that does not exist. */
+const THEME_GROUNDS = ["dark", "light", "clay"];
+const THEME_INKS = ["soft", "strong"];
+const THEME_FONTS = ["serif", "grotesk", "satoshi"];
+
+function cleanTheme(v) {
+  if (!v || typeof v !== "object") return {};
+  const t = {};
+  if (THEME_GROUNDS.includes(v.ground)) t.ground = v.ground;
+  if (THEME_INKS.includes(v.ink)) t.ink = v.ink;
+  if (THEME_FONTS.includes(v.font)) t.font = v.font;
+  return t;
+}
+
 function cleanHandle(s) {
   return String(s || "").toLowerCase().trim()
     .replace(/[^a-z0-9-]+/g, "-")
@@ -107,6 +123,7 @@ async function restaurantHandler(req, res) {
     purposes,
     city: body.city !== undefined ? String(body.city).slice(0, 60) : (existing?.city ?? "Dubai"),
     accent: body.accent !== undefined ? String(body.accent).slice(0, 20) : (existing?.accent ?? "#f7941d"),
+    theme: body.theme !== undefined ? cleanTheme(body.theme) : (existing?.theme ?? {}),
     updated_at: new Date().toISOString()
   };
   for (const k of ["logo_url", "licence_url", "maps_url", "cover_url"]) {
@@ -234,6 +251,17 @@ async function restaurantHandler(req, res) {
       body: { ...patch, owner_id: user.id }
     });
     if (retry.ok || retry.status < 500) saved = retry;
+  }
+
+  /* PostgREST fails the whole write on one unknown column, so a deployment that
+     lands before db/0021_theme.sql runs would lose the address, the number and
+     everything else in the same request. Drop the theme and keep the rest. */
+  if (!saved.ok && patch.theme !== undefined && /theme/.test(JSON.stringify(saved.data || "") + (saved.message || ""))) {
+    const withoutTheme = { ...patch };
+    delete withoutTheme.theme;
+    saved = existing
+      ? await rest("restaurants?id=eq." + existing.id, { method: "PATCH", body: withoutTheme, prefer: "return=representation" })
+      : await rest("restaurants", { method: "POST", prefer: "return=representation", body: { ...withoutTheme, owner_id: user.id } });
   }
 
   if (!saved.ok) {

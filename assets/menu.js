@@ -54,6 +54,47 @@
   let LOCALES = ["en"];
   let cats = [];
 
+  /* The look the owner picked in Settings → Appearance. Empty means the
+     charcoal ground, which is what every existing tenant already sees. */
+  let THEME = {};
+
+  const FONT_STACKS = {
+    serif: '"Fraunces", "Noto Kufi Arabic", ui-serif, Georgia, serif',
+    grotesk: '"Outfit", "Noto Kufi Arabic", system-ui, "Segoe UI", sans-serif',
+    satoshi: '"Satoshi", "Outfit", system-ui, sans-serif'
+  };
+
+  /* Three grounds, two ink tones, three display faces — the same set the
+     dashboard offers, applied by swapping the classes and custom properties the
+     sheet already defines. Nothing here invents a colour: an unknown value falls
+     back rather than painting something untested. */
+  function applyTheme(theme) {
+    const t = theme && typeof theme === "object" ? theme : {};
+    const html = document.documentElement;
+    /* the marketing page embeds this menu in a phone frame, and there it stays
+       light so the landing hero does not turn black */
+    const embed = document.body.classList.contains("embed");
+    const ground = ["dark", "light", "clay"].includes(t.ground) ? t.ground : "dark";
+
+    html.classList.toggle("t-dark", !embed && ground === "dark");
+    html.classList.toggle("t-clay", !embed && ground === "clay");
+
+    /* "strong" is the same ground with the ink pushed to pure black or white;
+       both ends pass contrast on all three grounds, so the choice cannot make
+       the page unreadable */
+    if (!embed && t.ink === "strong") {
+      html.style.setProperty("--ink", ground === "dark" ? "#FFFFFF" : "#000000");
+    } else {
+      html.style.removeProperty("--ink");
+    }
+
+    if (!embed && FONT_STACKS[t.font]) {
+      html.style.setProperty("--font-display", FONT_STACKS[t.font]);
+    } else {
+      html.style.removeProperty("--font-display");
+    }
+  }
+
   /* the restaurant picks its currency once; every price uses it */
   const SYMBOL = { USD: "$", EUR: "€", GBP: "£", INR: "₹", PKR: "₨", EGP: "E£" };
   let currency = "AED";
@@ -158,11 +199,10 @@
   function paint() {
   /* ---------- head ---------- */
 
-  /* The ground the shelves sit on. Charcoal by default: the menu is mostly
-     photographs and a dark page stops the paper competing with them. The
-     marketing page embeds this menu in a phone frame, and there it stays light
-     so the landing hero does not turn black. */
-  if (!document.body.classList.contains("embed")) document.documentElement.classList.add("t-dark");
+  /* The ground the shelves sit on, as the owner chose it in the dashboard:
+     charcoal by default, bone or clay on request, and always light inside the
+     marketing page's phone frame. */
+  applyTheme(THEME);
 
   document.title = name + " — menu";
   $("#restName").textContent = name;
@@ -888,6 +928,7 @@
 
     const r = data.restaurant || {};
     restaurant = { name: r.name, city: r.city, whatsapp: r.whatsapp, purposes: r.purposes };
+    THEME = r.theme && typeof r.theme === "object" ? r.theme : {};
     LOCALES = Array.isArray(r.locales) ? r.locales : ["en"];
     docs = { logo: r.logoUrl || null };
     name = r.name || "Menu";
