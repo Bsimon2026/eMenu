@@ -28,6 +28,7 @@ const crypto = require("crypto");
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
 const waSend = require("./_lib/wa-inbox");
 const discount = require("./_lib/discounts");
+const { capabilities, PLANS: PLAN_TABLE } = require("./_lib/plans");
 
 const GRAPH = (process.env.WHATSAPP_API_VERSION || "v21.0");
 const GUEST_BASE = (process.env.PUBLIC_BASE || "https://digimenu.indubaicity.com").replace(/\/+$/, "");
@@ -167,10 +168,25 @@ async function owner(req, res) {
   const user = await userFromToken(bearer(req));
   if (!user) return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
 
-  const actor = await actorRestaurant(user, "id,handle,name,whatsapp_e164,currency");
+  const actor = await actorRestaurant(user, "id,handle,name,whatsapp_e164,currency,plan,paid_through,trial_ends,addon_marketing");
   if (!actor) return res.status(409).json({ ok: false, code: "NO_RESTAURANT", message: "Set up your restaurant first." });
   if (actor.role !== "owner") {
     return res.status(403).json({ ok: false, code: "NOT_OWNER", message: "Only the owner can run marketing." });
+  }
+
+  /* Asking past guests how it went is part of Pro and Ultra (or the marketing
+     add-on), never of QR Menu: the menu-only plan is the menu and its QR code.
+     Enforced here — the guest's feedback page below stays open, because a guest
+     holding a link must not be refused by the restaurant's plan. */
+  const cap = capabilities(actor.restaurant);
+  if (!cap.marketing) {
+    return res.status(403).json({
+      ok: false,
+      code: "NOT_IN_PLAN",
+      message: "Review requests are part of " + PLAN_TABLE.order.label + ". Your menu is on " +
+        PLAN_TABLE.qr.label + " — AED " + PLAN_TABLE.qr.price.yearly + " a year, the menu and its QR code. " +
+        "Upgrade to " + PLAN_TABLE.order.label + " to ask guests for reviews."
+    });
   }
 
   const rid = actor.restaurant.id;

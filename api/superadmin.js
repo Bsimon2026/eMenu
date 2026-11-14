@@ -29,15 +29,15 @@ const {
 
 const ALL = ["view", "export", "pay_view", "pay_entry", "admins"];
 
-/* AED. "qr" is sold by the year only; "pro" is ordering with no order cap.
-   The website add-on is one yearly line, so it can be seen and stopped
-   without touching the menu subscription. */
-const priceOf = (plan, billing) =>
-  plan === "pro" ? (billing === "yearly" ? 1990 : 249)
-    : plan === "order" ? (billing === "yearly" ? 999 : 99)
-      : 99;
-const ADDON_YEARLY = 299;
-const PLANS = ["qr", "order", "pro"];
+/* AED, from api/_lib/plans.js — the same table the paywall and
+   tools/prices-check.js read. The ledger said 99 for a month of Pro and 1990 for
+   a year of Ultra while the website said 129 and 1999; the database plan `pro`
+   is the website's Ultra, which is why the labels come from the table too. The
+   marketing add-on is one yearly line, so it can be seen and stopped without
+   touching the menu subscription. */
+const { PLANS: PLAN_TABLE, ADDONS, billable, priceOf } = require("./_lib/plans");
+const ADDON_YEARLY = ADDONS.marketing.yearly;
+const PLAN_KEYS = Object.keys(PLAN_TABLE);
 const BILLING = ["monthly", "yearly"];
 
 /* ---------------------------------------------------------------- helpers */
@@ -394,7 +394,7 @@ module.exports = async function handler(req, res) {
       patch.trial_ends = null;
     } else {
       const billing = BILLING.includes(body.billing) ? body.billing : "monthly";
-      const plan = PLANS.includes(body.plan) ? body.plan : (r0.plan || "qr");
+      const plan = PLAN_KEYS.includes(body.plan) ? body.plan : (r0.plan || "qr");
 
       /* the website add-on is one yearly line — AED 299. There is no setup fee
          any more, so nothing is charged once per customer. */
@@ -532,10 +532,11 @@ module.exports = async function handler(req, res) {
       payments: rows,
       total: Math.round(rows.reduce((a, x) => a + Number(x.amount || 0), 0) * 100) / 100,
       prices: {
-        qr: { yearly: 99 },
-        order: { monthly: 99, yearly: 999 },
-        pro: { monthly: 249, yearly: 1990 },
-        marketing: { yearly: ADDON_YEARLY }
+        qr: billable("qr"),
+        order: billable("order"),
+        pro: billable("pro"),
+        marketing: { yearly: ADDON_YEARLY },
+        labels: { qr: PLAN_TABLE.qr.label, order: PLAN_TABLE.order.label, pro: PLAN_TABLE.pro.label }
       }
     });
   }

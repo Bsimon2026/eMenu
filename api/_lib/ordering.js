@@ -14,12 +14,10 @@
  * money or access gets written twice in this repo.
  */
 
-/* "order" includes ordering; "pro" is the same with no order cap. */
-const ORDERING_PLANS = ["order", "pro"];
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
+/* The rule itself lives in api/_lib/plans.js: one table of prices and
+   capabilities for the operator console, the paywall and the menu. This is the
+   one-question wrapper, so a third caller cannot invent a third answer. */
+const { capabilities, PLANS } = require("./plans");
 
 /**
  * @param {{plan?:string, paid_through?:string|null, trial_ends?:string|null}} row
@@ -27,33 +25,26 @@ function today() {
  *            onTrial:boolean, paid:boolean, planTakes:boolean}}
  */
 function canTakeOrders(row) {
-  const r = row || {};
-  const day = today();
-  const plan = r.plan || "qr";
-  /* the seven free days include ordering, so a new restaurant sees the whole
-     product before anybody pays for it */
-  const onTrial = Boolean(r.trial_ends && r.trial_ends >= day);
-  const paid = Boolean(r.paid_through && r.paid_through >= day);
-  const planTakes = ORDERING_PLANS.indexOf(plan) >= 0;
+  const cap = capabilities(row);
+  const planTakes = Boolean(PLANS[cap.plan] && PLANS[cap.plan].ordering);
+  const base = { plan: cap.plan, onTrial: cap.onTrial, paid: cap.paid, planTakes };
 
-  if (onTrial) return { ok: true, plan, onTrial, paid, planTakes };
+  if (cap.ordering) return Object.assign({ ok: true }, base);
+
+  /* a plan sold without ordering, versus a plan that includes it but is not
+     current: two different sentences, and the owner needs the right one */
   if (!planTakes) {
-    return {
+    return Object.assign({
       ok: false,
       code: "ORDERING_NOT_INCLUDED",
-      message: "This restaurant's menu is view-only. Call them to order.",
-      plan, onTrial, paid, planTakes
-    };
+      message: "This restaurant's menu is view-only. Call them to order."
+    }, base);
   }
-  if (!paid) {
-    return {
-      ok: false,
-      code: "SUBSCRIPTION_INACTIVE",
-      message: "Ordering is paused for this restaurant. Please call them.",
-      plan, onTrial, paid, planTakes
-    };
-  }
-  return { ok: true, plan, onTrial, paid, planTakes };
+  return Object.assign({
+    ok: false,
+    code: "SUBSCRIPTION_INACTIVE",
+    message: "Ordering is paused for this restaurant. Please call them."
+  }, base);
 }
 
-module.exports = { canTakeOrders, ORDERING_PLANS };
+module.exports = { canTakeOrders };

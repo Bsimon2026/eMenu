@@ -43,6 +43,17 @@
 
   const publicLink = (h) => PUBLIC_BASE.replace(/^https?:\/\//i, "") + (h || "—");
 
+  /* The published prices, mirrored from api/_lib/plans.js — which is what the
+     paywall and the operator ledger charge. tools/prices-check.js compares this
+     block with that table, so the dashboard cannot quote a price the website does
+     not sell. Names follow the website: "Pro" is the ordering tier, "Ultra" adds
+     the landing page. */
+  const PRICE = {
+    qr: { yearly: 99 },
+    pro: { monthly: 129, yearly: 999 },
+    ultra: { monthly: 249, yearly: 1999 }
+  };
+
   /* ---------------- state ---------------- */
 
   function seed() {
@@ -1201,6 +1212,19 @@
       : "Back to trial: the menu is hidden from guests");
   }
 
+  /* What the plan includes, so a pane is not offered and then refused by the
+     handler. The server decides the rights (api/_lib/plans.js); this is the
+     courtesy — QR Menu is the menu and its QR code, so review requests are not
+     offered on it. */
+  function paintEntitlements() {
+    const plan = state.plan || "qr";
+    const today = new Date().toISOString().slice(0, 10);
+    const onTrial = Boolean(state.trialEnds && state.trialEnds >= today);
+    const paid = Boolean(state.paidThrough && state.paidThrough >= today);
+    const marketing = onTrial || (paid && (plan !== "qr" || state.addonMarketing));
+    $$('[data-view="marketing"]').forEach((el) => { el.hidden = !marketing; });
+  }
+
   function renderOverview() {
     const items = publishItems();
 
@@ -1225,7 +1249,10 @@
         ? "Everything needed is here. Publish when you are happy with the menu."
         : "Still needed: " + missing.join(", ") + ".";
 
-    /* the free week, said beside the missing list rather than over it */
+    /* the free week, said beside the missing list rather than over it — and said
+       with the plan it actually hands over to: QR Menu keeps the menu live, Pro
+       adds the ordering. "The menu stays private until you pay" was written when
+       there was one plan; it told a QR Menu owner their menu would go dark. */
     const todayStr = new Date().toISOString().slice(0, 10);
     const paidNow = Boolean(state.paidThrough && state.paidThrough >= todayStr);
     let trialLine = "";
@@ -1234,8 +1261,9 @@
       if (left >= 0) {
         trialLine = "Free until " +
           new Date(state.trialEnds).toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
-          " — " + left + " day" + (left === 1 ? "" : "s") + " left with everything on. After that the menu stays " +
-          "private until you pay, and everything you built is kept.";
+          " — " + left + " day" + (left === 1 ? "" : "s") + " left with everything on. After that the menu " +
+          "stays live on QR Menu at AED " + PRICE.qr.yearly + " a year, and ordering comes with Pro at AED " +
+          PRICE.pro.monthly + " a month or AED " + PRICE.pro.yearly + " a year.";
       }
     }
 
@@ -1284,6 +1312,7 @@
       navState.className = "nv-state " + (live ? "ok" : "off");
       navState.textContent = live ? "Published" : "Unpublished";
     }
+    paintEntitlements();
     $("#sideDot").className = "dot" + (live ? " live" : "");
     $("#sideRest").textContent = state.restaurant.name || "Your restaurant";
 
@@ -4029,6 +4058,10 @@
     /* the free week: kept in state so the overview can say how long is left */
     state.trialEnds = r.trial_ends || null;
     state.paidThrough = r.paid_through || null;
+    /* which plan they are on, for what the dashboard offers (the server decides
+       the rights; this only keeps the panes honest) */
+    state.plan = r.plan || "qr";
+    state.addonMarketing = Boolean(r.addon_marketing);
     state.currency = r.currency || "AED";
     state.restaurant.tagline = r.tagline || "";
     state.restaurant.address = r.address_line || "";

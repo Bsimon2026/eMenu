@@ -10,6 +10,7 @@
  */
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
+const { PLANS: PLAN_TABLE, billable, upgradeLine } = require("./_lib/plans");
 
 /* Media belongs to the restaurant, so it rides in the same deployment slot:
    POST /api/restaurant?upload=1 and GET ?upload=1&action=sweep. */
@@ -211,15 +212,14 @@ async function restaurantHandler(req, res) {
 
       if (hasPlanColumns && !paidNow && !onTrial) {
         const plan = (existing && existing.plan) || "qr";
-        const price = plan === "order" ? { m: 99, y: 999 } : { m: 99, y: 99 };
         return res.status(402).json({
           ok: false,
           code: "PAYMENT_REQUIRED",
-          message: "Your free week is over. Your menu is ready and stays saved — pay AED " +
-            (plan === "order" ? "99/month or AED 999/year" : "99/year") +
-            " by transfer or on WhatsApp — connect@indubaicity.com — and it goes live the same day.",
+          message: "Your free week is over. Everything you built stays saved. " + upgradeLine(plan) +
+            " Pay by transfer or on WhatsApp — connect@indubaicity.com — and it goes live the same day.",
           plan,
-          prices: price,
+          planLabel: PLAN_TABLE[plan] ? PLAN_TABLE[plan].label : PLAN_TABLE.qr.label,
+          prices: billable(plan),
           trialEnded: Boolean(trialEnds)
         });
       }
