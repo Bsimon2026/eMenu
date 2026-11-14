@@ -169,7 +169,10 @@ async function menuHandler(req, res) {
     lookup = "handle=eq." + encodeURIComponent(handle);
   }
 
-  const BASE_COLS = "id,name,handle,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
+  /* `status` is read even though the query filters on it: isLive() decides with
+     the row, and a select without it made every published restaurant look
+     unpublished. */
+  const BASE_COLS = "id,name,handle,status,purposes,whatsapp_e164,city,accent,logo_url,maps_url";
   const FULL_COLS = BASE_COLS + ",currency,tagline,address_line,instagram,facebook,tiktok,website,cover_url,plan,paid_through,custom_domain,trial_ends,locales,sender_mode,wa_phone_number_id";
   /* 0017 adds the order number. Asking for a column that does not exist yet
      fails the whole select, so it is tried last and dropped on its own — the
