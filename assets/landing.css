@@ -237,31 +237,41 @@ button { font: inherit; color: inherit; }
   overflow: hidden;
 }
 
+/* A portrait dish photo in a landscape frame cannot fill it: cropped to the
+   hero's aspect it becomes an unreadable brown mass. It gets its own window on
+   the right instead, near its native ratio, fading into the ground at the seam. */
 .hero-photo {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 47%;
   z-index: -2;
 }
 .hero-photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 50%;
+  object-position: 56% 40%;
 }
-/* the scrim follows the copy column, not the top of the frame: a top-to-bottom
-   gradient leaves the text sitting in the lightest band of the very photo */
+/* the seam softens into the page, and the top/bottom edges take the nav and the
+   marquee without a hard line */
 .hero-photo::after {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(96deg,
-      rgba(10, 11, 12, .97) 0%,
-      rgba(10, 11, 12, .93) 34%,
-      rgba(10, 11, 12, .55) 58%,
-      rgba(10, 11, 12, .30) 78%,
-      rgba(10, 11, 12, .62) 100%),
-    linear-gradient(to bottom, rgba(10, 11, 12, .72) 0%, rgba(10, 11, 12, 0) 26%, rgba(10, 11, 12, .92) 97%);
+    linear-gradient(90deg,
+      var(--bg) 0%,
+      rgba(10, 11, 12, .82) 9%,
+      rgba(10, 11, 12, .30) 24%,
+      rgba(10, 11, 12, 0) 44%,
+      rgba(10, 11, 12, .18) 100%),
+    linear-gradient(180deg,
+      rgba(10, 11, 12, .78) 0%,
+      rgba(10, 11, 12, .10) 22%,
+      rgba(10, 11, 12, .10) 76%,
+      rgba(10, 11, 12, .92) 100%);
 }
 
 .hero-grid {
@@ -303,10 +313,22 @@ button { font: inherit; color: inherit; }
   margin-bottom: 1px;
 }
 
+/* over a photograph the ghost button needs its own ground, or its hairline
+   border disappears into the food and only the label floats */
+.hero .btn-line {
+  background: rgba(10, 11, 12, .52);
+  border-color: rgba(255, 255, 255, .28);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+}
+.hero .btn-line:hover { background: rgba(10, 11, 12, .72); border-color: rgba(255, 255, 255, .45); }
+
 /* the live order, floating over the photograph */
 .float {
   justify-self: end;
-  width: min(360px, 100%);
+  align-self: end;
+  margin: 0 10px 8px 0;
+  width: min(336px, 100%);
   background: rgba(18, 22, 26, .86);
   border: 1px solid rgba(255, 255, 255, .13);
   border-radius: var(--r-lg);
@@ -398,11 +420,15 @@ button { font: inherit; color: inherit; }
 @media (max-width: 1023px) {
   .hero { min-height: 0; padding-top: 104px; }
   .hero-grid { grid-template-columns: 1fr; gap: 30px; }
+  .hero-photo { width: 100%; }
+  .hero-photo img { object-position: 50% 34%; }
+  /* on a phone the copy sits on top of the dish, so the ground is nearly solid
+     behind it and the photograph becomes texture rather than the subject */
   .hero-photo::after {
     background:
-      linear-gradient(to bottom, rgba(10, 11, 12, .86) 0%, rgba(10, 11, 12, .74) 40%, rgba(10, 11, 12, .95) 100%);
+      linear-gradient(to bottom, rgba(10, 11, 12, .96) 0%, rgba(10, 11, 12, .90) 42%, rgba(10, 11, 12, .97) 100%);
   }
-  .float { justify-self: stretch; width: 100%; max-width: 380px; animation: none; }
+  .float { justify-self: stretch; width: 100%; max-width: 380px; margin-left: 0; animation: none; }
 }
 
 /* ------------------------------------------------------------- marquee ---- */
@@ -839,7 +865,7 @@ table.compare {
 }
 table.compare th,
 table.compare td {
-  padding: 13px 18px;
+  padding: 11px 18px;
   text-align: left;
   border-bottom: 1px solid var(--rule);
   vertical-align: middle;
@@ -861,11 +887,11 @@ table.compare thead th.hi { color: var(--brand); }
 table.compare th[scope="row"] {
   font-weight: 500;
   color: var(--ink-2);
-  width: 46%;
+  width: 42%;
 }
 table.compare tbody tr:last-child th,
 table.compare tbody tr:last-child td { border-bottom: 0; }
-table.compare td { text-align: center; width: 18%; color: var(--ink-2); }
+table.compare td { text-align: center; width: 19.3%; color: var(--ink-2); }
 table.compare tbody tr:not(.group):hover td,
 table.compare tbody tr:not(.group):hover th { background: #151A1F; }
 table.compare td:first-of-type, table.compare th:first-of-type { position: sticky; left: 0; background: var(--panel); }
