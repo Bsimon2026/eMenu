@@ -756,6 +756,15 @@
 
   let obStep = 2;
 
+  /* The wizard keeps the two documents the guest page and the publish gate
+     need as *files* until the restaurant row exists — storage writes under the
+     restaurant's handle, so nothing can be uploaded before the row is created.
+     Holding them in memory is what lets "Open my dashboard" put them in the
+     row on the way out; storing a data URL in localStorage (what this used to
+     do) never reached the server, so the checklist said "Added" and publishing
+     still answered "Still needed: logo, licence". */
+  const pendingDocs = { logo: null, license: null };
+
   function showOb(step) {
     obStep = step;
     $("#onboard").hidden = false;
@@ -773,6 +782,10 @@
 
     if (step === 3) renderObDocs();
     if (step === 4) {
+      /* the printed address, from the same base the QR and every other link use:
+         a hard-coded "ogle.live/digimenu/" told owners their address was one
+         thing while the availability check named another */
+      if ($("#handlePrefix")) $("#handlePrefix").textContent = PUBLIC_BASE.replace(/^https?:\/\//i, "");
       const h = $("#handle");
       if (!h.value) h.value = slugify(state.restaurant.name || state.account.name || "");
       checkHandle(h.value);
@@ -854,6 +867,7 @@
     if (!/^image\//.test(file.type)) { toast("Use a PNG or JPG for the logo"); return; }
     readAsDataURL(file, (url) => {
       state.docs.logo = url;
+      pendingDocs.logo = file;
       const img = new Image();
       img.onload = () => {
         extractPalette(img, (pal) => {
@@ -908,6 +922,7 @@
 
   function acceptLicence(file, ob) {
     state.docs.license = file.name;
+    pendingDocs.license = file;
     save();
     if (ob) renderObDocs(); else renderDocs();
     renderOverview();
@@ -954,7 +969,12 @@
 
   function checkHandle(raw) {
     const v = slugify(raw);
-    handleInput.value = v;
+    /* Typing a dash used to lose it: slugify drops a trailing separator, so the
+       box was rewritten mid-word and "kings-kebab" arrived as "kingskebab".
+       The box keeps what was typed (cleaned, trailing dash allowed); `v` stays
+       the canonical handle that is checked, printed and saved. */
+    const typed = String(raw || "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-");
+    if (handleInput.value !== typed) handleInput.value = typed;
     $("#suggestions").innerHTML = "";
     if (!v || v.length < 3) {
       handleFree = false;
@@ -971,11 +991,20 @@
     clearTimeout(handleTimer);
     handleTimer = setTimeout(async () => {
       let free = false;
+      let own = false;
       let reason = "";
       try {
-        const res = await fetch(window.Auth.apiBase + "/api/restaurant?check=" + encodeURIComponent(v));
+        /* Signed in, the check can recognise the owner's own address: without
+           the token every returning owner was told their own handle was taken
+           and this button never came back to life. */
+        const headers = {};
+        if (window.Auth && window.Auth.session && window.Auth.session()) {
+          headers.Authorization = "Bearer " + window.Auth.token();
+        }
+        const res = await fetch(window.Auth.apiBase + "/api/restaurant?check=" + encodeURIComponent(v), { headers });
         const data = await res.json();
         free = Boolean(data.available);
+        own = Boolean(data.own);
         reason = data.reason || "";
       } catch (e) {
         $("#handleStatus").className = "handle-status";
@@ -996,7 +1025,9 @@
       } else {
         handleFree = true;
         $("#handleStatus").className = "handle-status free";
-        $("#handleStatus").textContent = "Available. It becomes yours when you finish.";
+        $("#handleStatus").textContent = own
+          ? "This address is already yours — it stays as it is."
+          : "Available. It becomes yours when you finish.";
         state.handle = v;
         save();
         $("#linkOb").textContent = publicLink(v);
@@ -1043,6 +1074,23 @@
     }
 
     applyRestaurant(r.data.restaurant);
+
+    /* The row exists, so the two documents chosen in step 2 can finally be
+       stored. Publishing is gated on them server-side; until this ran, a logo
+       and a licence picked in the wizard existed only in this browser. */
+    if (pendingDocs.logo) {
+      btn.disabled = true;
+      btn.textContent = "Uploading the logo…";
+      await uploadTo("logo", pendingDocs.logo);
+      pendingDocs.logo = null;
+    }
+    if (pendingDocs.license) {
+      btn.disabled = true;
+      btn.textContent = "Uploading the licence…";
+      await uploadTo("licence", pendingDocs.license);
+      pendingDocs.license = null;
+    }
+
     location.href = "/app.html#overview";
   });
 
@@ -1106,10 +1154,14 @@
         ? "Everything needed is here. Publish when you are happy with the menu."
         : "Still needed: " + missing.join(", ") + ".";
 
-    /* seven free days, said plainly, and what happens when they end */
+    /* The trial sentence used to overwrite the "still needed" line unconditionally,
+       so every new restaurant — always on trial — was told how many days were
+       left and never what was actually blocking the publish. The missing list
+       wins while something is missing; the free-week note keeps the line when
+       nothing is. */
     const todayStr = new Date().toISOString().slice(0, 10);
     const paidNow = Boolean(state.paidThrough && state.paidThrough >= todayStr);
-    if (state.trialEnds && !paidNow) {
+    if ((live || ready) && state.trialEnds && !paidNow) {
       const left = Math.round((new Date(state.trialEnds) - new Date(todayStr)) / 86400000);
       if (left >= 0) {
         $("#publishHint").textContent = "Free until " +
@@ -3869,6 +3921,11 @@
     /* the guest page's look, when the row has one */
     if (r.theme && typeof r.theme === "object") state.theme = r.theme;
     state.status = r.status || "trial";
+    /* The logo and the licence live in the row, and the publish gate reads the
+       row. The checklist must read the same place: a document sitting in this
+       browser's storage is not uploaded, and "Done" beside a setting the server
+       cannot see is how publishing answered "Still needed: logo, licence". */
+    state.docs = { logo: r.logo_url || null, license: r.licence_url || null };
     /* the free week: kept in state so the overview can say how long is left */
     state.trialEnds = r.trial_ends || null;
     state.paidThrough = r.paid_through || null;
@@ -3978,8 +4035,11 @@
       }
     }
 
-    /* no restaurant yet, or the wizard was explicitly opened */
-    if (!saved || obParam) {
+    /* No restaurant yet: the wizard. An owner who already has one is never put
+       back into it — ?onboard=2 survives in history after signup, so a Back
+       button used to reopen step 3 where their own handle read as "taken" and
+       "Open my dashboard" could not be clicked again. */
+    if (!saved) {
       showOb(Number(obParam) || 2);
       $("#restName").value = state.restaurant.name || "";
       $("#ownerName").value = state.restaurant.ownerName || (state.account && state.account.name) || "";

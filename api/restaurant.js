@@ -59,7 +59,26 @@ async function restaurantHandler(req, res) {
     }
     const hit = await rest("restaurants?handle=eq." + encodeURIComponent(handle) + "&select=handle");
     if (!hit.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
-    return res.status(200).json({ ok: true, handle, available: (hit.data || []).length === 0 });
+    const free = (hit.data || []).length === 0;
+
+    /* A signed-in owner re-opening the wizard (a back button, a second tab, the
+       emailed signup link) is told their *own* address is taken and the finish
+       button stays disabled forever — the wizard could never be completed
+       again. Their own handle is available to them, and to nobody else. */
+    let own = false;
+    if (!free) {
+      const tok = bearer(req);
+      if (tok) {
+        const u = await userFromToken(tok);
+        if (u) {
+          const actor = await actorRestaurant(u, "handle");
+          const mine = actor && actor.restaurant && actor.restaurant.handle;
+          own = Boolean(mine && String(mine).toLowerCase() === handle);
+        }
+      }
+    }
+    if (own) return res.status(200).json({ ok: true, handle, available: true, own: true });
+    return res.status(200).json({ ok: true, handle, available: free });
   }
 
   /* ---------------------------------------------------------------- auth'd */
