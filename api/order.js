@@ -209,29 +209,21 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  /* The duplicate check above is read-then-write, so two requests arriving
-     together both pass it — that is how one tap became two orders and two
-     emails. With a submit key the insert is idempotent: the second request is
-     answered with the row the first one created. */
-  let made = await rest(
-    submitKey ? "orders?on_conflict=submit_key" : "orders",
-    {
-      method: "POST",
-      body: order,
-      prefer: submitKey ? "return=representation,resolution=ignore-duplicates" : "return=representation"
-    }
-  );
+  /* A plain insert, then read the outcome. `on_conflict=submit_key` looked
+     tidier but Postgres cannot infer a PARTIAL unique index from it, so every
+     order failed with "no unique or exclusion constraint matching the ON CONFLICT
+     specification". The partial index still enforces uniqueness, so a repeated
+     key comes back as 23505 and we answer with the row already created. */
+  let made = await rest("orders", { method: "POST", body: order, prefer: "return=representation" });
   let duplicate = false;
-  if (submitKey && made.ok && !(made.data || []).length) {
+
+  const why = JSON.stringify(made.error || made.data || "");
+  if (!made.ok && submitKey && /23505|duplicate key|unique constraint/i.test(why)) {
     const ex = await rest("orders?submit_key=eq." + encodeURIComponent(submitKey) + "&select=*&limit=1");
     if (ex.ok && (ex.data || []).length) { made = { ok: true, data: ex.data }; duplicate = true; }
   }
 
-  /* Migrations are pasted by hand, so the deploy can land first. Peel the payload
-     back one layer at a time — dropping everything at once used to cost the
-     guest's email every time a single new column was missing. */
-  const why = JSON.stringify(made.error || made.data || "");
-  if (!made.ok && /submit_key|column|schema|PGRST204/i.test(why) && !duplicate) {
+  if (!made.ok && !duplicate && /submit_key|column|schema|PGRST204/i.test(why)) {
     /* 0021 not run yet: same order, no key */
     const noKey = Object.assign({}, order);
     delete noKey.submit_key;
@@ -254,7 +246,7 @@ module.exports = async function handler(req, res) {
       ok: false,
       code: "SAVE_FAILED",
       message: "The restaurant did not receive the order record.",
-      detail: String(made.data).slice(0, 200)
+      detail: JSON.stringify(made.error || made.data || "").slice(0, 300)
     });
   }
   const saved = (made.data || [])[0];
