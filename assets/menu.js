@@ -133,6 +133,68 @@
     };
     cta("#confirmOrder", T("Review & Confirm", "مراجعة وتأكيد"));
     cta("#doneWa", T("Send on WhatsApp", "أرسل على واتساب"));
+
+    /* The checkout was written once in English and never wired to the language
+       layer, so an Arabic guest read an Arabic menu and then met an English
+       form. Every string the guest sees in the sheet lives here. */
+    const S = function (sel, en, ar) {
+      const el = document.querySelector(sel);
+      if (el) el.textContent = T(en, ar);
+    };
+    const H = function (sel, en, ar) {
+      const el = document.querySelector(sel);
+      if (el) el.placeholder = T(en, ar);
+    };
+    S("#sheetTitle", "How would you like it?", "كيف تحب طلبك؟");
+    S("#sheetSub",
+      "Your order is sent to the restaurant on WhatsApp from your own phone. They reply to confirm.",
+      "يرسل طلبك إلى المطعم عبر واتساب من هاتفك، ويردون عليك للتأكيد.");
+    const modes = [
+      ['[data-mode="Dine In"]', "Dine In", "تناول في المطعم"],
+      ['[data-mode="Take Away"]', "Take Away", "استلام"],
+      ['[data-mode="Delivery"]', "Delivery", "توصيل"]
+    ];
+    modes.forEach(function (m) { S(m[0], m[1], m[2]); });
+
+    const labels = document.querySelectorAll("#sheetForm > .field > label");
+    const labelText = [
+      ["Your name", "اسمك"],
+      ["Mobile number", "رقم الجوال"],
+      ["Email", "البريد الإلكتروني"],
+      ["Discount code", "كود الخصم"]
+    ];
+    labels.forEach(function (el) {
+      labelText.forEach(function (pair) {
+        if (el.textContent.indexOf(pair[0]) === 0) {
+          el.childNodes[0].nodeValue = T(pair[0] + " ", pair[1] + " ");
+        }
+      });
+    });
+
+    H("#guestName", "So the kitchen knows whose order it is", "ليعرف المطبخ صاحب الطلب");
+    S("#nameErr", "We need a name for the order.", "نحتاج اسماً للطلب.");
+    const phoneHints = document.querySelectorAll("#sheetForm .field .hint");
+    phoneHints.forEach(function (el) {
+      if (el.textContent.indexOf("Pick your country code") === 0) {
+        el.textContent = T("Pick your country code, then the number without it.",
+          "اختر رمز الدولة ثم أدخل الرقم بدونه.");
+      } else if (el.textContent.indexOf("We email you the order") === 0) {
+        el.textContent = T("We email you the order and a WhatsApp link, in case the chat does not open.",
+          "نرسل لك الطلب ورابط واتساب على بريدك في حال لم يفتح التطبيق.");
+      }
+    });
+    S("#phoneErr", "Enter the mobile number without the country code.",
+      "أدخل رقم الجوال بدون رمز الدولة.");
+    S("#emailErr", "We need an email so we can send your order.",
+      "نحتاج بريداً إلكترونياً لإرسال طلبك.");
+    H("#discCode", "Have a code?", "لديك كود؟");
+    S("#applyCode", "Apply", "تطبيق");
+    S("#closeSheet", "Back to menu", "رجوع للقائمة");
+    S("#sheetDone h2", "Order received", "تم استلام طلبك");
+    S("#doneSub",
+      "Your order is with the restaurant. Send it on WhatsApp so they can confirm it — one tap, and it is on its way.",
+      "طلبك لدى المطعم. أرسله على واتساب ليؤكدوه — ضغطة واحدة وينطلق.");
+    S("#doneClose", "Done", "تم");
     const call = document.querySelector("#heroCall span");
     if (call) call.textContent = T("Call", "اتصال");
     const web = document.querySelector("#heroWeb span");
@@ -162,6 +224,9 @@
        thumbs that nobody is watching — the photos would simply not come back */
     wireThumbs();
     chrome();
+    /* the table / pickup / address field is built from strings, not markup: it
+       has to be rebuilt or it stays in the language it was first drawn in */
+    if (document.querySelector("#modeFields")) renderModeFields();
   }
 
   function esc(t) {
@@ -435,20 +500,27 @@
     if (mode === "Dine In") {
       host.innerHTML = `
         <div class="field">
-          <label for="tableNo">Table number <span style="color:var(--danger)">*</span></label>
-          <input class="input" id="tableNo" inputmode="numeric" placeholder="Printed on your table card" value="${table}">
-          <div class="err" id="tableErr">Add the table number printed on your card.</div>
+          <label for="tableNo">${T("Table number", "\u0631\u0642\u0645 \u0627\u0644\u0637\u0627\u0648\u0644\u0629")} <span style="color:var(--danger)">*</span></label>
+          <input class="input" id="tableNo" inputmode="numeric" placeholder="${T("Printed on your table card", "\u0645\u0643\u062a\u0648\u0628 \u0639\u0644\u0649 \u0628\u0637\u0627\u0642\u0629 \u0637\u0627\u0648\u0644\u062a\u0643")}" value="${table}">
+          <div class="err" id="tableErr">${T("Add the table number printed on your card.", "\u0623\u0636\u0641 \u0631\u0642\u0645 \u0627\u0644\u0637\u0627\u0648\u0644\u0629 \u0627\u0644\u0645\u0637\u0628\u0648\u0639 \u0639\u0644\u0649 \u0628\u0637\u0627\u0642\u062a\u0643.")}</div>
         </div>`;
       $("#tableNo").addEventListener("input", (e) => { table = e.target.value; });
     } else if (mode === "Take Away") {
-      const times = ["15 min", "30 min", "45 min", "1 hour"];
+      /* the value stays English because the server parses it; only the label
+         the guest reads is translated */
+      const times = [
+        { v: "15 min", en: "15 min", ar: "\u0661\u0665 \u062f\u0642\u064a\u0642\u0629" },
+        { v: "30 min", en: "30 min", ar: "\u0663\u0660 \u062f\u0642\u064a\u0642\u0629" },
+        { v: "45 min", en: "45 min", ar: "\u0664\u0665 \u062f\u0642\u064a\u0642\u0629" },
+        { v: "1 hour", en: "1 hour", ar: "\u0633\u0627\u0639\u0629" }
+      ];
       host.innerHTML = `
         <div class="field">
-          <label>When will you Pick Up <span style="color:var(--danger)">*</span></label>
+          <label>${T("When will you Pick Up", "\u0645\u062a\u0649 \u0633\u062a\u0633\u062a\u0644\u0645\u061f")} <span style="color:var(--danger)">*</span></label>
           <div class="chips" id="pickChips">
-            ${times.map((t) => `<button type="button" data-t="${t}" aria-pressed="${pickup === t}">${t}</button>`).join("")}
+            ${times.map((t) => `<button type="button" data-t="${t.v}" aria-pressed="${pickup === t.v}">${T(t.en, t.ar)}</button>`).join("")}
           </div>
-          <div class="err" id="pickErr">Choose when you will collect the order.</div>
+          <div class="err" id="pickErr">${T("Choose when you will collect the order.", "\u0627\u062e\u062a\u0631 \u0648\u0642\u062a \u0627\u0644\u0627\u0633\u062a\u0644\u0627\u0645.")}</div>
         </div>`;
       $$("#pickChips button").forEach((b) =>
         b.addEventListener("click", () => {
@@ -459,9 +531,9 @@
     } else {
       host.innerHTML = `
         <div class="field">
-          <label for="addr">Delivery address <span style="color:var(--danger)">*</span></label>
-          <textarea class="input" id="addr" rows="2" placeholder="Building, street, area, landmark">${address}</textarea>
-          <div class="err" id="addrErr">We need an address to deliver to.</div>
+          <label for="addr">${T("Delivery address", "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062a\u0648\u0635\u064a\u0644")} <span style="color:var(--danger)">*</span></label>
+          <textarea class="input" id="addr" rows="2" placeholder="${T("Building, street, area, landmark", "\u0627\u0644\u0645\u0628\u0646\u0649\u060c \u0627\u0644\u0634\u0627\u0631\u0639\u060c \u0627\u0644\u0645\u0646\u0637\u0642\u0629\u060c \u0639\u0644\u0627\u0645\u0629 \u0645\u0645\u064a\u0632\u0629")}">${address}</textarea>
+          <div class="err" id="addrErr">${T("We need an address to deliver to.", "\u0646\u062d\u062a\u0627\u062c \u0639\u0646\u0648\u0627\u0646\u0627\u064b \u0644\u0644\u062a\u0648\u0635\u064a\u0644.")}</div>
         </div>`;
       $("#addr").addEventListener("input", (e) => { address = e.target.value; });
     }
@@ -475,7 +547,7 @@
     const lines = Array.from(cart.entries())
       .map(([id, r]) => `
         <div class="ol-row line">
-          <span class="ol-nm">${esc(r.item.name)}</span>
+          <span class="ol-nm">${esc(nm(r.item))}</span>
           <span class="ol-qty">
             <button class="sstep" type="button" data-sheet-minus="${id}" aria-label="${T("One less", "\u0648\u0627\u062d\u062f \u0623\u0642\u0644")}">−</button>
             <b>${r.qty}</b>
@@ -486,10 +558,10 @@
         </div>`)
       .join("");
     const off = applied && d.amount > 0
-      ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% off</span><span>− ${money(d.amount)}</span></div>`
+      ? `<div class="ol-row disc"><span>${applied.code} · ${applied.percent}% ${T("off", "\u062e\u0635\u0645")}</span><span>− ${money(d.amount)}</span></div>`
       : "";
     $("#sheetTotals").innerHTML = lines + off +
-      `<div class="ol-row total"><span>Total</span><span>${money(d.total)}</span></div>`;
+      `<div class="ol-row total"><span>${T("Total", "\u0627\u0644\u0625\u062c\u0645\u0627\u0644")}</span><span>${money(d.total)}</span></div>`;
   }
 
   /* the sheet's lines are redrawn on every change, so the clicks are handled
@@ -713,9 +785,13 @@
       : mode === "Take Away" ? pickup
       : (address.replace(/\s+/g, " ").trim() || "your address");
     $("#doneWa").href = url;
+    const modeAr = { "Dine In": "تناول في المطعم", "Take Away": "استلام", "Delivery": "توصيل" };
+    const countLine = LANG === "ar"
+      ? totals().count + " عناصر — " + guest
+      : totals().count + (totals().count === 1 ? " item" : " items") + " for " + guest;
     $("#doneReceipt").innerHTML =
-      `<div class="ol-row"><span>${mode} · ${place}</span><span>${money(totals().sum)}</span></div>` +
-      `<div class="ol-row"><span>${totals().count} item${totals().count === 1 ? "" : "s"} for ${guest}</span><span>${name}</span></div>`;
+      `<div class="ol-row"><span>${T(mode, modeAr[mode])} · ${place}</span><span>${money(totals().sum)}</span></div>` +
+      `<div class="ol-row"><span>${countLine}</span><span>${name}</span></div>`;
     if (saved && saved.ok === false) {
       /* Say it plainly: the panel will not show this order, so the WhatsApp
          message is the only copy the restaurant gets. */
@@ -726,10 +802,13 @@
     $("#doneNext").classList.remove("warn");
     $("#doneNext").textContent =
       mode === "Dine In"
-        ? "Your table order is saved. The restaurant confirms it on WhatsApp; payment stays at the table."
+        ? T("Your table order is saved. The restaurant confirms it on WhatsApp; payment stays at the table.",
+            "تم حفظ طلبك. يؤكده المطعم على واتساب، والدفع على الطاولة.")
         : mode === "Take Away"
-        ? "Your order is saved. The restaurant confirms the pickup time on WhatsApp; nothing is charged online."
-        : "Your order is saved. The restaurant confirms the address and delivery charge on WhatsApp before sending.";
+        ? T("Your order is saved. The restaurant confirms the pickup time on WhatsApp; nothing is charged online.",
+            "تم حفظ طلبك. يؤكد المطعم وقت الاستلام على واتساب، ولا يُخصم أي مبلغ إلكترونياً.")
+        : T("Your order is saved. The restaurant confirms the address and delivery charge on WhatsApp before sending.",
+            "تم حفظ طلبك. يؤكد المطعم العنوان ورسوم التوصيل على واتساب قبل الإرسال.");
     }
 
     /* No window.open here: it fires after an await, so the popup blocker eats it
