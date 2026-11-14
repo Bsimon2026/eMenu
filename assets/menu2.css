@@ -1718,27 +1718,39 @@ html.t-dark .sheet-actions .btn-brand:hover { background: #FFFFFF; border-color:
   #cartFoot { position: sticky; bottom: 0; background: var(--paper); padding-top: 10px; margin-top: auto; }
 }
 
-/* The country code is a fixed prefix, not a field: a hand-typed code is how a
-   number stops matching the WhatsApp the guest actually writes from. */
+/* The country code is a picker, not free text — most guests are visitors — and the
+   local part is digits only, so the number the kitchen sees is the number
+   WhatsApp knows the guest by. */
 .phone-row { display: flex; align-items: stretch; gap: 8px; }
 .phone-row .input { flex: 1; min-width: 0; }
 .phone-row .dial {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 13px;
+  flex: none;
+  padding: 0 30px 0 13px;
   border: 1px solid var(--rule);
   border-radius: var(--r-pill);
-  background: var(--paper-2);
+  background-color: var(--paper-2);
   color: var(--ink-2);
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: .02em;
+  letter-spacing: .01em;
   white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  /* the chevron, drawn in currentColor so it follows the theme */
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 16px) 53%, calc(100% - 11px) 53%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
+.phone-row .dial option { color: #17140F; background: #FFFFFF; }
 html.t-dark #sheet .phone-row .dial {
-  background: #1B1F24;
+  background-color: #1B1F24;
   border-color: #262C33;
   color: #F3EFE7;
 }
+html.t-dark .phone-row .dial option { background: #1B1F24; color: #F3EFE7; }
 

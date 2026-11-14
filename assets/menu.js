@@ -640,11 +640,12 @@
     ok = err("#nameErr", !$("#guestName").value.trim()) && ok;
     /* nine digits is the UAE mobile; anywhere else, at least seven and never
        more than fifteen, which is every number WhatsApp accepts */
-    const dialCode = ($("#dialCode") || {}).textContent || "+971";
+    const chosenCode = ($("#dialCode") || {}).value || "+971";
     const localDigits = (window.__dmLocalNumber || function (v) { return String(v || "").replace(/\D/g, "").slice(0, 9); })($("#guestPhone").value);
-    const phoneRaw = dialCode + localDigits;
-    const needDigits = dialCode === "+971" ? 9 : 7;
-    ok = err("#phoneErr", localDigits.length < needDigits) && ok;
+    const phoneRaw = chosenCode + localDigits;
+    const totalDigits = (chosenCode + localDigits).replace(/\D/g, "").length;
+    const needDigits = chosenCode === "+971" ? 9 : 6;
+    ok = err("#phoneErr", localDigits.length < needDigits || totalDigits > 15) && ok;
     const emailRaw = ($("#guestEmail").value || "").trim();
     ok = err("#emailErr", !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw)) && ok;
     if (mode === "Dine In") ok = err("#tableErr", !String(table).trim()) && ok;
@@ -1009,17 +1010,39 @@
        WhatsApp the guest actually sends from. */
     const dialEl = $("#dialCode");
     const dialCode = (String(r.whatsapp || "").match(/^\+\d{1,3}/) || ["+971"])[0];
-    if (dialEl) dialEl.textContent = dialCode;
+    if (dialEl && !dialEl.dataset.touched) {
+      /* tourists outnumber locals in Dubai, so the code is a picker, not a label.
+         It opens on the restaurant's own country and keeps whatever the guest
+         chose across repaints. */
+      if (!Array.prototype.some.call(dialEl.options, function (o) { return o.value === dialCode; })) {
+        const extra = document.createElement("option");
+        extra.value = dialCode;
+        extra.textContent = dialCode;
+        dialEl.appendChild(extra);
+      }
+      dialEl.value = dialCode;
+    }
+    if (dialEl && !dialEl.dataset.bound) {
+      dialEl.dataset.bound = "1";
+      dialEl.addEventListener("change", function () {
+        dialEl.dataset.touched = "1";
+        const inp = $("#guestPhone");
+        if (inp) inp.dispatchEvent(new Event("input"));
+      });
+    }
     const phoneInput = $("#guestPhone");
     /* A guest who pastes "+971 50 111 2222" or types "050 111 2222" must end up
        with the same nine digits, or the number they gave the kitchen is not the
        number WhatsApp knows them by. */
     const localNumber = function (raw) {
       let d = String(raw || "").replace(/\D/g, "");
-      const code = String(dialCode).replace(/\D/g, "");
+      const chosen = String(($("#dialCode") || {}).value || dialCode);
+      const code = chosen.replace(/\D/g, "");
       if (code && d.indexOf(code) === 0) d = d.slice(code.length);
       while (d.charAt(0) === "0") d = d.slice(1);
-      return d.slice(0, 9);
+      /* UAE mobiles are nine digits; everywhere else WhatsApp accepts up to
+         fifteen digits in total, so the local part may be longer */
+      return d.slice(0, chosen === "+971" ? 9 : 12);
     };
     window.__dmLocalNumber = localNumber;
     if (phoneInput) {
