@@ -210,7 +210,8 @@ module.exports = async function handler(req, res) {
   let made = await rest("orders", { method: "POST", body: order, prefer: "return=representation" });
   /* 0019 may not have run yet: a deploy lands before the SQL does, so write the
      order without the money columns rather than lose the order */
-  if (!made.ok && /subtotal|discount_|delivery_fee|column|schema/i.test(String(made.error || made.data || ""))) {
+  const why = JSON.stringify(made.error || made.data || "");
+  if (!made.ok && /subtotal|discount_|delivery_fee|email|column|schema|PGRST204/i.test(why)) {
     const lean = Object.assign({}, order);
     delete lean.subtotal;
     delete lean.delivery_fee;
