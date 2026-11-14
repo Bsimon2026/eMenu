@@ -195,6 +195,46 @@
       "Your order is with the restaurant. Send it on WhatsApp so they can confirm it — one tap, and it is on its way.",
       "طلبك لدى المطعم. أرسله على واتساب ليؤكدوه — ضغطة واحدة وينطلق.");
     S("#doneClose", "Done", "تم");
+
+    /* The mode field and the totals are built from strings by functions that live
+       inside paint(), out of reach from here, so their labels are set directly on
+       the DOM instead. Without this the table/pickup/address field and the word
+       "Total" stayed in the language the sheet was first opened in. */
+    const firstLabel = function () {
+      const l = document.querySelector("#modeFields label");
+      return l && l.childNodes.length ? l : null;
+    };
+    const setLabel = function (text) {
+      const l = firstLabel();
+      if (l) l.childNodes[0].nodeValue = text + " ";
+    };
+    if (mode === "Dine In") {
+      setLabel(T("Table number", "رقم الطاولة"));
+      const t = $("#tableNo");
+      if (t) t.placeholder = T("Printed on your table card", "مكتوب على بطاقة طاولتك");
+      S("#tableErr", "Add the table number printed on your card.",
+        "أضف رقم الطاولة المطبوع على بطاقتك.");
+    } else if (mode === "Take Away") {
+      setLabel(T("When will you Pick Up", "متى ستستلم؟"));
+      const names = {
+        "15 min": ["15 min", "١٥ دقيقة"],
+        "30 min": ["30 min", "٣٠ دقيقة"],
+        "45 min": ["45 min", "٤٥ دقيقة"],
+        "1 hour": ["1 hour", "ساعة"]
+      };
+      $$("#pickChips button").forEach(function (b) {
+        const pair = names[b.getAttribute("data-t")];
+        if (pair) b.textContent = T(pair[0], pair[1]);
+      });
+      S("#pickErr", "Choose when you will collect the order.", "اختر وقت الاستلام.");
+    } else {
+      setLabel(T("Delivery address", "عنوان التوصيل"));
+      const a = $("#addr");
+      if (a) a.placeholder = T("Building, street, area, landmark",
+        "المبنى، الشارع، المنطقة، علامة مميزة");
+      S("#addrErr", "We need an address to deliver to.", "نحتاج عنواناً للتوصيل.");
+    }
+    S("#sheetTotals .ol-row.total span", "Total", "الإجمالي");
     const call = document.querySelector("#heroCall span");
     if (call) call.textContent = T("Call", "اتصال");
     const web = document.querySelector("#heroWeb span");
