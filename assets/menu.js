@@ -252,6 +252,21 @@
 
 
 
+  /* paint() runs on every language switch, and a large part of this file lives
+     inside it (brace depth 2 from the section render onwards). Every listener
+     registered on a static element was therefore added again on each repaint:
+     one Add tap became seven after six switches, and one confirm press could
+     POST the order twice. These elements exist once, so bind them once. */
+  const __bound = new WeakMap();
+  const bind = function (el, type, fn) {
+    if (!el) return;
+    let types = __bound.get(el);
+    if (!types) { types = {}; __bound.set(el, types); }
+    if (types[type]) return;
+    types[type] = true;
+    el.addEventListener(type, fn);
+  };
+
   /* ---------- cart ---------- */
 
   function findItem(id) {
@@ -366,11 +381,11 @@
     $("#mobileBar").classList.toggle("on", count > 0);
   }
 
-  $("#barCheckout").addEventListener("click", openSheet);
+  bind($("#barCheckout"), "click", openSheet);
 
   /* One listener for the whole dish list. This used to sit inside paint(), so a
      language switch attached a second copy and every tap counted twice. */
-  document.getElementById("sections").addEventListener("click", (e) => {
+  bind(document.getElementById("sections"), "click", (e) => {
     const add = e.target.closest("[data-id].add");
     if (add) { addToCart(add.dataset.id); syncItemRow(add.dataset.id); return; }
     const plus = e.target.closest("[data-step-plus]");
@@ -403,12 +418,12 @@
     sheetBack.classList.remove("on");
   }
 
-  $("#closeSheet").addEventListener("click", closeSheet);
-  sheetBack.addEventListener("click", closeSheet);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+  bind($("#closeSheet"), "click", closeSheet);
+  bind(sheetBack, "click", closeSheet);
+  bind(document, "keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
   $$("#modeBtns button").forEach((b) =>
-    b.addEventListener("click", () => {
+    bind(b, "click", () => {
       mode = b.dataset.mode;
       $$("#modeBtns button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
       renderModeFields();
@@ -479,7 +494,7 @@
 
   /* the sheet's lines are redrawn on every change, so the clicks are handled
      once on the container rather than bound to each button */
-  $("#sheetTotals").addEventListener("click", (e) => {
+  bind($("#sheetTotals"), "click", (e) => {
     const plus = e.target.closest("[data-sheet-plus]");
     const minus = e.target.closest("[data-sheet-minus]");
     const drop = e.target.closest("[data-sheet-del]");
@@ -637,7 +652,7 @@
   }
 
   const applyBtn = $("#applyCode");
-  if (applyBtn) applyBtn.addEventListener("click", applyCode);
+  bind(applyBtn, "click", applyCode);
   const codeInput = $("#discCode");
   if (codeInput) codeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); applyCode(); }
@@ -661,7 +676,7 @@
   window.addEventListener("resize", onScroll);
   onScroll();
 
-  $("#confirmOrder").addEventListener("click", async () => {
+  bind($("#confirmOrder"), "click", async () => {
     let ok = true;
     ok = err("#nameErr", !$("#guestName").value.trim()) && ok;
     /* nine digits is the UAE mobile; anywhere else, at least seven and never
@@ -725,7 +740,7 @@
     $("#sheetDone").hidden = false;
   });
 
-  $("#doneClose").addEventListener("click", () => {
+  bind($("#doneClose"), "click", () => {
     $("#sheetDone").hidden = true;
     $("#sheetForm").hidden = false;
     closeSheet();
@@ -734,7 +749,7 @@
   /* ---------- category picker (phones) ---------- */
   const catPick = $("#catSelect");
   if (catPick) {
-    catPick.addEventListener("change", function () {
+    bind(catPick, "change", function () {
       const sec = document.getElementById("c-" + catPick.value);
       if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
     });
