@@ -119,6 +119,20 @@
        language: an Arabic menu still said "Review order" at the bottom */
     const barGo = document.querySelector("#barCheckout");
     if (barGo) barGo.textContent = T("Review & Confirm", "مراجعة وتأكيد");
+
+    /* the two big buttons are three lines each and were written only in English */
+    const cta = function (sel, main) {
+      const btn = document.querySelector(sel);
+      if (!btn) return;
+      const lead = btn.querySelector(".cta-lead");
+      const name = btn.querySelector("span");
+      const sub = btn.querySelector(".cta-sub");
+      if (lead) lead.textContent = T("Click Here to", "اضغط هنا لـ");
+      if (name) name.textContent = main;
+      if (sub) sub.textContent = T("Get Instant Confirmation", "تأكيد فوري");
+    };
+    cta("#confirmOrder", T("Review & Confirm", "مراجعة وتأكيد"));
+    cta("#doneWa", T("Send on WhatsApp", "أرسل على واتساب"));
     const call = document.querySelector("#heroCall span");
     if (call) call.textContent = T("Call", "اتصال");
     const web = document.querySelector("#heroWeb span");
