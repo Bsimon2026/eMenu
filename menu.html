@@ -23,7 +23,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Noto+Kufi+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/fonts.css?v=20261116b">
 <link rel="stylesheet" href="assets/base.css?v=20261111s">
-<link rel="stylesheet" href="assets/menu2.css?v=20261117b">
+<link rel="stylesheet" href="assets/menu2.css?v=20261117c">
 </head>
 <body class="menu-body">
 
@@ -161,7 +161,12 @@
       <button type="button" data-mode="Delivery" aria-pressed="false">Delivery</button>
     </div>
 
-    <div id="modeFields"></div>
+    <div id="modeFields">
+      <div class="lang-switch hero-lang" id="langSwitchHero" hidden>
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="ar" aria-pressed="false">العربية</button>
+      </div>
+    </div>
 
     <div class="field">
       <label for="guestName">Your name <span style="color:var(--danger)">*</span></label>
@@ -264,6 +269,6 @@
 
 <script src="assets/config.js?v=20261111s"></script>
 <script src="assets/data.js?v=20261111s"></script>
-<script src="assets/menu.js?v=20261117f"></script>
+<script src="assets/menu.js?v=20261118a"></script>
 </body>
 </html>

@@ -296,8 +296,7 @@
     try { localStorage.setItem("dm.lang", LANG); } catch (e) { /* private mode */ }
     document.documentElement.lang = LANG;
     document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
-    const sw = $("#langSwitch");
-    if (sw) Array.from(sw.querySelectorAll("[data-lang]")).forEach(function (b) {
+    $$("#langSwitch [data-lang], #langSwitchHero [data-lang]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === LANG));
     });
     paint();
@@ -305,9 +304,6 @@
        thumbs that nobody is watching — the photos would simply not come back */
     wireThumbs();
     chrome();
-    /* the table / pickup / address field is built from strings, not markup: it
-       has to be rebuilt or it stays in the language it was first drawn in */
-    if (document.querySelector("#modeFields")) renderModeFields();
   }
 
   function esc(t) {
@@ -1200,18 +1196,18 @@
 
     /* the switch only exists when the restaurant has published Arabic —
        showing an EN|AR toggle that flips to nothing is worse than no toggle */
-    const sw = $("#langSwitch");
-    if (sw) {
-      const hasAr = LOCALES.indexOf("ar") >= 0;
+    /* Two switches, one language: the header's, and one in the hero so a guest
+       can change language without first scrolling the landing away. */
+    const hasAr = LOCALES.indexOf("ar") >= 0;
+    $$("#langSwitch, #langSwitchHero").forEach(function (sw) {
       sw.hidden = !hasAr;
-      if (hasAr) {
-        Array.from(sw.querySelectorAll("[data-lang]")).forEach(function (b) {
-          b.addEventListener("click", function () { setLang(b.getAttribute("data-lang")); });
-        });
-      }
-      if (hasAr && LANG === "ar") setLang("ar");
-      else document.documentElement.dir = "ltr";
-    }
+      if (!hasAr) return;
+      Array.from(sw.querySelectorAll("[data-lang]")).forEach(function (b) {
+        b.addEventListener("click", function () { setLang(b.getAttribute("data-lang")); });
+      });
+    });
+    if (hasAr && LANG === "ar") setLang("ar");
+    else document.documentElement.dir = "ltr";
 
     /* most guests are local: start the number with the restaurant's own dial code */
     /* The country code is not the guest's to type: it is the restaurant's, shown

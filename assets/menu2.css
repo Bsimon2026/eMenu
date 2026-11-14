@@ -1757,3 +1757,23 @@ html.t-dark .phone-row .dial option { background: #1B1F24; color: #F3EFE7; }
 /* the order did not reach the panel: that has to be visible */
 .next-steps.warn { color: var(--danger); font-weight: 500; }
 
+/* The header's switch is only reachable once the landing has scrolled away, so an
+   Arabic guest met an English page with no way to change it. The same toggle sits
+   in the hero action row, and both drive one language. */
+.hero-actions .lang-switch {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  box-shadow: none;
+  background: var(--paper-2);
+  border-color: var(--rule);
+  margin-inline-start: 2px;
+}
+.hero-actions .lang-switch button { font-size: 11.5px; padding: 5px 11px; }
+html.t-dark .hero-actions .lang-switch {
+  background: rgba(243, 239, 231, .10);
+  border-color: rgba(243, 239, 231, .22);
+}
+html.t-dark .hero-actions .lang-switch button { color: #D5CFC4; }
+html.t-dark .hero-actions .lang-switch button[aria-pressed="true"] { background: #F3EFE7; color: #14171A; }
+
