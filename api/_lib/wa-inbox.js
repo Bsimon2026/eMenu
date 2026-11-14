@@ -179,7 +179,7 @@ function safeId(t) {
 
 /* The one automatic message. Sends at most once per guest per day, because a
    guest who replies three times in a row must not collect three thank-yous. */
-async function thankYou(s, row) {
+async function thankYou(s, row, known) {
   if (!s || !s.wa_phone_number_id || !s.wa_access_token || !row.from) return null;
 
   const recent = await rest(
@@ -193,15 +193,16 @@ async function thankYou(s, row) {
   /* the newest order from this number gives the greeting its name */
   let name = "";
   let orderId = null;
+  if (known) { orderId = known.id; name = String(known.guest_name || "").split(" ")[0].slice(0, 40); }
   /* The order stores the number the guest typed — "+971 56 891 1233" — while the
      message carries digits only. Comparing them as strings found nothing, so the
      thank-you went out without an order attached and the panel had to fall back
      to guessing by number. Compare digits instead. */
-  const ord = await rest(
+  const ord = known ? { ok: false } : await rest(
     "orders?restaurant_id=eq." + s.id +
     "&select=id,guest_name,guest_phone&order=created_at.desc&limit=20"
   );
-  if (ord.ok && ord.data) {
+  if (!known && ord.ok && ord.data) {
     const hit = ord.data.find((o) => digits(o.guest_phone) === row.from);
     if (hit) {
       name = String(hit.guest_name || "").split(" ")[0].slice(0, 40);
@@ -233,19 +234,40 @@ async function thankYou(s, row) {
   return { ok: true, via: sent.via };
 }
 
+/* Every order message we hand the guest carries "Ref: <first 8 of the order id>".
+   Their WhatsApp account is often a different number from the one they typed in
+   the form, and matching on the number alone left those orders unanswered. */
+function refOf(text) {
+  const m = /\bref[:\s]*([0-9a-f]{8})\b/i.exec(String(text || ""));
+  return m ? m[1].toLowerCase() : null;
+}
+
+async function orderByRef(rid, ref) {
+  if (!rid || !ref) return null;
+  const r = await rest(
+    "orders?restaurant_id=eq." + rid +
+    "&select=id,guest_name,guest_phone,status,archived_at&order=created_at.desc&limit=30"
+  );
+  if (!r.ok || !r.data) return null;
+  const want = String(ref).toLowerCase();
+  return r.data.find(function (o) {
+    return String(o.id).toLowerCase().indexOf(want) === 0;
+  }) || null;
+}
+
 /* A guest taps "Cancel Order" on the confirmation template. The tap is an
    inbound message, which is what opens the 24-hour window, so the reply costs
    nothing. The order is ARCHIVED, never deleted: the row is the only record of
    what was almost ordered, and an archive can be undone from the panel. */
-async function cancelOrder(s, row) {
+async function cancelOrder(s, row, known) {
   if (!s || !s.wa_phone_number_id || !s.wa_access_token || !row.from) return null;
 
-  const ord = await rest(
+  const ord = known ? { ok: false } : await rest(
     "orders?restaurant_id=eq." + s.id +
     "&select=id,guest_name,guest_phone,status,archived_at&order=created_at.desc&limit=20"
   );
-  let hit = null;
-  if (ord.ok && ord.data) {
+  let hit = known || null;
+  if (!known && ord.ok && ord.data) {
     /* the newest order from this number that is still in the working list */
     hit = ord.data.find(function (o) {
       return !o.archived_at && digits(o.guest_phone) === row.from;
@@ -311,6 +333,10 @@ async function receive(req, res) {
     for (const m of normalise(ev)) {
       if (!m.wamid) continue;
       const s = await restaurantFor(m.pnid);
+      if (s && m.dir === "in") {
+        const ref = refOf(m.body);
+        if (ref) m.order = await orderByRef(s.id, ref);
+      }
       stored.push(Object.assign({}, m, { restaurant: s }));
     }
   }
@@ -319,6 +345,7 @@ async function receive(req, res) {
 
   const rows = stored.map((m) => ({
     restaurant_id: m.restaurant ? m.restaurant.id : null,
+    order_id: m.order ? m.order.id : null,
     wamid: m.wamid,
     direction: m.dir,
     phone_number_id: m.pnid || null,
@@ -344,12 +371,12 @@ async function receive(req, res) {
     /* a cancel tap is not a greeting: it gets the release message, and the
        thank-you would only confuse someone who just backed out */
     if (isCancel(m.body)) {
-      const c = await cancelOrder(m.restaurant, m);
+      const c = await cancelOrder(m.restaurant, m, m.order);
       if (c && c.ok) cancelled++;
       continue;
     }
 
-    const t = await thankYou(m.restaurant, m);
+    const t = await thankYou(m.restaurant, m, m.order);
     if (t && t.ok) thanks++;
   }
 

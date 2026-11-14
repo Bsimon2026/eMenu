@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Noto+Kufi+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/base.css?v=20261111s">
-<link rel="stylesheet" href="assets/menu2.css?v=20261116y">
+<link rel="stylesheet" href="assets/menu2.css?v=20261116z">
 </head>
 <body class="menu-body">
 
@@ -170,9 +170,12 @@
 
     <div class="field">
       <label for="guestPhone">Mobile number <span style="color:var(--danger)">*</span></label>
-      <input class="input" id="guestPhone" inputmode="tel" placeholder="+971 50 123 4567">
-      <div class="hint">In case WhatsApp does not reach the restaurant, they can call you.</div>
-      <div class="err" id="phoneErr">We need a mobile number in case WhatsApp fails.</div>
+      <div class="phone-row">
+        <span class="dial" id="dialCode">+971</span>
+        <input class="input" id="guestPhone" inputmode="numeric" maxlength="9" autocomplete="tel-national" placeholder="50 123 4567">
+      </div>
+      <div class="hint">The country code is fixed so the number always matches your WhatsApp.</div>
+      <div class="err" id="phoneErr">Enter the 9-digit mobile number (without the country code).</div>
     </div>
 
     <div class="field">
@@ -224,6 +227,6 @@
 
 <script src="assets/config.js?v=20261111s"></script>
 <script src="assets/data.js?v=20261111s"></script>
-<script src="assets/menu.js?v=20261116j"></script>
+<script src="assets/menu.js?v=20261116k"></script>
 </body>
 </html>

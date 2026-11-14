@@ -1718,3 +1718,27 @@ html.t-dark .sheet-actions .btn-brand:hover { background: #FFFFFF; border-color:
   #cartFoot { position: sticky; bottom: 0; background: var(--paper); padding-top: 10px; margin-top: auto; }
 }
 
+/* The country code is a fixed prefix, not a field: a hand-typed code is how a
+   number stops matching the WhatsApp the guest actually writes from. */
+.phone-row { display: flex; align-items: stretch; gap: 8px; }
+.phone-row .input { flex: 1; min-width: 0; }
+.phone-row .dial {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-pill);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+html.t-dark #sheet .phone-row .dial {
+  background: #1B1F24;
+  border-color: #262C33;
+  color: #F3EFE7;
+}
+

@@ -638,8 +638,13 @@
   $("#confirmOrder").addEventListener("click", async () => {
     let ok = true;
     ok = err("#nameErr", !$("#guestName").value.trim()) && ok;
-    const phoneRaw = ($("#guestPhone").value || "").trim();
-    ok = err("#phoneErr", phoneRaw.replace(/[^\d]/g, "").length < 7) && ok;
+    /* nine digits is the UAE mobile; anywhere else, at least seven and never
+       more than fifteen, which is every number WhatsApp accepts */
+    const dialCode = ($("#dialCode") || {}).textContent || "+971";
+    const localDigits = ($("#guestPhone").value || "").replace(/\D/g, "").slice(0, 9);
+    const phoneRaw = dialCode + localDigits;
+    const needDigits = dialCode === "+971" ? 9 : 7;
+    ok = err("#phoneErr", localDigits.length < needDigits) && ok;
     const emailRaw = ($("#guestEmail").value || "").trim();
     ok = err("#emailErr", !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw)) && ok;
     if (mode === "Dine In") ok = err("#tableErr", !String(table).trim()) && ok;
@@ -648,10 +653,16 @@
     if (!ok) return;
 
     const guest = $("#guestName").value.trim();
-    const msg = buildMessage(guest, phoneRaw);
     const confirmBtn = $("#confirmOrder");
     if (confirmBtn) confirmBtn.disabled = true;
     const saved = await submitOrder(guest, phoneRaw);
+
+    /* The reference travels in the guest's own message. The WhatsApp account they
+       send from can be a different number from the one they typed, and without
+       this the reply has no way back to the order — that is how a real order sat
+       with no answer. */
+    let msg = buildMessage(guest, phoneRaw);
+    if (saved && saved.orderId) msg += "\nRef: " + String(saved.orderId).slice(0, 8);
     const url = "https://wa.me/" + whatsapp + "?text=" + encodeURIComponent(msg);
     recordOrder(guest, msg, phoneRaw);
 
@@ -993,10 +1004,19 @@
     }
 
     /* most guests are local: start the number with the restaurant's own dial code */
+    /* The country code is not the guest's to type: it is the restaurant's, shown
+       as a fixed prefix. A hand-typed code is how a number stops matching the
+       WhatsApp the guest actually sends from. */
+    const dialEl = $("#dialCode");
+    const dialCode = (String(r.whatsapp || "").match(/^\+\d{1,3}/) || ["+971"])[0];
+    if (dialEl) dialEl.textContent = dialCode;
     const phoneInput = $("#guestPhone");
-    if (phoneInput && !phoneInput.value) {
-      const dial = (String(r.whatsapp || "").match(/^\+\d{1,3}/) || [])[0];
-      if (dial) phoneInput.value = dial + " ";
+    if (phoneInput) {
+      phoneInput.value = String(phoneInput.value || "").replace(/\D/g, "").slice(0, 9);
+      phoneInput.addEventListener("input", function () {
+        const digits = phoneInput.value.replace(/\D/g, "").slice(0, 9);
+        if (phoneInput.value !== digits) phoneInput.value = digits;
+      });
     }
 
     paint();
