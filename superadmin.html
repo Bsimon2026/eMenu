@@ -47,6 +47,21 @@
   a.perms { color: #6a757c; text-decoration: none; }
   a.perms:hover { text-decoration: underline; }
   select.chk { height: auto; }
+
+  /* the price list, as sold */
+  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .pcard { background: #fff; border: 1px solid #e3e7ea; border-radius: 10px; padding: 12px 14px; }
+  .pcard.dark { background: #171a1d; border-color: #171a1d; color: #f2efe9; }
+  .pcard h3 { font-family: var(--display); font-size: 14px; margin: 0 0 2px; }
+  .pcard .amt { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .pcard .amt small { font-size: 11.5px; font-weight: 400; color: #6a757c; }
+  .pcard.dark .amt small { color: #9aa4ab; }
+  .pcard ul { margin: 8px 0 0; padding-left: 16px; font-size: 12px; line-height: 1.55; color: #5c6166; }
+  .pcard.dark ul { color: #b9c0c4; }
+  .pcard .cap { margin-top: 6px; font-size: 11.5px; color: #8a949b; }
+  .strip .note { background: #fff; border: 1px dashed #d7dde1; border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #5c6166; line-height: 1.6; }
+  .strip .note b { color: #171a1d; }
+  .tag.warn { background: #fdf3e2; color: #8a5a00; }
 </style>
 </head>
 <body>
@@ -91,6 +106,10 @@
     <div class="err" id="appErr"></div>
   </div>
 
+  <!-- the price list as sold: the numbers come from api/_lib/plans.js, never
+       from this page -->
+  <div class="strip" id="priceStrip"></div>
+
   <div class="card" id="listCard">
     <div class="tabs">
       <button class="tab on" data-tab="trial" type="button">Trial <span class="n" id="nTrial">0</span></button>
@@ -98,7 +117,7 @@
     </div>
     <table>
       <thead><tr>
-        <th>Restaurant</th><th>Status</th><th>Plan</th><th id="thMkt">Site</th><th id="thAct"></th>
+        <th>Restaurant</th><th>State</th><th>Plan</th><th>Dishes</th><th id="thMkt">Site</th><th id="thAct"></th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
@@ -122,6 +141,8 @@
         <div><label for="dwRef">Reference</label><input id="dwRef" placeholder="bank ref, cheque no." style="width:170px"></div>
         <div style="padding-bottom:9px"><button class="primary" id="dwRecord" type="button">Record payment</button></div>
       </div>
+      <div class="hint" id="dwPlanHint"></div>
+      <div class="hint"><b>Recording the payment sets the plan and republishes the menu.</b> A menu-only plan keeps the link live; whatever the previous plan was, this is what applies from today.</div>
       <div class="err" id="dwErr"></div>
 
       <h1 style="font-size:14px;margin:18px 0 6px">Payment history <span class="perms" id="dwTotal"></span></h1>
@@ -276,7 +297,7 @@
   function tag(text, cls) { return '<span class="tag ' + cls + '">' + text + "</span>"; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
 
-  var TAB = "trial", ROWS = [], CUR = null, PRICES = null, AMT_TOUCHED = false;
+  var TAB = "trial", ROWS = [], CUR = null, PRICES = null, AMT_TOUCHED = false, PLANS = null, ADDONS = null;
 
   function dwFail(msg) {
     var e = $("#dwErr");
@@ -285,13 +306,63 @@
   }
 
   function statusCell(x) {
-    /* the three things the operator actually chases, plus the date it turns
-       into the third one */
-    var label = "Unpublished", cls = "draft";
-    if (x.state === "expired") { label = "Expired"; cls = "no"; }
-    else if (x.published) { label = "Published"; cls = "ok"; }
-    var when = x.expires ? (x.state === "expired" ? "ended " : "until ") + esc(x.expires) : "no date";
-    return tag(label, cls) + '<br><span class="perms">' + when + "</span>";
+    /* Published or Unpublished is the fact; paid / trial / ended is the detail.
+       A published row whose free week ended is shut, so it reads Unpublished. */
+    var label = x.live ? "Published" : "Unpublished";
+    var cls = x.live ? "ok" : "no";
+    var detail = x.state === "paid"
+      ? "paid until " + esc(x.paid_through || x.expires || "")
+      : x.state === "trial"
+        ? "trial (" + esc(x.grantLabel || "Pro") + ") — " + x.trialDaysLeft + " day" + (x.trialDaysLeft === 1 ? "" : "s") + " left"
+        : "free week ended";
+    return tag(label, cls) + '<br><span class="perms">' + detail + "</span>";
+  }
+
+  function money(n) { return String(n == null ? "" : n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+  function priceLine(x) {
+    if (!x.price) return esc(x.billing || "");
+    /* QR Menu has no monthly price: a row still carrying billing="monthly"
+       (every trial does) must not print "AED / month" */
+    if (x.price.monthly == null) return "AED " + money(x.price.yearly) + " / year";
+    return x.billing === "monthly"
+      ? "AED " + money(x.price.monthly) + " / month"
+      : "AED " + money(x.price.yearly) + " / year";
+  }
+
+  function dishesCell(x) {
+    if (x.dishes == null) return '<span class="perms">—</span>';
+    if (!x.itemCap) return esc(x.dishes) + ' <span class="perms">· no cap</span>';
+    var at = x.dishes >= x.itemCap;
+    return esc(x.dishes) + " / " + x.itemCap + " " + (at ? tag("at cap", "warn") : "");
+  }
+
+  /* the price list as sold, from the API — this page prints no number of its own */
+  function paintStrip(plans, addons) {
+    if (!plans) return;
+    PLANS = plans; ADDONS = addons || ADDONS;
+    var cards = ["qr", "order", "pro"].map(function (k) {
+      var p = plans[k];
+      if (!p) return "";
+      var price = p.price.monthly == null
+        ? "AED " + money(p.price.yearly) + " <small>/ year</small>"
+        : "AED " + money(p.price.monthly) + " <small>/ month · or AED " + money(p.price.yearly) + " / year</small>";
+      var bits = ["the menu and its QR code"];
+      if (p.ordering) bits.push("ordering: dine-in, take-away, delivery");
+      if (p.marketing) bits.push("review requests · WhatsApp");
+      if (p.landing) bits.push("branded landing page");
+      if (p.customDomain) bits.push("custom domain, add-on AED " + money((addons && addons.customDomain ? addons.customDomain.yearly : 99)) + " / year");
+      return '<div class="pcard' + (k === "order" ? " dark" : "") + '">' +
+        "<h3>" + esc(p.label) + "</h3>" +
+        '<div class="amt">' + price + "</div>" +
+        "<ul>" + bits.map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("") + "</ul>" +
+        '<div class="cap">' + (p.itemCap ? "Up to " + p.itemCap + " dishes" : "No dish limit") + "</div>" +
+        "</div>";
+    }).join("");
+    $("#priceStrip").innerHTML = cards +
+      '<div class="note"><b>Free week = Pro.</b> Every new restaurant gets ordering, reviews and WhatsApp for seven days — Ultra is sold, never sampled.<br>' +
+      "When the free week ends the guest link is <b>unpublished</b> until a plan is paid.<br>" +
+      "<b>Recording a payment sets the plan and republishes the menu.</b></div>";
   }
 
   function paint() {
@@ -317,7 +388,8 @@
         "<td><b>" + esc(x.name) + "</b><br>" +
           '<a class="perms" href="https://' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.url) + "</a></td>" +
         "<td>" + statusCell(x) + "</td>" +
-        "<td>" + esc(planLabel(x.plan)) + '<br><span class="perms">' + esc(x.billing || "") + "</span></td>" +
+        "<td>" + esc(x.planLabel || planLabel(x.plan)) + '<br><span class="perms">' + priceLine(x) + "</span></td>" +
+        "<td>" + dishesCell(x) + "</td>" +
         "<td>" + (x.addon_site ? tag("on", "ok") : '<span class="perms">off</span>') + "</td>" +
         '<td style="text-align:right">' +
           '<button data-open="' + esc(x.handle) + '">' + (canPay ? "Record" : (canSee ? "Payments" : "Open")) + "</button>" +
@@ -332,6 +404,7 @@
     try { r = await api(""); } catch (e) { return; }
     if (!r.ok) { fail("#listErr", r.d.message || "Could not load."); return; }
     ROWS = r.d.restaurants || [];
+    paintStrip(r.d.plans, r.d.addons);
     paint();
     if (CUR && !ROWS.some(function (x) { return x.handle === CUR; })) closeDrawer();
   }
@@ -346,12 +419,35 @@
   }
 
   function fillAmount() {
-    if (AMT_TOUCHED || !PRICES) return;
-    var x = rowOf(CUR);
     var plan = $("#dwPlan").value, bill = $("#dwBill").value;
-    if (plan === "qr") bill = "yearly";   /* "qr" has no monthly price */
-    var amt = (PRICES[plan] && PRICES[plan][bill]) || 0;
-    $("#dwAmt").value = String(Math.round(amt * 100) / 100);
+    /* QR Menu is sold by the year only, and the handler refuses a monthly QR
+       payment — the form must not offer one */
+    if (plan === "qr" && bill !== "yearly") { bill = "yearly"; $("#dwBill").value = "yearly"; }
+    var monthly = $("#dwBill").querySelector('option[value="monthly"]');
+    if (monthly) monthly.disabled = plan === "qr";
+
+    /* what the operator is about to sell, and what it does */
+    var p = PLANS && PLANS[plan];
+    var hint = $("#dwPlanHint");
+    if (hint) {
+      hint.textContent = p
+        ? p.label + " — " + (p.ordering ? "ordering, reviews and WhatsApp" : "the menu and its QR code only") +
+          (p.landing ? ", branded landing page" : "") +
+          (p.itemCap ? " · up to " + p.itemCap + " dishes" : " · no dish limit") + " · " +
+          (p.price.monthly == null
+            ? "AED " + money(p.price.yearly) + " a year, sold yearly only"
+            : "AED " + money(p.price.monthly) + " a month or AED " + money(p.price.yearly) + " a year")
+        : "";
+    }
+
+    if (AMT_TOUCHED || !PRICES) return;
+    var row = PRICES[plan] || {};
+    /* the ledger sends a flat price ({monthly, yearly}); the plan table nests it
+       under .price. Accept either, so the amount cannot silently become 0. */
+    var amt = row[bill];
+    if (amt == null && row.price) amt = row.price[bill];
+    if (amt == null && row.price) amt = row.price.yearly;
+    $("#dwAmt").value = String(Math.round((amt || 0) * 100) / 100);
   }
 
   function closeDrawer() {

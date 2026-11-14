@@ -35,7 +35,7 @@ const ALL = ["view", "export", "pay_view", "pay_entry", "admins"];
    is the website's Ultra, which is why the labels come from the table too. The
    marketing add-on is one yearly line, so it can be seen and stopped without
    touching the menu subscription. */
-const { PLANS: PLAN_TABLE, ADDONS, billable, priceOf, isLive } = require("./_lib/plans");
+const { PLANS: PLAN_TABLE, ADDONS, billable, priceOf, isLive, capabilities } = require("./_lib/plans");
 const PLAN_KEYS = Object.keys(PLAN_TABLE);
 const BILLING = ["monthly", "yearly"];
 
@@ -102,22 +102,33 @@ async function restaurantRows() {
   return { ok: true, rows: r.data || [] };
 }
 
-function shape(row, perms) {
+function shape(row, perms, dishes) {
+  const cap = capabilities(row);
   const today = new Date().toISOString().slice(0, 10);
-  const paid = Boolean(row.paid_through && row.paid_through >= today);
-  const onTrial = Boolean(row.trial_ends && row.trial_ends >= today) && !paid;
   const out = {
     handle: row.handle, name: row.name, status: row.status, plan: row.plan, billing: row.billing,
     /* the address a guest actually opens, and the state the operator chases:
        published · unpublished · expired */
     url: row.custom_domain && row.domain_status === "live" ? row.custom_domain : "digimenu.indubaicity.com/" + row.handle,
+    /* a published row whose free week ended is NOT open — the guest endpoint
+       says so, and the console must not claim otherwise */
     published: row.status === "published",
-    state: paid ? "paid" : (onTrial ? "trial" : "expired"),
-    expires: (paid ? row.paid_through : row.trial_ends) || null,
+    live: isLive(row),
+    state: cap.paid ? "paid" : (cap.onTrial ? "trial" : "expired"),
+    /* what the customer actually gets today: a trial is worth Pro */
+    planLabel: PLAN_TABLE[cap.plan].label,
+    grantLabel: cap.trialGrants ? PLAN_TABLE[cap.trialGrants].label : PLAN_TABLE[cap.plan].label,
+    ordering: cap.ordering,
+    marketing: cap.marketing,
+    landing: cap.landing,
+    itemCap: cap.itemCap,
+    dishes: typeof dishes === "number" ? dishes : null,
+    price: billable(cap.plan),
+    expires: (cap.paid ? row.paid_through : row.trial_ends) || null,
     addon_site: Boolean(row.addon_site),
     hasPaid: Boolean(row.paid_through),
-    active: paid || onTrial, onTrial,
-    trialDaysLeft: onTrial ? Math.max(0, Math.round((new Date(row.trial_ends) - new Date(today)) / 86400000)) : 0,
+    active: cap.subscribed, onTrial: cap.onTrial,
+    trialDaysLeft: cap.onTrial ? Math.max(0, Math.round((new Date(row.trial_ends) - new Date(today)) / 86400000)) : 0,
     paid_through: row.paid_through || null,
     custom_domain: row.custom_domain || null,
     domain_status: row.domain_status || null
@@ -541,10 +552,20 @@ module.exports = async function handler(req, res) {
 
   const all = await restaurantRows();
   if (!all.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
+
+  /* dishes per restaurant, for the plan's cap: a QR Menu customer sitting at 50
+     is the one the operator needs to call about an upgrade */
+  const dishes = {};
+  const items = await rest("menu_items?select=restaurant_id");
+  if (items.ok) (items.data || []).forEach((it) => { dishes[it.restaurant_id] = (dishes[it.restaurant_id] || 0) + 1; });
+
   return res.status(200).json({
     ok: true,
     me, perms,
     today: new Date().toISOString().slice(0, 10),
-    restaurants: all.rows.map((r) => shape(r, perms))
+    /* the price list, so the console never prints a number of its own */
+    plans: PLAN_TABLE,
+    addons: ADDONS,
+    restaurants: all.rows.map((r) => shape(r, perms, dishes[r.id]))
   });
 };
