@@ -13,50 +13,6 @@
       "destination": "/api/crawl?doc=openapi"
     },
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "header",
-          "key": "accept",
-          "value": ".*text/markdown.*"
-        }
-      ],
-      "destination": "/api/crawl?doc=home"
-    },
-    {
-      "source": "/index.html",
-      "has": [
-        {
-          "type": "header",
-          "key": "accept",
-          "value": ".*text/markdown.*"
-        }
-      ],
-      "destination": "/api/crawl?doc=home"
-    },
-    {
-      "source": "/terms.html",
-      "has": [
-        {
-          "type": "header",
-          "key": "accept",
-          "value": ".*text/markdown.*"
-        }
-      ],
-      "destination": "/api/crawl?doc=terms"
-    },
-    {
-      "source": "/privacy.html",
-      "has": [
-        {
-          "type": "header",
-          "key": "accept",
-          "value": ".*text/markdown.*"
-        }
-      ],
-      "destination": "/api/crawl?doc=privacy"
-    },
-    {
       "source": "/sitemap.xml",
       "destination": "/api/crawl?doc=sitemap"
     },
