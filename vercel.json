@@ -5,8 +5,60 @@
   ],
   "rewrites": [
     {
+      "source": "/llms.txt",
+      "destination": "/api/crawl?doc=llms"
+    },
+    {
+      "source": "/openapi.json",
+      "destination": "/api/crawl?doc=openapi"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/api/crawl?doc=home"
+    },
+    {
+      "source": "/index.html",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/api/crawl?doc=home"
+    },
+    {
+      "source": "/terms.html",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/api/crawl?doc=terms"
+    },
+    {
+      "source": "/privacy.html",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/api/crawl?doc=privacy"
+    },
+    {
       "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
+      "destination": "/api/crawl?doc=sitemap"
     },
     {
       "source": "/s/:code",
@@ -63,6 +115,10 @@
     {
       "source": "/:handle([a-z0-9][a-z0-9-]{2,31})",
       "destination": "/api/page/:handle"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/api/crawl?notfound=1"
     }
   ],
   "headers": [
@@ -85,6 +141,10 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept"
         }
       ]
     }

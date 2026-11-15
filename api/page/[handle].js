@@ -14,6 +14,7 @@
  */
 const { rest, configured } = require("../_lib/db");
 const { isLive } = require("../_lib/plans");
+const agent = require("../_lib/agent");
 
 function clean(v, max) {
   return String(v == null ? "" : v).replace(/[<>&"]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -31,6 +32,37 @@ module.exports = async function page(req, res) {
   const proto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0];
   const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0];
   const base = proto + "://" + host;
+
+  /* An agent asking for Markdown gets the menu itself — names, descriptions and
+     prices, section by section — rather than the HTML shell it would have to
+     parse. A menu that is not live has no Markdown either: 404, and the map. */
+  if (agent.wantsMarkdown(req.headers.accept)) {
+    const data = await agent.fetchMenu(base, handle);
+    if (!data) {
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.setHeader("Vary", "Accept");
+      res.setHeader("Cache-Control", "no-store");
+      res.statusCode = 404;
+      return res.end(
+        "# 404 — no live menu there\n\n" +
+        "There is no published menu at `/" + String(handle).replace(/[^a-z0-9-]/gi, "") + "` on this site. " +
+        "The menus that exist are listed in the [sitemap](" + agent.base() + "/sitemap.xml).\n"
+      );
+    }
+    const md = agent.menuMarkdown({
+      base: agent.base(),
+      handle: handle,
+      restaurant: data.restaurant || {},
+      categories: data.categories || [],
+      live: true
+    });
+    res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+    res.setHeader("Vary", "Accept");
+    /* this is served at the page's own URL, so no cache may keep it for a browser */
+    res.setHeader("Cache-Control", "no-store");
+    res.statusCode = 200;
+    return res.end(md);
+  }
 
   let html = "";
   try {

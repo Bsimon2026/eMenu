@@ -25,6 +25,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=20261114a">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png?v=20261114a">
 <link rel="manifest" href="assets/site.webmanifest">
+<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
 <!-- Satoshi + Geist Mono, self-hosted. No third-party font host is contacted. -->
 <link rel="stylesheet" href="assets/fonts.css?v=20261114n">
 <link rel="stylesheet" href="assets/landing.css?v=20261114r">
@@ -32,14 +33,181 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Product",
-  "name": "DigiMenu",
-  "description": "QR menu and WhatsApp ordering for restaurants in the UAE.",
-  "brand": { "@type": "Brand", "name": "Ogle.live" },
-  "offers": [
-    { "@type": "Offer", "name": "QR Menu", "price": "99", "priceCurrency": "AED", "description": "Annual plan, up to 50 dishes" },
-    { "@type": "Offer", "name": "Pro", "price": "129", "priceCurrency": "AED", "description": "Ordering, monthly" },
-    { "@type": "Offer", "name": "Ultra", "price": "249", "priceCurrency": "AED", "description": "Branded landing page and social posting, monthly" }
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://digimenu.indubaicity.com/#organization",
+      "name": "Ogle Live Technology",
+      "alternateName": "Ogle.live",
+      "url": "https://ogle.live/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://digimenu.indubaicity.com/assets/favicon-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "image": "https://digimenu.indubaicity.com/assets/favicon-512.png",
+      "description": "Ogle Live Technology, trading as Ogle.live, builds web, software and AI systems for businesses in the UAE and India. DigiMenu is its QR menu and WhatsApp ordering product for restaurants.",
+      "email": "connect@indubaicity.com",
+      "telephone": "+971568911233",
+      "foundingDate": "2019",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Dubai",
+        "addressRegion": "Dubai",
+        "addressCountry": "AE"
+      },
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "contactType": "sales",
+          "telephone": "+971568911233",
+          "email": "connect@indubaicity.com",
+          "areaServed": "AE",
+          "availableLanguage": [
+            "en",
+            "ar"
+          ]
+        }
+      ],
+      "sameAs": [
+        "https://ogle.live/",
+        "https://digimenu.indubaicity.com/"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://digimenu.indubaicity.com/#website",
+      "url": "https://digimenu.indubaicity.com/",
+      "name": "DigiMenu",
+      "alternateName": "DigiMenu by Ogle.live",
+      "description": "A QR menu for UAE restaurants that takes the order: guests order from their phone and every order lands in the restaurant's WhatsApp.",
+      "inLanguage": [
+        "en",
+        "ar"
+      ],
+      "publisher": {
+        "@id": "https://digimenu.indubaicity.com/#organization"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://digimenu.indubaicity.com/#webpage",
+      "url": "https://digimenu.indubaicity.com/",
+      "name": "DigiMenu by Ogle.live | The QR menu that takes the order",
+      "description": "A QR menu for UAE restaurants that takes the order: photograph your menu, guests order from their phone, and every order lands in your WhatsApp. From AED 99 a year. No app, no commission, no hardware.",
+      "isPartOf": {
+        "@id": "https://digimenu.indubaicity.com/#website"
+      },
+      "about": {
+        "@id": "https://digimenu.indubaicity.com/#organization"
+      },
+      "primaryImageOfPage": "https://digimenu.indubaicity.com/assets/photos/charcoal-chicken.jpg",
+      "inLanguage": "en"
+    },
+    {
+      "@type": [
+        "Product",
+        "SoftwareApplication"
+      ],
+      "@id": "https://digimenu.indubaicity.com/#product",
+      "name": "DigiMenu",
+      "url": "https://digimenu.indubaicity.com/",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Restaurant menu and ordering",
+      "operatingSystem": "Any modern web browser — no app install",
+      "description": "QR menu and WhatsApp ordering for restaurants in the UAE.",
+      "brand": {
+        "@type": "Brand",
+        "name": "Ogle.live"
+      },
+      "publisher": {
+        "@id": "https://digimenu.indubaicity.com/#organization"
+      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "QR Menu",
+          "price": "99",
+          "priceCurrency": "AED",
+          "description": "Annual plan, up to 50 dishes",
+          "url": "https://digimenu.indubaicity.com/#pricing"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "129",
+          "priceCurrency": "AED",
+          "description": "Ordering, reviews and WhatsApp; AED 999 a year",
+          "url": "https://digimenu.indubaicity.com/#pricing"
+        },
+        {
+          "@type": "Offer",
+          "name": "Ultra",
+          "price": "249",
+          "priceCurrency": "AED",
+          "description": "Branded landing page and custom domain; AED 1,999 a year",
+          "url": "https://digimenu.indubaicity.com/#pricing"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://digimenu.indubaicity.com/#faq",
+      "isPartOf": {
+        "@id": "https://digimenu.indubaicity.com/#website"
+      },
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Do my guests need to install anything?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. They scan the code and the menu opens in the browser — no app, no account, no download. The same link works from a WhatsApp message, a Google search or the sticker on the table."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens when I go past 50 dishes on QR Menu?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The QR plan holds 50 dishes and a photo on each. If you outgrow it, the dashboard tells you before you hit the limit and offers Pro, which has no dish count. Nothing is deleted while you decide."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a WhatsApp Business account?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Orders reach the number you already use. If you want the automated replies and the green tick, Pro and Ultra can connect your own WhatsApp Business number through the Cloud API — Meta bills per message for that, separately from us."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the menu really in Arabic too?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, on every plan. Each dish takes an Arabic name beside its English one, and the guest switches the whole page."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I put it on my own domain?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "On Ultra, as an add-on of AED 99 a year. Your domain points at your menu, and your existing website — if you have one — keeps working."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What if I stop paying?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The QR keeps working until the period you paid for ends. After that the page pauses rather than disappears, and the menu comes back the moment you renew. Nothing is deleted, and nothing renews without you asking."
+          }
+        }
+      ]
+    }
   ]
 }
 </script>
@@ -401,7 +569,7 @@
   </section>
 
   <!-- =============================== faq =============================== -->
-  <section class="section-tight">
+  <section class="section-tight" id="faq">
     <div class="wrap">
       <div class="section-head reveal">
         <span class="kicker">Questions</span>
