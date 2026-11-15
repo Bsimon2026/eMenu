@@ -10,7 +10,10 @@
  */
 
 const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./_lib/db");
-const { PLANS: PLAN_TABLE, billable, upgradeLine, capabilities, isLive, darkReason } = require("./_lib/plans");
+const { PLANS: PLAN_TABLE, billable, upgradeLine, capabilities, isLive, darkReason, planOf, TRIAL_PLAN } = require("./_lib/plans");
+const mail = require("./_lib/mail");
+
+const PUBLIC_BASE = (process.env.PUBLIC_BASE || "https://digimenu.indubaicity.com").replace(/\/+$/, "");
 
 /* Media belongs to the restaurant, so it rides in the same deployment slot:
    POST /api/restaurant?upload=1 and GET ?upload=1&action=sweep. */
@@ -298,7 +301,50 @@ async function restaurantHandler(req, res) {
     return res.status(400).json({ ok: false, code: "SAVE_FAILED", message: "The restaurant could not be saved.", detail });
   }
 
-  return res.status(200).json({ ok: true, restaurant: (saved.data || [])[0] || null });
+  const row = (saved.data || [])[0] || null;
+
+  /* A new restaurant is a person who just signed up, and somebody at the platform
+     should know before they have to ask. Sent once, at the moment the row exists —
+     never on the later saves of the same restaurant, and never able to fail the
+     signup: a courtesy mail is not worth a 500 to the customer. */
+  let adminNotified = false;
+  if (!existing && row) {
+    const to = String(process.env.NOTIFY_EMAIL || "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (mail.ready && to.length) {
+      const console_ = PUBLIC_BASE.replace(/\/+$/, "") + "/superadmin";
+      const adminBody = [
+        "A new restaurant registered.",
+        "",
+        "Name:        " + row.name,
+        "Address:     " + PUBLIC_BASE.replace(/^https?:\/\//i, "").replace(/\/+$/, "") + "/" + row.handle,
+        "Owner:       " + (row.owner_name || "—") + " <" + (user.email || "—") + ">",
+        "WhatsApp:    " + (row.whatsapp_e164 || "—"),
+        "Order email: " + (row.order_email || "—"),
+        "Takes:       " + ((row.purposes || []).join(" · ") || "—"),
+        "",
+        "Plan now:    " + PLAN_TABLE[planOf(row)].label + " — on the free week, which is worth " +
+          PLAN_TABLE[TRIAL_PLAN].label + " until " + (row.trial_ends || "—"),
+        "Status:      " + (row.status || "trial") + " (publish needs the logo, the licence, the map link and a dish)",
+        "",
+        "Operator console: " + console_,
+        "Guest page:       " + PUBLIC_BASE.replace(/\/+$/, "") + "/" + row.handle,
+        "",
+        "Record the payment there when it is paid — that is what republishes the link after the free week."
+      ].join("\n");
+
+      const sent = await mail.sendMail({
+        to,
+        subject: "New restaurant — " + row.name + " (" + row.handle + ")",
+        fromName: "DigiMenu",
+        replyTo: user.email || undefined,
+        text: adminBody
+      }, 9000);
+      adminNotified = Boolean(sent.ok);
+      if (!sent.ok) console.error("[restaurant] admin mail", sent.code, sent.detail);
+    }
+  }
+
+  return res.status(200).json({ ok: true, restaurant: (saved.data || [])[0] || null, adminNotified });
 };
 
 /* The row, the handle check, and this restaurant's own files. */

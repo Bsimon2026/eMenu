@@ -5,6 +5,10 @@
   ],
   "rewrites": [
     {
+      "source": "/s/:code",
+      "destination": "/api/order?short=1&code=:code"
+    },
+    {
       "source": "/api/orders",
       "destination": "/api/order"
     },

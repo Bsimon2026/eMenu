@@ -200,6 +200,16 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith("/api/")) return serveApi(req, res, pathname, parsed.searchParams);
 
+  /* the short order link in the guest's mail: /s/<order id> — same handler the
+     Vercel rewrite reaches, so one implementation serves both hosts */
+  const shortLink = pathname.match(/^\/s\/([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i);
+  if (shortLink) {
+    const q = new URLSearchParams(parsed.searchParams);
+    q.set("short", "1");
+    q.set("code", shortLink[1]);
+    return serveApi(req, res, "/api/order", q);
+  }
+
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.statusCode = 405;
     return res.json({ ok: false, code: "METHOD" });

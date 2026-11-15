@@ -17,6 +17,109 @@ const { canTakeOrders } = require("./_lib/ordering");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
 
+const PUBLIC_BASE = (process.env.PUBLIC_BASE || "https://digimenu.indubaicity.com").replace(/\/+$/, "");
+
+/**
+ * The message the guest's own WhatsApp will post to the restaurant.
+ *
+ * One builder, two callers: the order handler (which mails it as a link) and the
+ * short-link route (which rebuilds it from the stored order, so the mail can
+ * carry a short URL instead of several hundred characters of encoded text).
+ */
+function orderMessage(o) {
+  const order = o.order || {};
+  const items = o.items || [];
+  const restaurant = o.restaurant || {};
+  const detail =
+    order.mode === "Dine In" ? "Dine In · table " + (order.table_no || "—")
+    : order.mode === "Take Away" ? "Take Away · collect in " + (o.pickupLabel || "as soon as ready")
+    : "Delivery · " + (order.address || "address on the phone");
+  const itemLines = items.map((r) =>
+    "  " + r.qty + " × " + r.name + "  —  AED " + (Number(r.unit_price) * Number(r.qty)).toFixed(2)).join("\n");
+  return [
+    "Order — " + (restaurant.name || ""),
+    detail,
+    "Guest: " + (order.guest_name || ""),
+    "",
+    itemLines,
+    "",
+    "Total: AED " + Number(order.total || 0).toFixed(2),
+    "Reference: " + String(order.id || "").slice(0, 8)
+  ].join("\n");
+}
+
+/** The number the guest's message must reach. */
+function orderNumberFor(restaurant) {
+  const r = restaurant || {};
+  return (r.sender_mode === "cloud" && r.wa_phone_number_id && r.wa_order_e164)
+    ? r.wa_order_e164
+    : r.whatsapp_e164;
+}
+
+function waUrlFor(restaurant, text) {
+  const digits = String(orderNumberFor(restaurant) || "").replace(/[^\d]/g, "");
+  return "https://wa.me/" + digits + "?text=" + encodeURIComponent(text);
+}
+
+/** The link that goes in the guest's mail: short, and it resolves here.
+ *  The order id without its dashes — 32 characters, still exact. */
+function shortOrderLink(orderId) {
+  return PUBLIC_BASE + "/s/" + String(orderId || "").replace(/-/g, "");
+}
+
+/** 32 hex characters back into the uuid the database stores. */
+function uuidFromCode(raw) {
+  const h = String(raw || "").toLowerCase().replace(/-/g, "");
+  if (!/^[0-9a-f]{32}$/.test(h)) return "";
+  return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+}
+
+function gonePage(res, message) {
+  res.statusCode = 404;
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  return res.end(
+    '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    "<title>Order link — DigiMenu</title></head>" +
+    '<body style="font-family:system-ui,sans-serif;background:#FBF7F0;color:#17140F;margin:0">' +
+    '<div style="max-width:420px;margin:16vh auto 0;padding:0 24px;text-align:center">' +
+    "<h1 style=\"font-size:20px;margin:0 0 10px\">This order link is not valid</h1>" +
+    "<p style=\"color:#6C6357;line-height:1.6;margin:0\">" + String(message || "") + "</p>" +
+    '<p style="color:#6C6357;line-height:1.6;margin:16px 0 0">Open the restaurant\'s menu and order again, ' +
+    "or send them a message directly.</p></div></body></html>"
+  );
+}
+
+/**
+ * GET /s/<orderId>  (rewritten from /api/order?short=1&code=<orderId>)
+ *
+ * The guest mail carries this instead of a wa.me URL with the whole order
+ * encoded into it. It answers 302 to the same chat, with the message rebuilt
+ * from the stored order — so nothing is trusted from the URL beyond the id.
+ */
+async function shortLinkRoute(req, res) {
+  const id = uuidFromCode((req.query && req.query.code) || "");
+  if (!id) return gonePage(res, "That is not an order link.");
+  const got = await rest("orders?id=eq." + encodeURIComponent(id) +
+    "&select=id,restaurant_id,mode,table_no,pickup_at,address,guest_name,guest_phone,total");
+  const order = got.ok && (got.data || [])[0];
+  if (!order) return gonePage(res, "That order is not on this account any more.");
+
+  const rr = await rest("restaurants?id=eq." + encodeURIComponent(order.restaurant_id) +
+    "&select=name,whatsapp_e164,sender_mode,wa_phone_number_id,wa_order_e164");
+  const restaurant = rr.ok && (rr.data || [])[0];
+  if (!restaurant) return gonePage(res, "The restaurant behind this order is gone.");
+
+  const ir = await rest("order_items?order_id=eq." + encodeURIComponent(order.id) + "&select=name,qty,unit_price");
+  const items = ir.ok ? (ir.data || []) : [];
+
+  res.statusCode = 302;
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Location", waUrlFor(restaurant, orderMessage({ order, items, restaurant })));
+  return res.end();
+}
+
 /* The guest picks "15 min", "30 min", "45 min" or "1 hour" — a label, not a date.
    `new Date("30 min").toISOString()` throws RangeError, and because that ran while
    the order row was being built, EVERY Take Away order died before it was saved:
@@ -41,6 +144,12 @@ function clean(v, max) {
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
+  /* The short link in the guest's mail: /s/<order id> is rewritten here with
+     ?short=1&code=<id>, so one function serves the order, the owner's list and
+     the redirect. */
+  if (req.method === "GET" && req.query && (req.query.short === "1" || req.query.short === "true")) {
+    return shortLinkRoute(req, res);
+  }
   /* one function, two verbs: POST places an order, GET lists the owner's orders.
      The Hobby plan allows 12 functions and we were at the ceiling. */
   if (req.method === "GET") return listOrders(req, res);
@@ -261,23 +370,12 @@ module.exports = async function handler(req, res) {
 
   /* The guest gets the email, not the restaurant: the order is already in the
      panel, and the one step that can still be lost is theirs — sending it on
-     WhatsApp. So the mail carries the same prefilled link, in case the chat did
-     not open or they closed it before pressing send. */
-  const waNumber = (restaurant.sender_mode === "cloud" && restaurant.wa_phone_number_id && restaurant.wa_order_e164)
-    ? restaurant.wa_order_e164
-    : restaurant.whatsapp_e164;
-  const waText = [
-    "Order — " + restaurant.name,
-    detail,
-    "Guest: " + guestName,
-    "",
-    itemLines,
-    "",
-    "Total: AED " + total.toFixed(2),
-    "Reference: " + String(saved.id).slice(0, 8)
-  ].join("\n");
-  const waLink = "https://wa.me/" + String(waNumber || "").replace(/[^\d]/g, "") +
-    "?text=" + encodeURIComponent(waText);
+     WhatsApp. The mail carries a SHORT link (/s/<order id>) rather than a wa.me
+     URL with the whole order percent-encoded into it: that link was several
+     hundred characters and wrapped into nonsense in every mail client. The
+     short link answers a 302 to the same chat, with the message rebuilt from
+     the stored order. */
+  const waLink = shortOrderLink(saved.id);
 
   let guestNotified = false;
   if (mail.ready && guestEmail) {
