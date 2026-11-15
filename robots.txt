@@ -1,0 +1,21 @@
+# DigiMenu — what crawlers may read.
+#
+# The menus ARE the content: every live restaurant is a page at /<handle> and is
+# listed in the sitemap with its last-modified date. The dashboard, the sign-in,
+# the operator console and the guest feedback pages are behind a session or a
+# one-off token, so they are not content and must not be indexed.
+
+User-agent: *
+Allow: /
+
+Disallow: /login
+Disallow: /app
+Disallow: /superadmin
+Disallow: /api/
+Disallow: /f/
+Disallow: /*/login
+Disallow: /*/dashboard
+Disallow: /menu.html
+Disallow: /index-v2-backup.html
+
+Sitemap: https://digimenu.indubaicity.com/sitemap.xml

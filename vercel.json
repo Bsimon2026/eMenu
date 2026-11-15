@@ -5,6 +5,10 @@
   ],
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
       "source": "/s/:code",
       "destination": "/api/order?short=1&code=:code"
     },

@@ -200,6 +200,10 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith("/api/")) return serveApi(req, res, pathname, parsed.searchParams);
 
+  /* the sitemap is generated, not a file: it lists every live menu with its
+     last-modified date */
+  if (pathname === "/sitemap.xml") return serveApi(req, res, "/api/sitemap", parsed.searchParams);
+
   /* the short order link in the guest's mail: /s/<order id> — same handler the
      Vercel rewrite reaches, so one implementation serves both hosts */
   const shortLink = pathname.match(/^\/s\/([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i);
