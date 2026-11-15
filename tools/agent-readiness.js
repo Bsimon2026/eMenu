@@ -347,6 +347,17 @@ async function main() {
       const m2 = await get(ORIGIN + "/" + handle);
       check("/" + handle + " is still the HTML menu for a browser",
         /text\/html/.test(m2.type) && /menu\.js/.test(m2.body), m2.type);
+      const tenantNodes = flatten(graphs(m2.body));
+      const restaurant = tenantNodes.filter(function (n) { return n["@type"] === "Restaurant"; })[0];
+      if (/property="og:url"/.test(m2.body)) {
+        check("/" + handle + " carries a Restaurant entity",
+          Boolean(restaurant && restaurant.name && restaurant.url && restaurant.address),
+          restaurant ? JSON.stringify(restaurant).slice(0, 160) : "no Restaurant JSON-LD on the menu page");
+      } else {
+        /* the single-process host serves the bare shell: the per-restaurant head
+           — share card and entity — is built by api/page/[handle].js on Vercel */
+        skip("/" + handle + " carries a Restaurant entity", "static shell here; the entity is written by the page function");
+      }
     }
 
     /* ------------------------------------------------------- nothing broke */

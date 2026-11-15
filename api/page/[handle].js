@@ -100,6 +100,25 @@ module.exports = async function page(req, res) {
         const img = abs(row.cover_url || row.logo_url, base) || (base + "/assets/favicon-512.png");
         const url = base + "/" + encodeURIComponent(handle);
 
+        /* One typed entity per restaurant, so an assistant that lands on a menu
+           knows what it is looking at: the restaurant, its address as far as the
+           row knows it, and the menu that IS this page. Only fields the row
+           actually carries — an empty `servesCuisine` is worse than none. */
+        const entity = {
+          "@context": "https://schema.org",
+          "@type": "Restaurant",
+          name: name,
+          url: url,
+          image: img,
+          hasMenu: url,
+          address: Object.assign(
+            { "@type": "PostalAddress" },
+            row.city ? { addressLocality: clean(row.city, 80) } : {},
+            { addressCountry: "AE" }
+          ),
+          isPartOf: { "@type": "WebSite", "@id": agent.base() + "/#website", name: "DigiMenu", url: agent.base() + "/" }
+        };
+
         const tags = published
           ? [
               "<title>" + name + " \u2014 Menu</title>",
@@ -112,7 +131,8 @@ module.exports = async function page(req, res) {
               '<meta property="og:url" content="' + url + '">',
               '<meta name="twitter:card" content="summary_large_image">',
               '<meta name="twitter:title" content="' + name + '">',
-              '<meta name="twitter:image" content="' + img + '">'
+              '<meta name="twitter:image" content="' + img + '">',
+              '<script type="application/ld+json">' + JSON.stringify(entity).replace(/</g, "\\u003c") + "</script>"
             ].join("\n")
           : [
               "<title>" + name + " \u2014 menu not live yet</title>",
