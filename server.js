@@ -252,8 +252,15 @@ const server = http.createServer(async (req, res) => {
 
   /* /digimenu/<handle> and /<handle> both mean "open that restaurant's menu" */
   /* browsers probe these at the root regardless of the <link> tags */
-  const rootAlias = { "/favicon.ico": "assets/favicon.ico", "/favicon-32.png": "assets/favicon-32.png",
-    "/favicon-180.png": "assets/favicon-180.png", "/site.webmanifest": "assets/site.webmanifest" };
+  const rootAlias = {
+    "/favicon.ico": "assets/favicon.ico", "/favicon-32.png": "assets/favicon-32.png",
+    "/favicon-180.png": "assets/favicon-180.png", "/site.webmanifest": "assets/site.webmanifest",
+    /* the clean addresses vercel.json rewrites. Without them this host reads
+       "/login" as a restaurant handle and serves a menu page called "login" —
+       the two hosts must answer the same address the same way. */
+    "/login": "login.html", "/app": "app.html", "/menu": "menu.html",
+    "/superadmin": "superadmin.html"
+  };
   if (rootAlias[pathname]) return sendFile(req, res, path.join(ROOT, ...rootAlias[pathname].split("/")));
 
   /* /<handle>/terms and /<handle>/privacy: the restaurant's own paperwork, the

@@ -12,7 +12,7 @@
 <link rel="manifest" href="/assets/site.webmanifest">
 <!-- Satoshi + Geist Mono, self-hosted. Same faces as the marketing page. -->
 <link rel="stylesheet" href="/assets/fonts.css?v=20261114a">
-<link rel="stylesheet" href="/assets/auth.css?v=20261114a">
+<link rel="stylesheet" href="/assets/auth.css?v=20261221a">
 </head>
 <body class="auth">
 
@@ -37,6 +37,14 @@
     <div id="paneIn" role="tabpanel" aria-labelledby="tabIn">
       <h1>Restaurant sign in</h1>
       <p class="lede">Manage your menu, download your QR and see the orders that came in.</p>
+
+      <div class="signedin" id="signedIn" hidden role="status">
+        <p id="signedInWho">You are signed in as someone else.</p>
+        <div class="signedin-actions">
+          <button class="link-btn" type="button" id="signedInOut">Sign out</button>
+          <button class="link-btn" type="button" id="signedInNew">Create a restaurant</button>
+        </div>
+      </div>
 
       <div class="errsum" id="sumIn" role="alert" tabindex="-1" aria-labelledby="sumInH">
         <h2 id="sumInH">Check these fields</h2>
@@ -242,6 +250,19 @@
 
   if (new URLSearchParams(location.search).get("mode") === "up") show("up");
 
+  /* the banner's two doors */
+  const outBtn = $("#signedInOut");
+  if (outBtn) {
+    outBtn.addEventListener("click", () => {
+      window.Auth.signOut();
+      location.replace("/login.html");
+    });
+  }
+  const newBtn = $("#signedInNew");
+  if (newBtn) {
+    newBtn.addEventListener("click", () => { location.href = "app.html?onboard=2"; });
+  }
+
   /* ---------------- the staff door ----------------
      Reached at /<handle>/login. The address decides which restaurant the name
      belongs to, and the name is only ever looked up inside that restaurant, so
@@ -357,9 +378,27 @@
   (async function returningFromGoogle() {
     const r = await window.Auth.googleFinish();
     if (!r) {
-      /* already signed in and back at the door: there is nothing to fill in */
+      /* Already signed in and back at the door: there is nothing to fill in —
+         but only send them to the dashboard if there IS one. An account with no
+         restaurant used to be bounced straight into the signup wizard, so the
+         only way to sign in as the restaurant's own account was to clear the
+         browser. Ask first, and stay here when the answer is "nothing yet". */
       if (!new URLSearchParams(location.search).get("code") && window.Auth.session()) {
-        location.replace("app.html");
+        let mine = null;
+        try { mine = await window.Auth.api("/api/restaurant"); } catch (e) { mine = null; }
+        if (mine && mine.ok && mine.data && mine.data.restaurant) {
+          location.replace("app.html");
+          return;
+        }
+        show("in");
+        const who = (window.Auth.user() || {}).email || "this account";
+        const note = $("#signedIn");
+        const line = $("#signedInWho");
+        if (note && line) {
+          line.textContent = "You are signed in as " + who + " — that account has no restaurant yet. " +
+            "Sign out to use the restaurant's own login, or create a new menu.";
+          note.hidden = false;
+        }
       }
       return;
     }

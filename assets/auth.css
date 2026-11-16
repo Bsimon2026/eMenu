@@ -452,3 +452,22 @@ select.input { padding-right: 34px; }
 }
 
 .pwd-btn[aria-pressed="true"] { color: var(--brand); }
+
+
+/* A session that owns no restaurant: say whose it is, and give both ways out.
+   Without this the sign-in page bounced to the wizard and there was no way back
+   to sign in as the restaurant. */
+.signedin {
+  margin: 0 0 18px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.signedin p {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.signedin-actions { display: flex; gap: 16px; flex-wrap: wrap; }
