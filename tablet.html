@@ -23,7 +23,10 @@ html, body { height: 100%; }
 body {
   margin: 0; background: var(--panel); color: var(--ink);
   font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
-  display: grid; grid-template-rows: auto 1fr; min-height: 100dvh;
+  /* header, the open tables, then everything that scrolls. Without the third row
+     stated, the rail takes the free height and the ticket falls off the page. */
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 100dvh;
+  overflow: hidden;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 [hidden] { display: none !important; }
@@ -49,7 +52,7 @@ header.tb {
 .tb-exit { font-size: 12.5px; color: var(--ink-4); text-decoration: none; }
 .tb-exit:hover { color: var(--ink); }
 
-main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
+main.tb-body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 0; overflow: hidden; }
 @media (max-width: 900px) { main.tb-body { grid-template-columns: 1fr; } }
 
 /* ---- the menu ---- */
@@ -127,14 +130,14 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
    order every time, with the money on them: the bill is the thing being asked
    about most often, and it should never need a second screen. */
 .tabs-bar {
-  display: flex; align-items: stretch; gap: 8px; overflow-x: auto;
+  display: flex; align-items: stretch; gap: 8px; overflow-x: auto; overflow-y: hidden;
   padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel);
   scrollbar-width: none;
 }
 .tabs-bar::-webkit-scrollbar { display: none; }
 .tabs-bar:empty { display: none; }
 .tabbtn {
-  flex: none; display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  flex: none; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; justify-content: center;
   min-width: 108px; padding: 7px 12px; border-radius: 10px; text-align: left;
   background: var(--card); border: 1px solid var(--line); color: var(--ink-2);
 }
@@ -146,7 +149,7 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
 .tabbtn[aria-pressed="true"] b { color: var(--brand); }
 .tabbtn[aria-pressed="true"] span { color: var(--ink-2); }
 .tabbtn.newtab {
-  min-width: auto; justify-content: center; align-items: center; font-size: 13px;
+  min-width: auto; align-items: center; justify-content: center; font-size: 13px;
   border-style: dashed; color: var(--ink-4);
 }
 .tk-tab {
