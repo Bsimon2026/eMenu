@@ -145,7 +145,12 @@ async function actorRestaurant(user, cols) {
   );
   if (!row.ok || !Array.isArray(row.data) || !row.data[0]) return null;
 
-  return { restaurant: row.data[0], role: m.role === "menu" ? "menu" : "orders", username: m.username };
+  /* The role the membership actually holds. This used to coerce anything that
+     was not "menu" into "orders", which silently promoted a waiter: the dashboard
+     read them as an orders login and offered the whole orders pane. A role the
+     database knows and this line does not is the one bug that hides a privilege. */
+  const role = ["menu", "orders", "tablet"].indexOf(m.role) !== -1 ? m.role : "orders";
+  return { restaurant: row.data[0], role: role, username: m.username };
 }
 
 function bearer(req) {
