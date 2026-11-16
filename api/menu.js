@@ -182,12 +182,18 @@ async function menuHandler(req, res) {
      number: asked for first, dropped on its own, so the cover photo and the
      Arabic survive a deployment that lands before the migration. */
   const FULL_THEME = FULL_ORDER + ",theme";
+  /* 0023 adds the restaurant's own policies and the delivery fence. Same rule as
+     the order number and the theme: asked for first, dropped on its own, so the
+     cover photo and the Arabic survive a deployment that lands before the
+     migration is run. */
+  const FULL_POLICY = FULL_THEME + ",terms_md,privacy_md,delivery_radius_km,lat,lng";
   const query = (cols) =>
     "restaurants?" + lookup + "&status=eq.published&select=" + cols;
 
   /* 0004 adds the identity columns; a deployment can land before the migration
      is run, so fall back to the original columns instead of failing the page */
-  let found = await rest(query(FULL_THEME));
+  let found = await rest(query(FULL_POLICY));
+  if (!found.ok) found = await rest(query(FULL_THEME));
   if (!found.ok) found = await rest(query(FULL_ORDER));
   if (!found.ok) found = await rest(query(FULL_COLS));
   if (!found.ok) found = await rest(query(BASE_COLS));
@@ -294,7 +300,22 @@ async function menuHandler(req, res) {
         website: restaurant.website || null
       },
       coverUrl: restaurant.cover_url || null,
-      locales: Array.isArray(restaurant.locales) ? restaurant.locales : ["en"]
+      locales: Array.isArray(restaurant.locales) ? restaurant.locales : ["en"],
+      /* Has this restaurant published its own Terms and Privacy Policy? The page
+         shows a link only for the one that exists — an ad landing needs a policy,
+         and a policy link that opens "not written yet" is worse than no link. */
+      policies: {
+        terms: Boolean(String(restaurant.terms_md || "").trim()),
+        privacy: Boolean(String(restaurant.privacy_md || "").trim())
+      },
+      /* The delivery fence, so the guest page can answer "do you deliver to me?"
+         before the guest fills in an address. radiusKm 0 means no fence: the
+         restaurant confirms the distance by phone, as it always did. */
+      delivery: {
+        radiusKm: restaurant.delivery_radius_km == null ? 0 : Number(restaurant.delivery_radius_km) || 0,
+        lat: restaurant.lat == null ? null : Number(restaurant.lat),
+        lng: restaurant.lng == null ? null : Number(restaurant.lng)
+      }
     },
     categories: withArabic(built.categories, ar),
     itemCount: built.itemCount
@@ -314,9 +335,93 @@ function withArabic(categories, ar) {
   });
 }
 
+/* ---------------------------------------------------------------------------
+ * GET /api/menu?policy=terms|privacy   (public)
+ *
+ * The restaurant's own policy page. A restaurant that runs an ad needs the page
+ * the ad lands on to carry its own terms — ours are about the platform, not
+ * about who cooked the food. Markdown is stored; the page renders it.
+ *
+ * Readable only while the restaurant is published, and only when there is text:
+ * an empty policy is answered 404 NO_POLICY so the page can say "not written
+ * yet" instead of showing a blank legal page.
+ * ------------------------------------------------------------------------- */
+async function policyRead(req, res) {
+  cors(res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "GET") return res.status(405).json({ ok: false, code: "METHOD" });
+  if (!configured) {
+    return res.status(500).json({ ok: false, code: "NOT_CONFIGURED", message: "Supabase credentials missing on the server." });
+  }
+
+  const kind = String((req.query && req.query.policy) || "").toLowerCase();
+  if (kind !== "terms" && kind !== "privacy") {
+    return res.status(400).json({ ok: false, code: "BAD_KIND", message: "Ask for terms or privacy." });
+  }
+
+  const handle = String((req.query && req.query.handle) || "").trim().toLowerCase();
+  const host = String((req.query && req.query.host) || "").trim().toLowerCase()
+    .replace(/^www\./, "").replace(/:\d+$/, "");
+
+  let lookup;
+  if (!handle && host) {
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(host)) {
+      return res.status(400).json({ ok: false, code: "BAD_HOST", message: "That is not a valid domain." });
+    }
+    lookup = "custom_domain=eq." + encodeURIComponent(host);
+  } else {
+    if (!SAFE_HANDLE.test(handle)) {
+      return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "That is not a valid menu address." });
+    }
+    lookup = "handle=eq." + encodeURIComponent(handle);
+  }
+
+  const col = kind === "terms" ? "terms_md" : "privacy_md";
+  const q = await rest("restaurants?" + lookup + "&status=eq.published&select=name,handle,city,address_line," + col + ",updated_at&limit=1");
+  if (!q.ok) {
+    /* 0023 has not been pasted into the database yet, so the column is not
+       there. That is a designed answer, not a crash — and the page still gets
+       the restaurant's name, or it reads as an abandoned template. */
+    const who = await rest("restaurants?" + lookup + "&status=eq.published&select=name,handle&limit=1");
+    const row = who.ok ? (who.data || [])[0] : null;
+    return res.status(503).json({
+      ok: false,
+      code: "NOT_READY",
+      name: row ? row.name : null,
+      /* the guest reads a sentence about the restaurant, not about a migration:
+         the code is what the dashboard acts on */
+      message: "This menu does not have a policy page yet."
+    });
+  }
+
+  const row = (q.data || [])[0];
+  if (!row) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No published menu at that address." });
+
+  const text = String(row[col] || "").trim();
+  if (!text) {
+    return res.status(404).json({
+      ok: false,
+      code: "NO_POLICY",
+      name: row.name,
+      message: row.name + " has not published " + (kind === "terms" ? "terms" : "a privacy policy") + " yet."
+    });
+  }
+
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=900");
+  return res.status(200).json({
+    ok: true,
+    kind: kind,
+    restaurant: { name: row.name, handle: row.handle, city: row.city || "", address: row.address_line || null },
+    text: text,
+    updated_at: row.updated_at || null
+  });
+}
+
 /* One function, three jobs. Everything under ?op= is a write to this menu. */
 module.exports = async function route(req, res) {
-  const op = String((req.query && req.query.op) || "");
+  const q = req.query || {};
+  if (q.policy && (req.method === "GET" || req.method === "OPTIONS")) return policyRead(req, res);
+  const op = String(q.op || "");
   if (req.method === "POST" && op === "save") return saveMenu(req, res);
   if (req.method === "POST" && op === "edit") return menuEdit(req, res);
   return menuHandler(req, res);

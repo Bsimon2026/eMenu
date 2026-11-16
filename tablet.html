@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Tablet — take an order</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0E1112">
+<link rel="icon" href="/assets/favicon.ico?v=20261114a" sizes="any">
+<link rel="stylesheet" href="/assets/fonts.css?v=20261116b">
+<style>
+/* A tablet held by staff at the table: no phone layout, no hero, no marketing.
+   Two columns that never move — the menu scrolls, the ticket stays — because the
+   person using it is standing up with a guest in front of them. */
+:root {
+  --ink: #F2EFE9; --ink-2: #C9C5BC; --ink-4: #8E948F;
+  --panel: #14181A; --card: #191E20; --line: #262C2E; --brand: #F7941D;
+  --good: #3FB950; --danger: #E0684F;
+  --sans: "Satoshi", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--panel); color: var(--ink);
+  font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  display: grid; grid-template-rows: auto 1fr; min-height: 100dvh;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+
+header.tb {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--card);
+  position: sticky; top: 0; z-index: 20;
+}
+.tb-name { font-weight: 600; letter-spacing: -.01em; font-size: 16px; }
+.tb-tag {
+  font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-4); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+}
+.tb-spacer { flex: 1; }
+.tb-field { display: flex; align-items: center; gap: 8px; }
+.tb-field label { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-4); }
+.tb-field input {
+  width: 84px; height: 38px; padding: 0 10px; text-align: center;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 9px;
+  font-variant-numeric: tabular-nums; font-size: 15px;
+}
+.modes { display: flex; gap: 6px; }
+.modes button {
+  height: 38px; padding: 0 14px; border-radius: 9px;
+  background: transparent; border: 1px solid var(--line); color: var(--ink-2);
+}
+.modes button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #14120E; font-weight: 600; }
+.tb-exit { font-size: 12.5px; color: var(--ink-4); text-decoration: none; }
+.tb-exit:hover { color: var(--ink); }
+
+main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
+@media (max-width: 900px) { main.tb-body { grid-template-columns: 1fr; } }
+
+/* ---- the menu ---- */
+.menu-side { min-height: 0; display: flex; flex-direction: column; }
+.cats {
+  display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px;
+  border-bottom: 1px solid var(--line); scrollbar-width: none;
+}
+.cats::-webkit-scrollbar { display: none; }
+.cats button {
+  flex: none; height: 34px; padding: 0 13px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--line); color: var(--ink-2); font-size: 13px;
+}
+.cats button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #14120E; font-weight: 600; }
+.items { overflow-y: auto; padding: 8px 14px 90px; flex: 1; -webkit-overflow-scrolling: touch; }
+.cat-h {
+  position: sticky; top: 0; background: var(--panel); z-index: 2;
+  margin: 14px 0 4px; padding: 8px 0 6px;
+  font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4);
+}
+.row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+  padding: 11px 2px; border-bottom: 1px solid var(--line);
+}
+.row .nm { font-size: 15px; }
+.row .ds { font-size: 12.5px; color: var(--ink-4); margin-top: 2px; max-width: 62ch; }
+.row .pr { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 14px; }
+.add {
+  width: 40px; height: 40px; border-radius: 11px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); font-size: 20px; line-height: 1;
+  display: grid; place-items: center;
+}
+.add:active { transform: scale(.94); }
+.row.sold .nm, .row.sold .pr { color: var(--ink-4); text-decoration: line-through; }
+.row .soldout { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--danger); }
+
+/* ---- the ticket ---- */
+.ticket {
+  display: flex; flex-direction: column; min-height: 0;
+  border-left: 1px solid var(--line); background: var(--card);
+}
+@media (max-width: 900px) {
+  .ticket { border-left: none; border-top: 1px solid var(--line); }
+}
+.tk-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; }
+.tk-head h2 { margin: 0; font-size: 14px; letter-spacing: .02em; }
+.tk-head span { font-size: 12px; color: var(--ink-4); }
+.tk-lines { flex: 1; overflow-y: auto; padding: 6px 16px; }
+.tk-empty { color: var(--ink-4); font-size: 13.5px; padding: 26px 0; text-align: center; }
+.tk-line { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.tk-line .t-nm { font-size: 14px; }
+.tk-line .t-pr { font-size: 13px; color: var(--ink-4); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stepper { display: flex; align-items: center; gap: 6px; }
+.stepper button {
+  width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line);
+  background: transparent; font-size: 17px; display: grid; place-items: center;
+}
+.stepper b { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+.tk-foot { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
+.tk-total { display: flex; justify-content: space-between; font-size: 17px; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+.send {
+  width: 100%; height: 54px; border: none; border-radius: 12px;
+  background: var(--brand); color: #14120E; font-size: 16px; font-weight: 650;
+}
+.send:disabled { opacity: .45; cursor: not-allowed; }
+.send:active:not(:disabled) { transform: scale(.99); }
+.tk-note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-4); min-height: 1.2em; }
+.tk-note.bad { color: var(--danger); }
+.tk-note.good { color: var(--good); }
+
+.splash { max-width: 520px; margin: 12vh auto; padding: 0 20px; text-align: center; color: var(--ink-2); }
+.splash h1 { font-size: 20px; color: var(--ink); }
+.splash a { color: var(--brand); }
+</style>
+</head>
+<body>
+
+<header class="tb">
+  <span class="tb-name" id="tbName">Tablet</span>
+  <span class="tb-tag">Staff orders</span>
+  <div class="tb-spacer"></div>
+  <div class="modes" id="modes" hidden>
+    <button type="button" data-mode="Dine In" aria-pressed="true">Dine In</button>
+    <button type="button" data-mode="Take Away" aria-pressed="false">Take Away</button>
+  </div>
+  <div class="tb-field" id="tableField" hidden>
+    <label for="tableNo">Table</label>
+    <input id="tableNo" inputmode="numeric" placeholder="—" autocomplete="off">
+  </div>
+  <a class="tb-exit" id="exitLink" href="/">Exit</a>
+</header>
+
+<div class="splash" id="splash">
+  <h1>Checking the tablet…</h1>
+  <p id="splashMsg">One moment.</p>
+</div>
+
+<main class="tb-body" id="body" hidden>
+  <section class="menu-side">
+    <div class="cats" id="cats"></div>
+    <div class="items" id="items"></div>
+  </section>
+
+  <aside class="ticket" aria-label="The order">
+    <div class="tk-head">
+      <h2>Order</h2>
+      <span id="tkWhere"></span>
+    </div>
+    <div class="tk-lines" id="lines">
+      <p class="tk-empty">Tap a dish to add it.</p>
+    </div>
+    <div class="tk-foot">
+      <div class="tk-total"><span>Total</span><span id="tkTotal">AED 0</span></div>
+      <button class="send" id="send" type="button" disabled>Send to the kitchen</button>
+      <p class="tk-note" id="tkNote"></p>
+    </div>
+  </aside>
+</main>
+
+<script src="/api/config?v=20261220a"></script>
+<script src="/assets/config.js?v=20261220a"></script>
+<script src="/assets/auth.js?v=20261220a"></script>
+<script>
+/**
+ * /<handle>/tablet — the order a staff member takes at the table.
+ *
+ * It is the same order ledger as the guest page, with three differences, all of
+ * them enforced in the handler rather than here: it needs a signed-in member
+ * with the orders right, it needs no guest contact details, and it sends and
+ * expects nothing on WhatsApp or by mail. The dish list is the public menu, so
+ * prices here are the prices the guest page shows.
+ *
+ * This page is deliberately its own file: the dashboard is a desktop tool with
+ * a dozen panes, and the tablet is one job done with a thumb.
+ */
+(function () {
+  "use strict";
+
+  var path = (location.pathname || "").replace(/\/+$/, "");
+  var m = /^\/([a-z0-9][a-z0-9-]{2,31})\/tablet$/i.exec(path);
+  var handle = m ? m[1].toLowerCase() : "";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  };
+
+  var currency = "AED";
+  var cats = [];
+  var cart = new Map();     /* item index -> { item, qty } */
+  var mode = "Dine In";
+  var sending = false;
+  var submitKey = "";
+
+  function key() {
+    try { return crypto.randomUUID(); } catch (e) { return String(Date.now()) + "-" + Math.random().toString(16).slice(2); }
+  }
+
+  function money(n) {
+    var v = Number(n) || 0;
+    return currency + " " + (v % 1 === 0 ? v.toFixed(0) : v.toFixed(2));
+  }
+
+  function splash(title, msg, href, linkText) {
+    $("splash").hidden = false;
+    $("body").hidden = true;
+    $("splash").innerHTML = "<h1>" + esc(title) + "</h1><p>" + esc(msg) +
+      (href ? ' <a href="' + esc(href) + '">' + esc(linkText || "continue") + "</a>." : "") + "</p>";
+  }
+
+  /* ---------------------------------------------------------------- sign in */
+  if (!handle) {
+    splash("That address is not a tablet", "Open the tablet from your dashboard, or at /<your-menu-address>/tablet.");
+    return;
+  }
+  $("exitLink").href = "/" + encodeURIComponent(handle);
+
+  var user = null;
+  try { user = window.Auth && window.Auth.user ? window.Auth.user() : null; } catch (e) { user = null; }
+  if (!user) {
+    /* the staff sign-in lives at /<handle>/login. It returns to the dashboard,
+       where the Tablet button is — a `next` parameter here would be an open
+       redirect for anyone who edits the address. */
+    location.replace("/" + encodeURIComponent(handle) + "/login");
+    return;
+  }
+
+  /* ------------------------------------------------------------------- data */
+  fetch("/api/menu?handle=" + encodeURIComponent(handle), { headers: { accept: "application/json" } })
+    .then(function (r) { return r.json().catch(function () { return null; }); })
+    .then(function (data) {
+      if (!data || !data.ok) {
+        splash("This menu is not open", (data && data.message) || "The menu could not be loaded. Check that it is published, then reload.");
+        return;
+      }
+      var r = data.restaurant || {};
+      currency = r.currency || "AED";
+      $("tbName").textContent = r.name || handle;
+      document.title = (r.name || "Tablet") + " — take an order";
+
+      cats = (data.categories || []).map(function (c, i) {
+        return {
+          id: "c" + i,
+          name: c.name,
+          items: (c.items || []).map(function (it, j) {
+            return { key: "i" + i + "x" + j, name: it.name, desc: it.description || "", price: Number(it.price) || 0, soldOut: !!it.soldOut };
+          })
+        };
+      });
+
+      /* A tablet order is taken at the table or over the counter. Delivery is
+         deliberately absent: the address and the fence belong to the guest's own
+         page, where the location can be checked. */
+      var modes = (r.purposes || []).filter(function (p) { return p === "Dine In" || p === "Take Away"; });
+      if (!modes.length) modes = ["Dine In", "Take Away"];
+      mode = modes[0];
+      $("modes").innerHTML = modes.map(function (p) {
+        return '<button type="button" data-mode="' + esc(p) + '" aria-pressed="' + (p === mode) + '">' + esc(p) + "</button>";
+      }).join("");
+      $("modes").hidden = false;
+      syncMode();
+
+      $("cats").innerHTML = cats.map(function (c, i) {
+        return '<button type="button" data-cat="' + c.id + '" aria-pressed="' + (i === 0) + '">' + esc(c.name) + "</button>";
+      }).join("");
+
+      $("splash").hidden = true;
+      $("body").hidden = false;
+      paintMenu(cats[0] && cats[0].id);
+      paintTicket();
+    })
+    .catch(function () {
+      splash("The tablet could not load", "Check the connection and reload this page.");
+    });
+
+  function paintMenu(activeId) {
+    var host = $("items");
+    host.innerHTML = cats.map(function (c) {
+      if (activeId && c.id !== activeId) return "";
+      return '<div class="cat-h">' + esc(c.name) + "</div>" + c.items.map(function (it) {
+        var inCart = cart.has(it.key) ? cart.get(it.key).qty : 0;
+        return '<div class="row' + (it.soldOut ? " sold" : "") + '" data-k="' + it.key + '">' +
+          '<div><div class="nm">' + esc(it.name) + (inCart ? " ×" + inCart : "") + "</div>" +
+          (it.desc ? '<div class="ds">' + esc(it.desc) + "</div>" : "") + "</div>" +
+          '<div class="pr">' + money(it.price) + "</div>" +
+          (it.soldOut ? '<div class="soldout">Sold out</div>' :
+            '<button class="add" type="button" data-add="' + it.key + '" aria-label="Add ' + esc(it.name) + '">+</button>') +
+          "</div>";
+      }).join("");
+    }).join("") || '<p class="tk-empty">This menu has no dishes yet.</p>';
+  }
+
+  function syncMode() {
+    var dine = mode === "Dine In";
+    $("tableField").hidden = !dine;
+    $("tkWhere").textContent = dine ? ("Table " + (($("tableNo").value || "").trim() || "—")) : "Take away";
+    Array.prototype.forEach.call($("modes").children, function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === mode));
+    });
+  }
+
+  function total() {
+    var sum = 0;
+    cart.forEach(function (row) { sum += row.item.price * row.qty; });
+    return Math.round(sum * 100) / 100;
+  }
+
+  function paintTicket() {
+    var lines = [];
+    cart.forEach(function (row, k) {
+      lines.push('<div class="tk-line"><div><div class="t-nm">' + esc(row.item.name) + "</div>" +
+        '<div class="t-pr">' + money(row.item.price * row.qty) + "</div></div>" +
+        '<div class="stepper"><button type="button" data-minus="' + k + '" aria-label="One less">−</button>' +
+        "<b>" + row.qty + "</b>" +
+        '<button type="button" data-plus="' + k + '" aria-label="One more">+</button></div></div>');
+    });
+    $("lines").innerHTML = lines.join("") || '<p class="tk-empty">Tap a dish to add it.</p>';
+    $("tkTotal").textContent = money(total());
+    $("send").disabled = !cart.size || sending;
+    $("send").textContent = sending ? "Sending…" : "Send to the kitchen";
+  }
+
+  function note(text, kind) {
+    var el = $("tkNote");
+    el.className = "tk-note" + (kind ? " " + kind : "");
+    el.textContent = text || "";
+  }
+
+  /* --------------------------------------------------------------- handlers */
+  /* one delegated listener each: the lists are rebuilt on every tap */
+  $("items").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-add]");
+    if (!btn) return;
+    var k = btn.getAttribute("data-add");
+    var item = null;
+    cats.forEach(function (c) { c.items.forEach(function (it) { if (it.key === k) item = it; }); });
+    if (!item || item.soldOut) return;
+    var row = cart.get(k) || { item: item, qty: 0 };
+    row.qty += 1;
+    cart.set(k, row);
+    note("");
+    paintMenu(currentCat());
+    paintTicket();
+  });
+
+  $("lines").addEventListener("click", function (e) {
+    var plus = e.target.closest("[data-plus]");
+    var minus = e.target.closest("[data-minus]");
+    var k = plus ? plus.getAttribute("data-plus") : minus ? minus.getAttribute("data-minus") : null;
+    if (!k) return;
+    var row = cart.get(k);
+    if (!row) return;
+    if (plus) row.qty += 1;
+    else row.qty -= 1;
+    if (row.qty <= 0) cart.delete(k); else cart.set(k, row);
+    paintMenu(currentCat());
+    paintTicket();
+  });
+
+  function currentCat() {
+    var on = $("cats").querySelector('button[aria-pressed="true"]');
+    return on ? on.getAttribute("data-cat") : (cats[0] && cats[0].id);
+  }
+
+  $("cats").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cat]");
+    if (!b) return;
+    Array.prototype.forEach.call($("cats").children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    paintMenu(b.getAttribute("data-cat"));
+    $("items").scrollTop = 0;
+  });
+
+  $("modes").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-mode]");
+    if (!b) return;
+    if (mode === "Take Away" && b.getAttribute("data-mode") === "Dine In" && cart.size) {
+      /* switching mid-order is fine; nothing is lost, the table is just asked for */
+      note("");
+    }
+    mode = b.getAttribute("data-mode");
+    syncMode();
+  });
+
+  $("tableNo").addEventListener("input", syncMode);
+
+  $("send").addEventListener("click", function () {
+    if (sending || !cart.size) return;
+    if (mode === "Dine In" && !($("tableNo").value || "").trim()) {
+      note("Add the table number first.", "bad");
+      $("tableNo").focus();
+      return;
+    }
+    var items = [];
+    cart.forEach(function (row) { items.push({ id: row.item.key, name: row.item.name, qty: row.qty, price: row.item.price }); });
+    if (!submitKey) submitKey = key();
+
+    sending = true;
+    paintTicket();
+    note("Sending…");
+
+    window.Auth.api("/api/order", {
+      method: "POST",
+      body: JSON.stringify({
+        handle: handle,
+        source: "tablet",
+        mode: mode,
+        table: mode === "Dine In" ? ($("tableNo").value || "").trim() : "",
+        items: items,
+        submitKey: submitKey,
+        total: total()
+      })
+    }).then(function (r) {
+      sending = false;
+      if (!r.ok) {
+        note((r.data && r.data.message) || "That order was not saved.", "bad");
+        paintTicket();
+        return;
+      }
+      var ref = String((r.data && r.data.orderId) || "").slice(0, 8).toUpperCase();
+      cart.clear();
+      submitKey = "";
+      paintMenu(currentCat());
+      paintTicket();
+      note("Sent · " + money((r.data && r.data.total) || 0) + (ref ? " · ref " + ref : ""), "good");
+      $("tableNo").value = "";
+      syncMode();
+    }).catch(function () {
+      sending = false;
+      paintTicket();
+      note("No connection. The order was not saved — try again.", "bad");
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -291,6 +291,155 @@
     return (LANG === "ar" && x && x.arDesc) ? x.arDesc : ((x && x.desc) || "");
   }
 
+  /* ---------- the footer ----------
+     Built from the payload, not from markup: one link per thing the restaurant
+     actually has. A restaurant with no map link and no socials gets its name,
+     its town and the DigiMenu credit — never a row of dead buttons. */
+  function renderFooter() {
+    const r = restaurant || {};
+    const nmEl = $("#mfName");
+    const whereEl = $("#mfWhere");
+    const linksEl = $("#mfLinks");
+    if (!nmEl || !linksEl) return;
+
+    nmEl.textContent = r.name || name || T("Digital menu", "قائمة رقمية");
+
+    /* the restaurant's own mark, or its initials — the footer is the restaurant's
+       line, not ours, and a name alone reads as leftover space */
+    const mark = $("#mfMark");
+    if (mark) {
+      const logo = (docs && docs.logo) || "";
+      if (logo) {
+        mark.innerHTML = '<img src="' + esc(logo) + '" alt="">';
+        mark.classList.add("has-img");
+      } else {
+        const words = String(r.name || name || "M").trim().split(/\s+/);
+        mark.textContent = (words.length > 1 ? words[0][0] + words[1][0] : words[0].slice(0, 2)).toUpperCase();
+      }
+    }
+
+    const bits = [];
+    const addr = (r.address || "").trim();
+    const city = (r.city || "").trim();
+    if (addr) bits.push(addr);
+    if (city && city.toLowerCase() !== addr.toLowerCase()) bits.push(city);
+    if (whereEl) {
+      whereEl.textContent = bits.join(" · ");
+      whereEl.hidden = !bits.length;
+    }
+
+    const link = (href, label, extra) =>
+      '<a href="' + esc(href) + '"' + (extra || "") + '>' + esc(label) + "</a>";
+
+    const out = [];
+    const number = String(r.orderWhatsapp || r.whatsapp || "").replace(/\D/g, "");
+    if (number) {
+      out.push(link("https://wa.me/" + number + "?text=" + encodeURIComponent("Hello " + (r.name || "") + ", "),
+        T("WhatsApp", "واتساب"), ' target="_blank" rel="noopener"'));
+    }
+    const maps = (r.mapsUrl || "").trim();
+    if (/^https?:\/\//i.test(maps)) {
+      out.push(link(maps, T("Find us", "موقعنا"), ' target="_blank" rel="noopener"'));
+    }
+    const soc = r.social || {};
+    const at = (v) => String(v || "").trim().replace(/^@/, "");
+    if (at(soc.instagram)) {
+      const v = at(soc.instagram);
+      out.push(link(/^https?:/i.test(v) ? v : "https://instagram.com/" + encodeURIComponent(v), "Instagram", ' target="_blank" rel="noopener"'));
+    }
+    if (at(soc.facebook)) {
+      const v = at(soc.facebook);
+      out.push(link(/^https?:/i.test(v) ? v : "https://facebook.com/" + encodeURIComponent(v), "Facebook", ' target="_blank" rel="noopener"'));
+    }
+    if (at(soc.website)) {
+      const v = at(soc.website);
+      out.push(link(/^https?:/i.test(v) ? v : "https://" + v, T("Website", "الموقع"), ' target="_blank" rel="noopener"'));
+    }
+    /* the two pages an ad campaign needs — published only when written */
+    const pol = r.policies || {};
+    const base = "/" + encodeURIComponent(handle);
+    if (pol.terms) out.push(link(base + "/terms", T("Terms", "الشروط")));
+    if (pol.privacy) out.push(link(base + "/privacy", T("Privacy", "الخصوصية")));
+
+    linksEl.innerHTML = out.join("");
+
+    /* the base row: who owns this menu, and who built it. The page's own address
+       is in the address bar, so printing it back at the guest was just noise. */
+    const year = new Date().getFullYear();
+    const owner = (r.name || name || "").trim();
+    /* `base` is already the menu's address two blocks up: a second declaration
+       in the same scope is a SyntaxError, and it takes the whole file with it. */
+    const copy = $("#footHandle");
+    if (copy) {
+      copy.textContent = owner
+        ? "\u00A9 " + year + " " + owner + (city ? " \u00B7 " + city : "")
+        : "\u00A9 " + year;
+    }
+  }
+
+  /* ---------- do we deliver to you? ----------
+     The restaurant sets a radius in km in its dashboard, and the fence is drawn
+     from the coordinates in its own map link. Here the guest's device says where
+     they are and we do the arithmetic — no address is asked for before the guest
+     is told the truth about the drive. */
+  let guestAt = null;        /* { lat, lng } once the device has answered */
+  let zoneState = "idle";    /* idle | pending | ok | bad | unknown */
+  let zoneKm = null;
+
+  function zoneLine(kind, html) {
+    const host = $("#zone");
+    if (!host) return;
+    host.className = "zone " + (kind || "");
+    host.hidden = false;
+    host.innerHTML = '<span class="zi" aria-hidden="true">' +
+      (kind === "ok" ? "\u2713" : kind === "bad" ? "\u2715" : "\u00b7") +
+      "</span><span>" + html + "</span>";
+  }
+
+  function haversine(a, b) {
+    const R = 6371;
+    const rad = (d) => (d * Math.PI) / 180;
+    const dLat = rad(b.lat - a.lat);
+    const dLng = rad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(h))) * 10) / 10;
+  }
+
+  function checkZone() {
+    const d = restaurant.delivery || {};
+    const radius = Number(d.radiusKm) || 0;
+    const home = (d.lat != null && d.lng != null) ? { lat: Number(d.lat), lng: Number(d.lng) } : null;
+    if (!radius || !home) return;                    /* no fence: nothing to say */
+    if (!navigator.geolocation) {
+      zoneState = "unknown";
+      zoneLine("pending", T("Your browser cannot share a location. The restaurant will confirm the delivery distance on WhatsApp.", "متصفحك لا يشارك الموقع. سيؤكد المطعم مسافة التوصيل على واتساب."));
+      return;
+    }
+    zoneState = "pending";
+    zoneKm = null;
+    zoneLine("pending", T("Checking whether we deliver to you\u2026", "نتحقق من إمكانية التوصيل إليك\u2026"));
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        guestAt = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const km = haversine(home, guestAt);
+        zoneKm = km;
+        const inside = km <= radius;
+        zoneState = inside ? "ok" : "bad";
+        document.body.classList.toggle("out-of-area", !inside);
+        zoneLine(inside ? "ok" : "bad", inside
+          ? T("You are about <b>" + km + " km</b> away — inside the " + radius + " km delivery area.",
+              "أنت على بعد <b>" + km + " كم</b> — داخل منطقة التوصيل (" + radius + " كم).")
+          : T("You are about <b>" + km + " km</b> away, and this restaurant delivers within " + radius + " km. You can still collect the order as a takeaway.",
+              "أنت على بعد <b>" + km + " كم</b> وهذا المطعم يوصل داخل " + radius + " كم. يمكنك استلام الطلب بنفسك."));
+      },
+      function () {
+        zoneState = "unknown";
+        zoneLine("pending", T("We could not get your location. The restaurant will confirm the delivery distance on WhatsApp.", "لم نتمكن من تحديد موقعك. سيؤكد المطعم مسافة التوصيل على واتساب."));
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  }
+
   function setLang(l) {
     LANG = l === "ar" ? "ar" : "en";
     try { localStorage.setItem("dm.lang", LANG); } catch (e) { /* private mode */ }
@@ -328,7 +477,7 @@
   $("#restMeta").textContent =
     (restaurant.city || DEMO_MENU.city) + " · " +
     purposes.map((p) => (p === "Dine In" ? "Dine in" : p === "Take Away" ? "Takeaway" : "Delivery")).join(" · ");
-  $("#footHandle").textContent = publicLink;
+  renderFooter();
 
   const logo = $("#restLogo");
   if (docs.logo) {
@@ -610,8 +759,12 @@
           <label for="addr">${T("Delivery address", "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062a\u0648\u0635\u064a\u0644")} <span style="color:var(--danger)">*</span></label>
           <textarea class="input" id="addr" rows="2" placeholder="${T("Building, street, area, landmark", "\u0627\u0644\u0645\u0628\u0646\u0649\u060c \u0627\u0644\u0634\u0627\u0631\u0639\u060c \u0627\u0644\u0645\u0646\u0637\u0642\u0629\u060c \u0639\u0644\u0627\u0645\u0629 \u0645\u0645\u064a\u0632\u0629")}">${address}</textarea>
           <div class="err" id="addrErr">${T("We need an address to deliver to.", "\u0646\u062d\u062a\u0627\u062c \u0639\u0646\u0648\u0627\u0646\u0627\u064b \u0644\u0644\u062a\u0648\u0635\u064a\u0644.")}</div>
+          <div class="zone" id="zone" hidden></div>
         </div>`;
       $("#addr").addEventListener("input", (e) => { address = e.target.value; });
+      /* ask straight away: the guest should learn the answer before typing a
+         street, not after pressing the button */
+      checkZone();
     }
   }
 
@@ -788,6 +941,9 @@
           email: email || "",
           submitKey: submitKey || null,
           total: totals().sum,
+          /* where the guest is, so the server can apply the same fence */
+          lat: mode === "Delivery" && guestAt ? guestAt.lat : null,
+          lng: mode === "Delivery" && guestAt ? guestAt.lng : null,
           discountCode: applied ? applied.code : null,
           items: Array.from(cart.values()).map((r) => ({
             id: r.item.id, name: r.item.name, qty: r.qty, price: r.item.price
@@ -843,7 +999,16 @@
     ok = err("#emailErr", !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailRaw)) && ok;
     if (mode === "Dine In") ok = err("#tableErr", !String(table).trim()) && ok;
     if (mode === "Take Away") ok = err("#pickErr", !pickup) && ok;
-    if (mode === "Delivery") ok = err("#addrErr", !address.trim()) && ok;
+    if (mode === "Delivery") {
+      ok = err("#addrErr", !address.trim()) && ok;
+      /* outside the fence the order is not taken, and the sheet says why */
+      if (zoneState === "bad") {
+        ok = false;
+        zoneLine("bad", T("You are about <b>" + zoneKm + " km</b> away, and this restaurant delivers within " + (Number((restaurant.delivery || {}).radiusKm) || 0) + " km. Choose Take Away, or message the restaurant on WhatsApp.",
+          "أنت على بعد <b>" + zoneKm + " كم</b> وهذا المطعم يوصل داخل " + (Number((restaurant.delivery || {}).radiusKm) || 0) + " كم. اختر الاستلام أو راسل المطعم على واتساب."));
+        $("#zone").scrollIntoView({ block: "nearest" });
+      }
+    }
     if (!ok) return;
 
     const guest = $("#guestName").value.trim();
@@ -1220,7 +1385,10 @@
     }
 
     const r = data.restaurant || {};
-    restaurant = { name: r.name, city: r.city, whatsapp: r.whatsapp, purposes: r.purposes };
+    /* the whole payload, not four fields: the footer prints the address, the
+       map link, the socials and the policy links, and each of those is a
+       button that must not appear when the restaurant has not given us it */
+    restaurant = Object.assign({}, r);
     THEME = r.theme && typeof r.theme === "object" ? r.theme : {};
     LOCALES = Array.isArray(r.locales) ? r.locales : ["en"];
     docs = { logo: r.logoUrl || null };

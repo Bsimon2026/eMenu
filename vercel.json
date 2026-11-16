@@ -45,6 +45,18 @@
       "destination": "/app.html"
     },
     {
+      "source": "/:handle([a-z0-9][a-z0-9-]{2,31})/terms",
+      "destination": "/policy.html"
+    },
+    {
+      "source": "/:handle([a-z0-9][a-z0-9-]{2,31})/privacy",
+      "destination": "/policy.html"
+    },
+    {
+      "source": "/:handle([a-z0-9][a-z0-9-]{2,31})/tablet",
+      "destination": "/tablet.html"
+    },
+    {
       "source": "/login",
       "destination": "/login.html"
     },

@@ -9,7 +9,7 @@
  * orders, and this endpoint decides exactly which columns a guest may set.
  */
 
-const { rest, cors, configured } = require("./_lib/db");
+const { rest, cors, configured, userFromToken, actorRestaurant, bearer, can } = require("./_lib/db");
 const mail = require("./_lib/mail");
 const listOrders = require("./_lib/order-list");
 const discount = require("./_lib/discounts");
@@ -172,6 +172,35 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "Unknown menu address." });
   }
 
+  /* ------------------------------------------------------------------ tablet
+   * A staff tablet order is a real order in the same ledger, taken by someone
+   * standing at the table. Three things make it different from a guest's:
+   *   · it needs a signed-in member of THIS restaurant with the orders right,
+   *     because nobody outside can type an order into the kitchen;
+   *   · it takes no contact details — the guest is in front of the person
+   *     entering it, so name/phone/email are optional;
+   *   · it sends nothing. No WhatsApp, no mail: there is no guest hand-off to
+   *     lose, and the tablet is itself the record being typed.
+   * `source` is the only thing the client sets, and it is checked here.
+   */
+  const wantsTablet = String(body.source || "guest").toLowerCase() === "tablet";
+  if (wantsTablet) {
+    const user = await userFromToken(bearer(req));
+    if (!user) {
+      return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again on the tablet — that session has expired." });
+    }
+    const actor = await actorRestaurant(user, "id,handle,plan,paid_through,trial_ends");
+    if (!actor || !actor.restaurant) {
+      return res.status(403).json({ ok: false, code: "NO_RESTAURANT", message: "This login has no restaurant yet." });
+    }
+    if (String(actor.restaurant.handle || "").toLowerCase() !== handle) {
+      return res.status(403).json({ ok: false, code: "NOT_YOURS", message: "That order belongs to another restaurant." });
+    }
+    if (!can(actor.role, "orders")) {
+      return res.status(403).json({ ok: false, code: "ROLE", message: "This login can edit the menu but not take orders." });
+    }
+  }
+
   /* One code, checked before the guest commits: what it is worth against this
      basket, from the row in the database rather than the number the page shows. */
   if (body.discountCheck) {
@@ -198,17 +227,21 @@ module.exports = async function handler(req, res) {
   }
 
   const mode = MODES.includes(body.mode) ? body.mode : "Dine In";
-  const guestName = clean(body.name, 80);
+  /* on the tablet nobody types the customer's name — the table is the identity */
+  const guestName = clean(body.name, 80) ||
+    (wantsTablet ? (mode === "Dine In" ? "Table " + (clean(body.table, 20) || "—") : "Counter") : "");
   const phoneDigits = clean(body.phone, 30).replace(/[^\d]/g, "");
 
   if (!guestName) {
     return res.status(400).json({ ok: false, code: "NAME", message: "A name is needed for the order." });
   }
-  if (phoneDigits.length < 7) {
+  /* a guest's order without a number cannot be rescued when WhatsApp fails; a
+     tablet order is already in the kitchen's hands */
+  if (!wantsTablet && phoneDigits.length < 7) {
     return res.status(400).json({ ok: false, code: "PHONE", message: "A mobile number is needed in case WhatsApp fails." });
   }
   const guestEmail = clean(body.email, 120).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(guestEmail)) {
+  if (!wantsTablet && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(guestEmail)) {
     return res.status(400).json({ ok: false, code: "EMAIL", message: "An email address is needed for the order." });
   }
 
@@ -217,8 +250,16 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, code: "NO_ITEMS", message: "The order had no dishes." });
   }
 
-  const found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
-    "&status=eq.published&select=id,name,whatsapp_e164,order_email,sender_mode,wa_phone_number_id,wa_order_e164,currency");
+  /* 0023 adds the fence to the row we already read. A separate, narrower read
+     keeps a deployment ahead of the migration working: no radius means every
+     delivery is confirmed on the phone, as before. */
+  const REST_COLS = "id,name,whatsapp_e164,order_email,sender_mode,wa_phone_number_id,wa_order_e164,currency";
+  let found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
+    "&status=eq.published&select=" + REST_COLS + ",delivery_radius_km,lat,lng");
+  if (!found.ok) {
+    found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
+      "&status=eq.published&select=" + REST_COLS);
+  }
   if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
   const restaurant = (found.data || [])[0];
   if (!restaurant) {
@@ -228,13 +269,37 @@ module.exports = async function handler(req, res) {
   /* The paywall, enforced where the order is actually written. The rule lives in
      api/_lib/ordering.js and api/menu.js calls the same function — two copies of
      this decision is how a restaurant in its free week was shown an order form
-     and then refused every order. */
-  const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
-    "&select=plan,paid_through,trial_ends");
-  if (gate.ok && (gate.data || [])[0]) {
-    const verdict = canTakeOrders(gate.data[0]);
-    if (!verdict.ok) {
-      return res.status(403).json({ ok: false, code: verdict.code, message: verdict.message });
+     and then refused every order.
+     The tablet is the exception, on purpose: taking an order at the counter is
+     part of every plan, including the menu-only one. It is the staff's own
+     record of a sale that is happening in front of them. */
+  if (!wantsTablet) {
+    const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
+      "&select=plan,paid_through,trial_ends");
+    if (gate.ok && (gate.data || [])[0]) {
+      const verdict = canTakeOrders(gate.data[0]);
+      if (!verdict.ok) {
+        return res.status(403).json({ ok: false, code: verdict.code, message: verdict.message });
+      }
+    }
+  }
+
+  /* The fence, re-checked where the order is written. The guest page asks for a
+     location before it will offer Delivery, but a hand-made POST can claim any
+     coordinates — so the same arithmetic runs here, on the restaurant's own
+     radius. No location in the request means no check: the restaurant confirms
+     the distance on the phone, exactly as it did before this existed. */
+  if (mode === "Delivery" && Number(restaurant.delivery_radius_km) > 0 && restaurant.lat != null && restaurant.lng != null) {
+    const here = geo.pair(body.lat, body.lng);
+    const km = here ? geo.kmBetween({ lat: Number(restaurant.lat), lng: Number(restaurant.lng) }, here) : null;
+    if (km != null && km > Number(restaurant.delivery_radius_km)) {
+      return res.status(409).json({
+        ok: false,
+        code: "OUT_OF_AREA",
+        message: "That address is " + km + " km away and " + restaurant.name + " delivers within " + Number(restaurant.delivery_radius_km) + " km.",
+        km: km,
+        radiusKm: Number(restaurant.delivery_radius_km)
+      });
     }
   }
 
@@ -276,14 +341,17 @@ module.exports = async function handler(req, res) {
     pickup_at: mode === "Take Away" && pickupTime ? pickupTime.toISOString() : null,
     address: mode === "Delivery" ? clean(body.address, 300) || null : null,
     guest_name: guestName,
-    guest_phone: clean(body.phone, 30),
-    email: guestEmail,
+    guest_phone: clean(body.phone, 30) || null,
+    email: guestEmail || null,
     total,
     subtotal: subtotal,
     delivery_fee: 0,
     discount_code: applied ? applied.code : null,
     discount_amount: applied ? applied.amount : 0,
-    status: "awaiting_confirmation"
+    status: "awaiting_confirmation",
+    /* 0023: which door this order came through. Dropped by the retry below if
+       the migration has not run yet — an order is worth more than a label. */
+    source: wantsTablet ? "tablet" : "guest"
   };
   if (submitKey) order.submit_key = submitKey;
 
@@ -291,9 +359,11 @@ module.exports = async function handler(req, res) {
      same order sent twice a second apart all used to land as separate orders —
      the kitchen then cooks the same dish three times. An identical order from
      the same phone within two minutes is the same order: return the one that
-     exists instead of making another. */
+     exists instead of making another.
+     Two different tables ordering the same food have no phone number at all, so
+     the tablet relies on submitKey alone (below) and never on this guess. */
   const since = new Date(Date.now() - 120000).toISOString();
-  const twin = await rest(
+  const twin = wantsTablet ? { ok: true, data: [] } : await rest(
     "orders?restaurant_id=eq." + restaurant.id +
     "&guest_phone=eq." + encodeURIComponent(order.guest_phone) +
     "&total=eq." + total +
@@ -331,8 +401,9 @@ module.exports = async function handler(req, res) {
     made = await rest("orders", { method: "POST", body: noKey, prefer: "return=representation" });
   }
   const why2 = JSON.stringify(made.error || made.data || "");
-  if (!made.ok && /subtotal|discount_|delivery_fee|email|column|schema|PGRST204/i.test(why2)) {
-    /* 0019 or 0020 not run yet: the money columns and the email have to go */
+  if (!made.ok && /subtotal|discount_|delivery_fee|email|source|column|schema|PGRST204/i.test(why2)) {
+    /* 0019 or 0020 not run yet: the money columns and the email have to go —
+       and 0023's `source`, which only labels the door the order came through */
     const lean = Object.assign({}, order);
     delete lean.subtotal;
     delete lean.delivery_fee;
@@ -340,6 +411,7 @@ module.exports = async function handler(req, res) {
     delete lean.discount_amount;
     delete lean.email;
     delete lean.submit_key;
+    delete lean.source;
     made = await rest("orders", { method: "POST", body: lean, prefer: "return=representation" });
   }
   if (!made.ok) {
@@ -378,7 +450,7 @@ module.exports = async function handler(req, res) {
   const waLink = shortOrderLink(saved.id);
 
   let guestNotified = false;
-  if (mail.ready && guestEmail) {
+  if (!wantsTablet && mail.ready && guestEmail) {
     const body = [
       "Hello " + guestName + ",",
       "",
@@ -412,9 +484,10 @@ module.exports = async function handler(req, res) {
 
   /* The restaurant's copy goes to ITS address — never to the platform's. If no
      order address is set for the restaurant, the order still arrives in the
-     panel and no mail is sent. */
+     panel and no mail is sent. A tablet order is not mailed: the person who
+     typed it is the restaurant. */
   let notified = false;
-  if (mail.ready && restaurant.order_email) {
+  if (!wantsTablet && mail.ready && restaurant.order_email) {
     const body = [
       "New order — " + restaurant.name,
       "",
@@ -454,7 +527,9 @@ module.exports = async function handler(req, res) {
     linesSaved: lineRes.ok,
     notified,
     guestNotified,
-    mailReady: mail.ready
-
+    mailReady: mail.ready,
+    /* which door it came through — the tablet shows this instead of a WhatsApp
+       hand-off, and the panel files it under its own section */
+    source: wantsTablet ? "tablet" : "guest"
   });
 };

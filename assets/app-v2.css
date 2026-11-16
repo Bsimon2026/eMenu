@@ -2235,3 +2235,21 @@ select.input {
 }
 .nv-state.ok { color: var(--ok); border-color: #23553F; background: var(--ok-bg); }
 .nv-state.off { color: #E5B36A; border-color: #4A3A1B; background: var(--warn-bg); }
+
+
+/* ---------- delivery radius ----------
+   A number and its unit, on one line: the field is two characters wide and
+   a full-width input would read as "type a lot here". */
+.radius-row { display: flex; align-items: center; gap: 8px; }
+.radius-row .input { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+.radius-row .unit { font-size: 13px; color: var(--ink-4); }
+
+
+/* A staff-taken order says so on its row: the kitchen needs to know the guest
+   never saw this one, and there is no WhatsApp thread behind it. */
+.osrc {
+  display: inline-block; margin-left: 7px; padding: 1px 6px;
+  border: 1px solid var(--line); border-radius: 5px;
+  font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-4); vertical-align: 1px; font-weight: 500;
+}

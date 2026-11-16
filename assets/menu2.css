@@ -862,19 +862,136 @@ html[dir="rtl"] .cat-pick::after { margin-inline-start: 2px; transform: rotate(4
 @media (min-width: 1024px) { .mbar { display: none !important; } }
 
 /* ================================================================== foot === */
+/* The end of the menu is the last thing a guest scrolls past, and the only place
+   on this page that carries the restaurant's own details: where it is, how to
+   reach it, and the two policy pages an ad campaign needs. Everything below is
+   built from the payload, so a restaurant that has given us nothing gets a quiet
+   footer rather than a row of dead buttons. */
 .mfoot {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px 16px;
   max-width: 1240px;
-  margin: 20px auto 0;
-  padding: 26px clamp(18px, 5vw, 48px) 40px;
+  margin: 26px auto 0;
+  padding: 30px clamp(18px, 5vw, 48px) 44px;
   border-top: 1px solid var(--rule-2);
-  font-size: 11.5px;
-  letter-spacing: .04em;
+  font-size: 12.5px;
   color: var(--ink-4);
 }
+
+.mf-grid {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px 28px;
+  flex-wrap: wrap;
+}
+
+.mf-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mf-mark {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--rule-2);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--ink);
+}
+
+.mf-mark.has-img { border-color: transparent; }
+.mf-mark img { width: 100%; height: 100%; object-fit: cover; }
+
+.mf-brand strong {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.mf-brand p {
+  margin: 6px 0 0;
+  max-width: 38ch;
+  line-height: 1.55;
+}
+
+.mf-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.mf-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  color: var(--ink-4);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: .01em;
+  text-decoration: none;
+  transition: color .16s var(--ease), border-color .16s var(--ease);
+}
+
+.mf-links a:hover { color: var(--ink); border-color: var(--ink-4); }
+
+.mf-base {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--rule-2);
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+
+.mf-by a { color: var(--ink-4); text-decoration: none; }
+.mf-by a:hover { color: var(--ink); text-decoration: underline; }
+
+@media (max-width: 620px) {
+  .mf-links { justify-content: flex-start; }
+  .mf-base { flex-direction: column; }
+}
+
+/* ---------- the delivery fence ----------
+   Under the address box the moment a guest chooses Delivery: where they are
+   against where the restaurant will drive. Neutral while it is asking, then a
+   tick or a cross with both numbers — "outside the area" is never a bare no. */
+.zone {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--rule-2);
+  border-radius: 10px;
+  color: var(--ink-4);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.zone b { color: var(--ink); font-weight: 600; }
+.zone .zi { flex: none; font-size: 13px; line-height: 1.35; }
+.zone.ok { border-color: color-mix(in srgb, #2EA043 45%, transparent); }
+.zone.ok .zi { color: #2EA043; }
+.zone.bad { border-color: color-mix(in srgb, var(--danger, #A32B2B) 50%, transparent); }
+.zone.bad .zi { color: var(--danger, #A32B2B); }
+.zone.pending .zi { color: var(--ink-4); }
+
+/* the order button stops promising a delivery it will not take */
+body.out-of-area #confirmOrder { opacity: .55; cursor: not-allowed; }
 
 /* ================================================================= sheet === */
 .sheet-back {

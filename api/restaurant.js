@@ -18,6 +18,8 @@ const PUBLIC_BASE = (process.env.PUBLIC_BASE || "https://digimenu.indubaicity.co
 /* Media belongs to the restaurant, so it rides in the same deployment slot:
    POST /api/restaurant?upload=1 and GET ?upload=1&action=sweep. */
 const uploadMedia = require("./_lib/upload");
+/* the delivery fence: where the restaurant is, taken out of its map link */
+const geo = require("./_lib/geo");
 
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 const E164 = /^\+[1-9][0-9]{7,14}$/;
@@ -169,6 +171,55 @@ async function restaurantHandler(req, res) {
     const w = body.website ? String(body.website).trim() : "";
     patch.website = w ? (/^https?:\/\//i.test(w) ? w : "https://" + w).slice(0, 300) : null;
   }
+
+  /* The restaurant's own Terms and Privacy Policy, in Markdown. A restaurant
+     that runs an ad needs a page the ad can land on with a policy on it, and
+     the platform's policy is not the restaurant's — whoever takes the money has
+     to say so in their own words. Empty means "not published", never an empty
+     page. */
+  for (const k of ["terms_md", "privacy_md"]) {
+    if (body[k] !== undefined) {
+      const text = body[k] ? String(body[k]).slice(0, 20000) : "";
+      patch[k] = text.trim() ? text.trim() : null;
+    }
+  }
+
+  /* How far they deliver, and from where. The fence is drawn from coordinates
+     read out of the map link they already gave us: a radius with no location
+     would be a promise nothing could check. */
+  if (body.delivery_radius_km !== undefined) {
+    const raw = String(body.delivery_radius_km == null ? "" : body.delivery_radius_km).trim();
+    if (!raw) {
+      patch.delivery_radius_km = null;
+    } else {
+      const km = Number(raw);
+      if (!isFinite(km) || km <= 0 || km > 100) {
+        return res.status(400).json({ ok: false, code: "RADIUS", message: "The delivery radius has to be between 0 and 100 km." });
+      }
+      patch.delivery_radius_km = Math.round(km * 10) / 10;
+    }
+  }
+  const mapsInPlay = patch.maps_url !== undefined || patch.delivery_radius_km !== undefined;
+  const wantsFence = Boolean(patch.delivery_radius_km || (existing && existing.delivery_radius_km));
+  if (mapsInPlay && wantsFence) {
+    const link = patch.maps_url !== undefined ? patch.maps_url : (existing && existing.maps_url);
+    const known = existing && existing.lat != null && existing.lng != null;
+    /* resolve only when the link moved or nothing was resolved yet: a save that
+       changes a price must not wait on Google */
+    if (link && (!known || patch.maps_url !== undefined)) {
+      const at = await geo.locate(link);
+      if (at) {
+        patch.lat = at.lat;
+        patch.lng = at.lng;
+      } else if (!known) {
+        return res.status(422).json({
+          ok: false,
+          code: "NO_LOCATION",
+          message: "That map link did not give us a location, so the delivery radius cannot be checked. Open the restaurant in Google Maps, Share, Copy link, and paste it again."
+        });
+      }
+    }
+  }
   if (body.tagline !== undefined) patch.tagline = body.tagline ? String(body.tagline).slice(0, 120) : null;
   if (body.address_line !== undefined) patch.address_line = body.address_line ? String(body.address_line).slice(0, 200) : null;
   if (body.currency !== undefined) {
@@ -286,14 +337,22 @@ async function restaurantHandler(req, res) {
   }
 
   /* PostgREST fails the whole write on one unknown column, so a deployment that
-     lands before db/0021_theme.sql runs would lose the address, the number and
-     everything else in the same request. Drop the theme and keep the rest. */
-  if (!saved.ok && patch.theme !== undefined && /theme/.test(JSON.stringify(saved.data || "") + (saved.message || ""))) {
-    const withoutTheme = { ...patch };
-    delete withoutTheme.theme;
-    saved = existing
-      ? await rest("restaurants?id=eq." + existing.id, { method: "PATCH", body: withoutTheme, prefer: "return=representation" })
-      : await rest("restaurants", { method: "POST", prefer: "return=representation", body: { ...withoutTheme, owner_id: user.id } });
+     lands before a migration runs would lose the address, the number and
+     everything else in the same request. Drop only the columns the error names
+     and keep the rest — 0021's theme, 0023's policies and fence. */
+  if (!saved.ok) {
+    const why = JSON.stringify(saved.data || "") + (saved.message || "");
+    const NEW_COLS = ["theme", "terms_md", "privacy_md", "delivery_radius_km", "lat", "lng"];
+    const drop = NEW_COLS.filter(function (c) {
+      return patch[c] !== undefined && new RegExp(c, "i").test(why);
+    });
+    if (drop.length) {
+      const lean = { ...patch };
+      drop.forEach(function (c) { delete lean[c]; });
+      saved = existing
+        ? await rest("restaurants?id=eq." + existing.id, { method: "PATCH", body: lean, prefer: "return=representation" })
+        : await rest("restaurants", { method: "POST", prefer: "return=representation", body: { ...lean, owner_id: user.id } });
+    }
   }
 
   if (!saved.ok) {

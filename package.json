@@ -11,6 +11,7 @@
     "smoke:new-tenant": "node --env-file=.env tools/new-tenant-smoke.js",
     "check:prices": "node tools/prices-check.js",
     "check:agents": "node tools/agent-readiness.js",
+    "check:geo": "node tools/geo-check.js",
     "smoke:plans": "node --env-file=.env tools/plans-model-live.js"
   },
   "engines": {

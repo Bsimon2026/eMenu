@@ -360,6 +360,30 @@ async function main() {
       }
     }
 
+    /* ------------------------------------- the restaurant's own two pages */
+    if (handle) {
+      for (const kind of ["terms", "privacy"]) {
+        const page = await get(ORIGIN + "/" + handle + "/" + kind);
+        check("/" + handle + "/" + kind + " serves the policy page",
+          page.status === 200 && /text\/html/.test(page.type) && /polBody/.test(page.body),
+          page.status + " " + page.type);
+        const api = await get(ORIGIN + "/api/menu?policy=" + kind + "&handle=" + handle);
+        /* 200 with the text, or the designed 404 — a restaurant that has not
+           written one yet is not an error, but the page must say so */
+        /* 200 with the text, the designed 404 (nothing written yet), or the
+           designed 503 (db/0023 not pasted in yet). Anything else is a crash. */
+        const designed = api.status === 200 ||
+          (api.status === 404 && /NO_POLICY/.test(api.body)) ||
+          (api.status === 503 && /NOT_READY/.test(api.body));
+        check("/api/menu?policy=" + kind + " answers a designed document", designed,
+          api.status + " " + api.body.slice(0, 80));
+      }
+      const tablet = await get(ORIGIN + "/" + handle + "/tablet");
+      check("/" + handle + "/tablet serves the staff tablet",
+        tablet.status === 200 && /text\/html/.test(tablet.type) && /Send to the kitchen/.test(tablet.body),
+        tablet.status + " " + tablet.type);
+    }
+
     /* ------------------------------------------------------- nothing broke */
     const robots = await get(ORIGIN + "/robots.txt");
     check("/robots.txt still answers", robots.status === 200 && /Sitemap:/.test(robots.body));

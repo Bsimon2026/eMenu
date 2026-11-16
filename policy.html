@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terms — a menu on DigiMenu</title>
+<meta name="description" content="The terms of the restaurant behind this menu.">
+<meta name="theme-color" content="#0A0B0C">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="/assets/favicon.ico?v=20261114a" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon-180.png?v=20261114a">
+<link rel="stylesheet" href="/assets/fonts.css?v=20261116b">
+<style>
+/* A policy page is read, not browsed: one column, generous line height, and the
+   restaurant's own words. It borrows the marketing page's type because a guest
+   arrives here from an ad, not from the menu. */
+:root {
+  --ink: #17140F; --ink-2: #4A443B; --ink-4: #8A8175;
+  --paper: #FBF9F5; --card: #FFFFFF; --rule: #E6E1D7; --brand: #F7941D;
+  --sans: "Satoshi", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+header.pol { border-bottom: 1px solid var(--rule); background: var(--card); }
+.pol-in { max-width: 720px; margin: 0 auto; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); text-decoration: none; }
+.brand img { width: 26px; height: 26px; border-radius: 7px; object-fit: cover; }
+.brand span { font-size: 15px; }
+.back { font-size: 13px; color: var(--ink-2); text-decoration: none; border: 1px solid var(--rule); padding: 8px 14px; border-radius: 999px; }
+.back:hover { border-color: var(--ink-4); color: var(--ink); }
+main { max-width: 720px; margin: 0 auto; padding: 34px 22px 70px; }
+h1 { font-size: clamp(24px, 4vw, 32px); line-height: 1.2; letter-spacing: -.02em; margin: 0 0 6px; }
+.sub { color: var(--ink-4); font-size: 13px; margin: 0 0 30px; }
+article { font-size: 16px; color: var(--ink-2); }
+article h2 { font-size: 19px; color: var(--ink); margin: 32px 0 8px; letter-spacing: -.01em; }
+article h3 { font-size: 16px; color: var(--ink); margin: 22px 0 6px; }
+article p { margin: 0 0 14px; }
+article ul, article ol { margin: 0 0 16px; padding-left: 22px; }
+article li { margin: 0 0 7px; }
+article a { color: var(--ink); text-decoration-color: var(--rule); text-underline-offset: 3px; }
+article strong { color: var(--ink); }
+article hr { border: none; border-top: 1px solid var(--rule); margin: 28px 0; }
+.note { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 18px 20px; color: var(--ink-2); font-size: 14.5px; }
+.note b { color: var(--ink); }
+footer.pol { border-top: 1px solid var(--rule); color: var(--ink-4); font-size: 12px; }
+.foot-in { max-width: 720px; margin: 0 auto; padding: 20px 22px 40px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.foot-in a { color: var(--ink-2); text-decoration: none; }
+.foot-in a:hover { text-decoration: underline; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="pol">
+  <div class="pol-in">
+    <a class="brand" href="/" id="brandLink">
+      <img src="/assets/favicon-192.png?v=20261114a" alt="" id="brandMark">
+      <span id="brandName">Menu</span>
+    </a>
+    <a class="back" id="backLink" href="/">Back to the menu</a>
+  </div>
+</header>
+
+<main>
+  <h1 id="polTitle">Terms</h1>
+  <p class="sub" id="polSub"></p>
+  <article id="polBody">
+    <p class="note">Loading…</p>
+  </article>
+</main>
+
+<footer class="pol">
+  <div class="foot-in">
+    <span id="polFoot"></span>
+    <span>Menus by <a href="https://digimenu.indubaicity.com/" rel="noopener">DigiMenu</a></span>
+  </div>
+</footer>
+
+<script>
+/**
+ * /<handle>/terms and /<handle>/privacy — the restaurant's own policy.
+ *
+ * The restaurant writes it in its dashboard; the text is Markdown and is
+ * rendered here. Nothing of it is trusted: it is escaped first, and only a small
+ * set of Markdown forms is recognised afterwards, so a pasted `<script>` is
+ * text on the page rather than code in it.
+ *
+ * The handle and the kind come from the address, never from a query string: the
+ * page is the URL an ad points at, and it has to work when the ad rewrites it.
+ */
+(function () {
+  "use strict";
+
+  var path = (location.pathname || "").replace(/\/+$/, "");
+  var parts = path.split("/").filter(Boolean);
+  var kind = parts.length === 2 && /^(terms|privacy)$/i.test(parts[1]) ? parts[1].toLowerCase() : "";
+  var handle = parts.length === 2 ? parts[0].toLowerCase() : "";
+  /* served from a custom domain the address carries no handle */
+  var host = (location.hostname || "").toLowerCase();
+  var ours = /^(www\.)?(digimenu\.indubaicity\.com|digimenu[-a-z0-9]*\.vercel\.app|localhost|127\.0\.0\.1)$/.test(host);
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  };
+
+  /* Markdown, the four things a policy actually uses: headings, paragraphs,
+     lists, bold, links — and a horizontal rule between sections. */
+  function render(md) {
+    var inline = function (t) {
+      return esc(t)
+        .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" rel="noopener">$1</a>')
+        .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" rel="noopener">$2</a>');
+    };
+    var out = [];
+    var para = [];
+    var list = null;
+    var flushPara = function () {
+      if (para.length) { out.push("<p>" + inline(para.join(" ")) + "</p>"); para = []; }
+    };
+    var flushList = function () {
+      if (list) { out.push("<" + list.tag + ">" + list.items.map(function (i) { return "<li>" + inline(i) + "</li>"; }).join("") + "</" + list.tag + ">"); list = null; }
+    };
+
+    String(md || "").replace(/\r\n?/g, "\n").split("\n").forEach(function (raw) {
+      var line = raw.replace(/\s+$/, "");
+      var t = line.trim();
+      var h = /^(#{1,4})\s+(.*)$/.exec(t);
+      var ul = /^[-*+]\s+(.*)$/.exec(t);
+      var ol = /^\d+[.)]\s+(.*)$/.exec(t);
+      if (!t) { flushPara(); flushList(); return; }
+      if (h) {
+        flushPara(); flushList();
+        var n = Math.min(3, h[1].length + 1);              /* # → h2, never a second h1 */
+        out.push("<h" + n + ">" + inline(h[2]) + "</h" + n + ">");
+        return;
+      }
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) { flushPara(); flushList(); out.push("<hr>"); return; }
+      if (ul || ol) {
+        flushPara();
+        var tag = ul ? "ul" : "ol";
+        if (!list || list.tag !== tag) { flushList(); list = { tag: tag, items: [] }; }
+        list.items.push((ul ? ul[1] : ol[1]));
+        return;
+      }
+      flushList();
+      para.push(t);
+    });
+    flushPara(); flushList();
+    return out.join("\n");
+  }
+
+  function say(html) {
+    $("polBody").innerHTML = html;
+  }
+
+  function notFound(title, message, who) {
+    $("polTitle").textContent = title;
+    $("polSub").textContent = who ? (kind === "privacy" ? "Privacy Policy" : "Terms of Service") + " · " + who : "";
+    $("brandName").textContent = who || "Menu";
+    $("polFoot").textContent = who || "";
+    say('<p class="note">' + esc(message) + "</p>");
+  }
+
+  if (!kind || (!handle && ours)) {
+    notFound("Not found", "That address is not a policy page. Every restaurant's pages live at /<its-address>/terms and /<its-address>/privacy.");
+    return;
+  }
+
+  var label = kind === "privacy" ? "Privacy Policy" : "Terms of Service";
+  $("polTitle").textContent = label;
+  $("backLink").href = handle ? "/" + encodeURIComponent(handle) : "/";
+  $("brandLink").href = handle ? "/" + encodeURIComponent(handle) : "/";
+
+  var query = "/api/menu?policy=" + kind + (handle ? "&handle=" + encodeURIComponent(handle) : "&host=" + encodeURIComponent(host));
+
+  fetch(query, { headers: { accept: "application/json" } })
+    .then(function (r) { return r.json().catch(function () { return null; }); })
+    .then(function (data) {
+      if (!data || !data.ok) {
+        var who = (data && (data.name || (data.restaurant && data.restaurant.name))) || handle || "";
+        var why = data && data.code === "NO_POLICY"
+          ? (who || "This restaurant") + " has not published " + (kind === "privacy" ? "a privacy policy" : "terms") + " yet."
+          : (data && data.message) || "That policy could not be found.";
+        notFound(label, why, who);
+        return;
+      }
+
+      var rest = data.restaurant || {};
+      var rname = rest.name || handle;
+      document.title = label + " — " + rname;
+      $("brandName").textContent = rname;
+      $("polSub").textContent = rname +
+        (rest.city ? " · " + rest.city : "") +
+        (data.updated_at ? " · updated " + String(data.updated_at).slice(0, 10) : "");
+      $("polFoot").textContent = rname + (rest.address ? " · " + rest.address : "");
+      if (rest.name) {
+        var meta = document.querySelector('meta[name="description"]');
+        if (meta) meta.setAttribute("content", label + " of " + rname + (rest.city ? ", " + rest.city : "") + ".");
+      }
+      say(render(data.text));
+    })
+    .catch(function () {
+      notFound(label, "That policy could not be loaded. Please try again in a moment.");
+    });
+})();
+</script>
+</body>
+</html>

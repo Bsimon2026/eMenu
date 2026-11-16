@@ -1394,6 +1394,9 @@
       count: (o.items || []).reduce((n, i) => n + i.qty, 0),
       items: o.items || [],
       status: o.status,
+      /* guest or tablet: this decides whether a WhatsApp strip belongs on the
+         row at all, and the mapper is where such a field gets silently lost */
+      source: o.source || "guest",
       archivedAt: o.archivedAt || null,
       archiveReason: o.archiveReason || null,
       /* the WhatsApp strip's whole state: dropping these here is why a guest who
@@ -1710,6 +1713,7 @@
     return '<article class="orow ' + (done ? "is-done" : "is-pending") + '" data-order="' + esc(o.id) + '">' +
       '<div class="otime"><b>' + esc(time) + '</b><span>' + esc(day) + '</span></div>' +
       '<div class="oguest"><b>' + esc(o.guest || "Guest") + '</b>' +
+        (o.source === "tablet" ? '<span class="osrc">Tablet</span>' : '') +
         (o.phone ? '<a href="tel:' + esc(o.phone.replace(/[^\d+]/g, "")) + '">' + esc(o.phone) + '</a>'
                  : '<span class="none">no number</span>') +
       '</div>' +
@@ -1728,7 +1732,7 @@
               (done ? "Reopen" : "Mark done") + '</button>' +
             (done ? "" : '<button class="btn btn-sm btn-quiet" type="button" data-edit="' + esc(o.id) + '">Edit</button>') +
             '<button class="btn btn-sm btn-quiet" type="button" data-arch="' + esc(o.id) + '" data-on="1">Archive</button>') +
-      '</div>' + (archived ? "" : waStripHtml(o)) + review +
+      '</div>' + (archived || o.source === "tablet" ? "" : waStripHtml(o)) + review +
     '</article>' + (ARCH_FOR === o.id
       ? '<div class="arch-bar">' +
           '<span class="arch-why">Archive this order — why?</span>' +
@@ -3455,6 +3459,14 @@
       const el = $(sel);
       if (el) el.href = href;
     });
+    /* The tablet is the staff's own door into the same menu: it takes an order
+       at the table and files it in this panel, with no WhatsApp step. Same rule
+       as the guest links — built from the handle, never a hard-coded path. */
+    const tablet = $("#tabletLink");
+    if (tablet) {
+      tablet.href = state.handle ? "/" + encodeURIComponent(state.handle) + "/tablet" : "/login.html";
+      tablet.hidden = !state.handle;
+    }
   }
 
   function renderQrPane() {
@@ -3536,6 +3548,20 @@
     set("#setFb", soc.facebook);
     set("#setTt", soc.tiktok);
     set("#setWeb", soc.website);
+
+    /* the fence and the two policy pages. The radius is only meaningful when
+       Delivery is one of the purposes, so the field hides itself when it is not. */
+    const rows = state.restaurant || {};
+    set("#setRadius", rows.delivery_radius_km == null ? "" : String(rows.delivery_radius_km));
+    set("#setTerms", rows.terms_md || "");
+    set("#setPrivacy", rows.privacy_md || "");
+    const rf = $("#radiusField");
+    const offersDelivery = (rows.purposes || []).indexOf("Delivery") !== -1;
+    if (rf) rf.hidden = !offersDelivery;
+    const handle = rows.handle || "";
+    const tUrl = $("#polUrlTerms"), pUrl = $("#polUrlPrivacy");
+    if (tUrl) tUrl.textContent = handle ? "/" + handle + "/terms" : "your menu address + /terms";
+    if (pUrl) pUrl.textContent = handle ? "/" + handle + "/privacy" : "your menu address + /privacy";
     renderPalette();
     renderAppearance();
   }
@@ -3758,7 +3784,12 @@
       instagram: $("#setIg").value.trim(),
       facebook: $("#setFb").value.trim(),
       tiktok: $("#setTt").value.trim(),
-      website: $("#setWeb").value.trim()
+      website: $("#setWeb").value.trim(),
+      /* the fence: an empty box clears it, so the guest page stops checking */
+      delivery_radius_km: ($("#setRadius").value || "").trim(),
+      /* the restaurant's own paperwork, published at /<handle>/terms|privacy */
+      terms_md: $("#setTerms").value,
+      privacy_md: $("#setPrivacy").value
     };
 
     /* only send the number when one was typed: an empty box must not wipe the
@@ -3773,7 +3804,16 @@
     btn.disabled = false;
     btn.textContent = label;
 
-    if (!r.ok) { toast(r.data.message || "Could not save the guest page."); return; }
+    if (!r.ok) {
+      /* the radius needs a location, and a link we cannot read says so here
+         rather than only in a toast that disappears */
+      const msg = r.data.message || "Could not save the guest page.";
+      const re = $("#radiusErr");
+      if (re) re.classList.toggle("on", r.data.code === "NO_LOCATION" || r.data.code === "RADIUS");
+      toast(msg);
+      return;
+    }
+    if ($("#radiusErr")) $("#radiusErr").classList.remove("on");
 
     applyRestaurant(r.data.restaurant);
     renderProfile();
@@ -4080,6 +4120,14 @@
     state.restaurant.tagline = r.tagline || "";
     state.restaurant.address = r.address_line || "";
     state.restaurant.coverUrl = r.cover_url || "";
+    /* 0023: the delivery fence and the two policy pages. Kept in the cached row
+       so the card paints without another request; the server is still the only
+       thing that decides whether they exist. */
+    state.restaurant.delivery_radius_km = r.delivery_radius_km == null ? null : Number(r.delivery_radius_km);
+    state.restaurant.terms_md = r.terms_md || "";
+    state.restaurant.privacy_md = r.privacy_md || "";
+    state.restaurant.lat = r.lat == null ? null : Number(r.lat);
+    state.restaurant.lng = r.lng == null ? null : Number(r.lng);
     state.social = {
       instagram: r.instagram || "",
       facebook: r.facebook || "",
@@ -4094,7 +4142,7 @@
   function blankState(account) {
     return {
       account: account || null,
-      restaurant: { name: "", ownerName: "", purposes: ["Dine In", "Take Away"], whatsapp: "", orderEmail: "", mapsUrl: "" },
+      restaurant: { name: "", ownerName: "", purposes: ["Dine In", "Take Away"], whatsapp: "", orderEmail: "", mapsUrl: "", delivery_radius_km: null, terms_md: "", privacy_md: "" },
       docs: { logo: null, license: null },
       handle: "",
       accent: "#f0485f",

@@ -43,16 +43,26 @@ module.exports = async function listOrders(req, res) {
      and the Marketing customer list all read */
   const archFilter = wantArchived ? "&archived_at=not.is.null" : "&archived_at=is.null";
 
+  /* The tablet's own ledger: staff-taken orders, apart from the guests'. A
+     guest's order and a tablet's live in one table, because the kitchen cooks
+     them the same way — `?source=tablet` is how the panel shows one door only. */
+  const wantTablet = q.source === "tablet";
+  const sourceFilter = wantTablet ? "&source=eq.tablet" : "";
+
   const COLS = "id,mode,table_no,pickup_at,address,guest_name,guest_phone,total,status,created_at";
   const base = "orders?restaurant_id=eq." + restaurant.id;
   const tail = "&order=created_at.desc&limit=" + (from || to || state === "eq.confirmed" || wantArchived ? 500 : 100);
 
-  /* 0016 adds the archive columns. A deploy can land before the migration is
-     run, so ask for them and fall back to the plain read rather than taking
-     the order list down. */
+  /* 0023 adds the door. 0016 adds the archive columns, 0019/0020 the money.
+     Each tier is tried and dropped on its own: a deployment that lands before a
+     migration must never take the order list down. */
   const MONEY = ",subtotal,delivery_fee,discount_code,discount_amount";
-  let list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + MONEY + filters + archFilter + tail);
-  let hasArchive = true, hasMoney = true;
+  let list = await rest(base + "&select=" + COLS + ",source,archived_at,archive_reason" + MONEY + filters + archFilter + sourceFilter + tail);
+  let hasSource = true, hasArchive = true, hasMoney = true;
+  if (!list.ok) {
+    hasSource = false;
+    list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + MONEY + filters + archFilter + tail);
+  }
   if (!list.ok) {
     hasMoney = false;
     list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + filters + archFilter + tail);
@@ -148,6 +158,10 @@ module.exports = async function listOrders(req, res) {
       discountCode: o.discount_code || null,
       discountAmount: Number(o.discount_amount) || 0,
       status: o.status,
+      /* the door it came through: a tablet order has no guest to message, so the
+         panel files it under its own section and shows no WhatsApp buttons.
+         A row read before 0023 ran has no column and is a guest's by default. */
+      source: (hasSource && o.source) || "guest",
       archivedAt: o.archived_at || null,
       archiveReason: o.archive_reason || null,
       /* the panel's buttons read these three */
