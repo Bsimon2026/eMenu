@@ -4209,8 +4209,13 @@
 
     /* A waiter's login has one job, and this is not it: send them to the tablet
        instead of a dashboard whose every button would refuse them. */
-    if (state.role === "tablet" && state.handle) {
-      location.replace("/" + encodeURIComponent(state.handle) + "/tablet");
+    /* state.handle is filled in further down, with the restaurant — so a waiter
+       arriving with a clean storage had no handle here and the guard let them
+       through to a dashboard whose every button would refuse them. */
+    const waiterHandle = (saved && saved.handle) || state.handle ||
+      String((location.pathname || "").split("/").filter(Boolean)[0] || "");
+    if (state.role === "tablet" && waiterHandle) {
+      location.replace("/" + encodeURIComponent(waiterHandle) + "/tablet");
       return;
     }
 

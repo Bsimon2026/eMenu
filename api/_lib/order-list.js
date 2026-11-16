@@ -6,7 +6,7 @@
  * another's.
  */
 
-const { rest, userFromToken, actorRestaurant, bearer, cors, configured } = require("./db");
+const { rest, userFromToken, actorRestaurant, bearer, cors, configured, can } = require("./db");
 const discount = require("./discounts");
 
 module.exports = async function listOrders(req, res) {
@@ -23,6 +23,16 @@ module.exports = async function listOrders(req, res) {
   const actor = await actorRestaurant(user, "id,handle,currency");
   const restaurant = actor && actor.restaurant;
   if (!restaurant) return res.status(200).json({ ok: true, orders: [], currency: "AED" });
+  /* Reading the order book is a right, not a side effect of being staff. A
+     waiter takes an order at the table; the day's takings and every guest's
+     phone number are the restaurant's. Without this line any membership at all
+     could pull the whole list. */
+  if (!can(actor.role, "orders")) {
+    return res.status(403).json({
+      ok: false, code: "ROLE",
+      message: "This login can take an order at a table, but the order list belongs to the restaurant."
+    });
+  }
 
   /* Optional server-side filters, used by the dashboard's History tab: without
      them the list stops at the newest 100 and a six-month-old order cannot be
@@ -194,6 +204,10 @@ module.exports.setStatus = async function setStatus(req, res) {
   const actor = await actorRestaurant(user, "id,handle");
   const restaurant = actor && actor.restaurant;
   if (!restaurant) return res.status(403).json({ ok: false, code: "NOT_STAFF", message: "This account has no restaurant." });
+  /* Confirming, refusing, archiving, refunding — none of it is a waiter's job. */
+  if (!can(actor.role, "orders")) {
+    return res.status(403).json({ ok: false, code: "ROLE", message: "This login cannot change an order." });
+  }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = null; } }
