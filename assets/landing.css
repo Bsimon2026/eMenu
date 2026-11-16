@@ -219,6 +219,20 @@ button { font: inherit; color: inherit; }
 
 .nav-cta { display: flex; align-items: center; gap: 10px; }
 
+/* a button that carries the promise in the same piece of glass: the reassurance
+   belongs on the thing being clicked, not in a footnote three screens down */
+.btn-stack {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  height: auto; min-height: 42px; padding: 6px 16px 7px; line-height: 1.2; gap: 1px;
+}
+.btn-stack span { font-size: 9.5px; font-weight: 500; letter-spacing: .01em; opacity: .78; text-transform: none; }
+
+/* the line under a call to action: still small, still readable */
+.cta-note {
+  margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-4);
+}
+.cta-note b { color: var(--ink-2); font-weight: 600; }
+
 @media (max-width: 900px) {
   .nav-links { display: none; }
   .nav-in { justify-content: space-between; }
@@ -294,15 +308,18 @@ button { font: inherit; color: inherit; }
 }
 
 .hero-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 34px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 26px;
   margin-top: 38px;
   padding-top: 22px;
   border-top: 1px solid rgba(255, 255, 255, .10);
   font-size: 13.5px;
   color: var(--ink-3);
-  max-width: 520px;
+  max-width: 640px;
+}
+@media (max-width: 720px) {
+  .hero-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .hero-facts b {
   display: block;

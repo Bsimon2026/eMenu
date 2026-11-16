@@ -28,7 +28,7 @@
 <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
 <!-- Satoshi + Geist Mono, self-hosted. No third-party font host is contacted. -->
 <link rel="stylesheet" href="assets/fonts.css?v=20261114n">
-<link rel="stylesheet" href="assets/landing.css?v=20261223a">
+<link rel="stylesheet" href="assets/landing.css?v=20261227a">
 <script>document.documentElement.classList.add("js");</script>
 <script type="application/ld+json">
 {
@@ -228,7 +228,7 @@
     </nav>
     <div class="nav-cta">
       <a class="btn btn-line btn-sm" href="login.html">Sign in</a>
-      <a class="btn btn-brand btn-sm" href="login.html?mode=up">Start free week</a>
+      <a class="btn btn-brand btn-sm btn-stack" href="login.html?mode=up">Start free week<span>No credit card required</span></a>
     </div>
   </div>
 </header>
@@ -255,10 +255,12 @@
           <a class="btn btn-brand btn-lg" href="login.html?mode=up">Build your menu free</a>
           <a class="btn btn-line btn-lg" href="#pricing">See the price</a>
         </div>
+        <p class="cta-note">Free for 7 days · <b>No credit card required</b> · Cancel any time</p>
         <div class="hero-facts">
           <div><b>No app</b>Guests order in the browser</div>
           <div><b>No commission</b>We never take a cut</div>
           <div><b>No hardware</b>The phone in your pocket</div>
+          <div><b>Free week</b>No credit card required</div>
         </div>
         <a class="hero-proof" href="menu.html?r=spice-route">
           <span class="dot" aria-hidden="true"></span>
@@ -563,8 +565,8 @@
       </div>
 
       <p class="pp-note">
-        Prices in AED, including 5% VAT. Nothing is charged at sign-up and no card is stored: you pay by transfer or on
-        WhatsApp and the menu goes live the same day. Cancel any time — the QR stays live until the period you paid for
+        Prices in AED, including 5% VAT. <b>No credit card required</b> — nothing is charged at sign-up and no card is
+        stored: you pay by transfer or on WhatsApp and the menu goes live the same day. Cancel any time — the QR stays live until the period you paid for
         ends. The WhatsApp Business API carries Meta's own per-message fee, which is separate from us.
       </p>
     </div>
@@ -662,9 +664,12 @@
         <h2 class="h2">Try it with your own menu.</h2>
         <p class="lede" style="margin-top:16px">Build the whole thing first — dishes, photos, prices, sold-out switches. You pay when it is ready to go in front of a guest.</p>
       </div>
-      <div class="reveal" style="--d:100ms;display:flex;gap:12px;flex-wrap:wrap">
-        <a class="btn btn-brand btn-lg" href="login.html?mode=up">Start the free week</a>
-        <a class="btn btn-line btn-lg" href="#pricing">Compare plans</a>
+      <div class="reveal" style="--d:100ms">
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a class="btn btn-brand btn-lg" href="login.html?mode=up">Start the free week</a>
+          <a class="btn btn-line btn-lg" href="#pricing">Compare plans</a>
+        </div>
+        <p class="cta-note">7 days free · <b>No credit card required</b></p>
       </div>
     </div>
   </section>

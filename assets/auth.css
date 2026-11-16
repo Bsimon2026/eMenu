@@ -340,6 +340,11 @@ select.input { padding-right: 34px; }
 
 /* ------------------------------------------------------------------ foot -- */
 
+.assure { color: var(--brand); font-weight: 600; }
+.assure-mini {
+  display: block; margin-top: 6px;
+  font-size: 11.5px; letter-spacing: .01em; color: var(--dim, #8E948F);
+}
 .auth-foot {
   margin-top: 22px;
   padding-top: 18px;
