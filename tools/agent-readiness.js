@@ -384,6 +384,40 @@ async function main() {
         tablet.status + " " + tablet.type);
     }
 
+    /* ------------------------------------- the delivery fence, server side */
+    if (handle) {
+      const menu = await get(ORIGIN + "/api/menu?handle=" + handle);
+      let payload = null;
+      try { payload = JSON.parse(menu.body); } catch (e) { payload = null; }
+      const d = payload && payload.restaurant && payload.restaurant.delivery;
+      const dish = payload && payload.categories && payload.categories[0] && payload.categories[0].items[0];
+      if (!d || !(Number(d.radiusKm) > 0) || !dish || payload.restaurant.ordering === false) {
+        skip("the delivery fence refuses an out-of-area order", "no live menu here with a radius set");
+      } else {
+        /* Far away, and a valid order in every other respect. It has to be
+           REFUSED — 409 with OUT_OF_AREA — which proves the fence arithmetic ran
+           on the server without throwing, and writes nothing. A ReferenceError
+           here (a module the handler never required) answers 500 instead, and
+           that is the bug this check exists for. */
+        const r = await fetch(ORIGIN + "/api/order", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            handle: handle, mode: "Delivery", name: "Fence check", phone: "+971501234567",
+            email: "fence-check@example.com", address: "Somewhere far",
+            lat: 25.2048, lng: 55.2708, submitKey: "fence-check-" + Date.now(),
+            items: [{ id: dish.id, name: dish.name, qty: 1, price: dish.price }]
+          })
+        });
+        const body = await r.text();
+        check("the delivery fence refuses an out-of-area order",
+          r.status === 409 && /OUT_OF_AREA/.test(body),
+          r.status + " " + body.slice(0, 120));
+        check("a refused delivery order writes nothing",
+          !/"orderId"/.test(body), body.slice(0, 120));
+      }
+    }
+
     /* ------------------------------------------------------- nothing broke */
     const robots = await get(ORIGIN + "/robots.txt");
     check("/robots.txt still answers", robots.status === 200 && /Sitemap:/.test(robots.body));

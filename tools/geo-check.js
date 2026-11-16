@@ -108,4 +108,3 @@ check("the guest page carries the same haversine (R = 6371, asin form)",
   console.log("\n" + (failed ? failed + " failed" : "the fence arithmetic holds"));
   process.exit(failed ? 1 : 0);
 })();
-process.exit(failed ? 1 : 0);

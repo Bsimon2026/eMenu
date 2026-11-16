@@ -14,6 +14,9 @@ const mail = require("./_lib/mail");
 const listOrders = require("./_lib/order-list");
 const discount = require("./_lib/discounts");
 const { canTakeOrders } = require("./_lib/ordering");
+/* the delivery fence: the same arithmetic the guest page runs, so a hand-made
+   POST cannot claim an address it is not at */
+const geo = require("./_lib/geo");
 
 const MODES = ["Dine In", "Take Away", "Delivery"];
 
@@ -302,8 +305,15 @@ module.exports = async function handler(req, res) {
      radius. No location in the request means no check: the restaurant confirms
      the distance on the phone, exactly as it did before this existed. */
   if (mode === "Delivery" && Number(restaurant.delivery_radius_km) > 0 && restaurant.lat != null && restaurant.lng != null) {
-    const here = geo.pair(body.lat, body.lng);
-    const km = here ? geo.kmBetween({ lat: Number(restaurant.lat), lng: Number(restaurant.lng) }, here) : null;
+    /* a fence that throws must never cost the restaurant an order: this whole
+       block is inside a try, and a failure here means "no check", not "no order" */
+    let here = null, km = null;
+    try {
+      here = geo.pair(body.lat, body.lng);
+      km = here ? geo.kmBetween({ lat: Number(restaurant.lat), lng: Number(restaurant.lng) }, here) : null;
+    } catch (e) {
+      console.error("[order] fence", e && e.message);
+    }
     if (km != null && km > Number(restaurant.delivery_radius_km)) {
       return res.status(409).json({
         ok: false,
