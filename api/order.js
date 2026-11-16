@@ -14,6 +14,8 @@ const mail = require("./_lib/mail");
 const listOrders = require("./_lib/order-list");
 const discount = require("./_lib/discounts");
 const { canTakeOrders } = require("./_lib/ordering");
+/* the waiter's open bills: a table is a tab until someone says it was paid */
+const tabs = require("./_lib/tabs");
 /* the delivery fence: the same arithmetic the guest page runs, so a hand-made
    POST cannot claim an address it is not at */
 const geo = require("./_lib/geo");
@@ -155,6 +157,11 @@ module.exports = async function handler(req, res) {
   }
   /* one function, two verbs: POST places an order, GET lists the owner's orders.
      The Hobby plan allows 12 functions and we were at the ceiling. */
+  /* the tablet's own read: which tables have an unpaid bill, and for how much.
+     A waiter may see this; the full order book below stays owner/orders-only. */
+  if (req.method === "GET" && req.query && (req.query.tabs === "1" || req.query.tabs === "true")) {
+    return tabs.listTabs(req, res);
+  }
   if (req.method === "GET") return listOrders(req, res);
   if (req.method === "PATCH") return listOrders.setStatus(req, res);
   if (req.method !== "POST") return res.status(405).json({ ok: false, code: "METHOD" });
@@ -173,6 +180,17 @@ module.exports = async function handler(req, res) {
   const handle = clean(body.handle, 40).toLowerCase();
   if (!SAFE_HANDLE.test(handle)) {
     return res.status(400).json({ ok: false, code: "BAD_HANDLE", message: "Unknown menu address." });
+  }
+
+  /* The bill was paid. A different verb in shape, not in route: POST /api/order
+     already means "something happened at this restaurant's tables", and the
+     Hobby plan has no slot to spare. A close touches only tablet orders at one
+     table and never reads the book back. */
+  if (body.closeTab !== undefined) {
+    if (!configured) {
+      return res.status(500).json({ ok: false, code: "NOT_CONFIGURED", message: "Credentials missing on the server." });
+    }
+    return tabs.close(req, res, body);
   }
 
   /* ------------------------------------------------------------------ tablet

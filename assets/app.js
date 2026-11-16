@@ -1713,7 +1713,10 @@
     return '<article class="orow ' + (done ? "is-done" : "is-pending") + '" data-order="' + esc(o.id) + '">' +
       '<div class="otime"><b>' + esc(time) + '</b><span>' + esc(day) + '</span></div>' +
       '<div class="oguest"><b>' + esc(o.guest || "Guest") + '</b>' +
-        (o.source === "tablet" ? '<span class="osrc">Tablet</span>' : '') +
+        (o.source === "tablet"
+          ? '<span class="osrc">Tablet</span>' +
+            (o.tabClosedAt ? '<span class="osrc osrc-paid">Tab paid</span>' : '<span class="osrc osrc-open">Tab open</span>')
+          : '') +
         (o.phone ? '<a href="tel:' + esc(o.phone.replace(/[^\d+]/g, "")) + '">' + esc(o.phone) + '</a>'
                  : '<span class="none">no number</span>') +
       '</div>' +

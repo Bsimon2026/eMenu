@@ -2253,3 +2253,7 @@ select.input {
   font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
   color: var(--ink-4); vertical-align: 1px; font-weight: 500;
 }
+
+/* a tablet order is a bill until someone closes it: open is money still owed */
+.osrc-open { color: var(--brand); border-color: rgba(247,148,29,.45); }
+.osrc-paid { color: var(--good); border-color: rgba(63,185,80,.4); }

@@ -10,6 +10,7 @@
     "check:messages": "node tools/check-guest-messages.js",
     "smoke:new-tenant": "node --env-file=.env tools/new-tenant-smoke.js",
     "check:roles": "node tools/roles-check.js",
+    "check:tabs": "node tools/tabs-check.js",
     "check:prices": "node tools/prices-check.js",
     "check:agents": "node tools/agent-readiness.js",
     "check:geo": "node tools/geo-check.js",

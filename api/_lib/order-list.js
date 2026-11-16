@@ -67,8 +67,14 @@ module.exports = async function listOrders(req, res) {
      Each tier is tried and dropped on its own: a deployment that lands before a
      migration must never take the order list down. */
   const MONEY = ",subtotal,delivery_fee,discount_code,discount_amount";
-  let list = await rest(base + "&select=" + COLS + ",source,archived_at,archive_reason" + MONEY + filters + archFilter + sourceFilter + tail);
-  let hasSource = true, hasArchive = true, hasMoney = true;
+  let list = await rest(base + "&select=" + COLS + ",source,tab_closed_at,archived_at,archive_reason" + MONEY + filters + archFilter + sourceFilter + tail);
+  let hasSource = true, hasArchive = true, hasMoney = true, hasTab = true;
+  if (!list.ok) {
+    /* 0025 adds the tab column. A deployment that lands before the migration
+       must lose the "tab paid" badge, not the whole screen. */
+    hasTab = false;
+    list = await rest(base + "&select=" + COLS + ",source,archived_at,archive_reason" + MONEY + filters + archFilter + sourceFilter + tail);
+  }
   if (!list.ok) {
     hasSource = false;
     list = await rest(base + "&select=" + COLS + ",archived_at,archive_reason" + MONEY + filters + archFilter + tail);
@@ -172,6 +178,8 @@ module.exports = async function listOrders(req, res) {
          panel files it under its own section and shows no WhatsApp buttons.
          A row read before 0023 ran has no column and is a guest's by default. */
       source: (hasSource && o.source) || "guest",
+      /* null while the tab is open, a timestamp once the waiter closed the bill */
+      tabClosedAt: (hasTab && o.tab_closed_at) || null,
       archivedAt: o.archived_at || null,
       archiveReason: o.archive_reason || null,
       /* the panel's buttons read these three */

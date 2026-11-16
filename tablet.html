@@ -121,6 +121,46 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
 .tk-note.good { color: var(--good); }
 
 .splash { max-width: 520px; margin: 12vh auto; padding: 0 20px; text-align: center; color: var(--ink-2); }
+
+/* ---- the open tables ------------------------------------------------------
+   A waiter runs several tables at once. They are all one tap apart, in the same
+   order every time, with the money on them: the bill is the thing being asked
+   about most often, and it should never need a second screen. */
+.tabs-bar {
+  display: flex; align-items: stretch; gap: 8px; overflow-x: auto;
+  padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel);
+  scrollbar-width: none;
+}
+.tabs-bar::-webkit-scrollbar { display: none; }
+.tabs-bar:empty { display: none; }
+.tabbtn {
+  flex: none; display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  min-width: 108px; padding: 7px 12px; border-radius: 10px; text-align: left;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink-2);
+}
+.tabbtn b { font-size: 13.5px; color: var(--ink); font-weight: 600; }
+.tabbtn span { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+.tabbtn[aria-pressed="true"] {
+  border-color: var(--brand); background: #21180D; color: var(--ink);
+}
+.tabbtn[aria-pressed="true"] b { color: var(--brand); }
+.tabbtn[aria-pressed="true"] span { color: var(--ink-2); }
+.tabbtn.newtab {
+  min-width: auto; justify-content: center; align-items: center; font-size: 13px;
+  border-style: dashed; color: var(--ink-4);
+}
+.tk-tab {
+  font-size: 12px; color: var(--ink-4); margin-top: 2px; font-variant-numeric: tabular-nums;
+}
+.tk-tab.has { color: var(--good); }
+.bill {
+  width: 100%; height: 44px; margin-top: 8px; border-radius: 11px;
+  background: transparent; color: var(--ink-2); border: 1px solid var(--line);
+  font-size: 14px;
+}
+.bill:hover:not(:disabled) { color: var(--ink); border-color: var(--brand); }
+.bill:disabled { opacity: .4; cursor: not-allowed; }
+.bill.armed { border-color: var(--danger); color: var(--danger); font-weight: 600; }
 .splash h1 { font-size: 20px; color: var(--ink); }
 .splash a { color: var(--brand); }
 </style>
@@ -138,6 +178,8 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
   <a class="tb-exit" id="exitLink" href="/">Exit</a>
 </header>
 
+<nav class="tabs-bar" id="tabBar" aria-label="Open tables"></nav>
+
 <div class="splash" id="splash">
   <h1>Checking the tablet…</h1>
   <p id="splashMsg">One moment.</p>
@@ -151,7 +193,10 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
 
   <aside class="ticket" aria-label="The order">
     <div class="tk-head">
-      <h2>Order</h2>
+      <div>
+        <h2>Order</h2>
+        <div class="tk-tab" id="tkTab">Pick a table</div>
+      </div>
       <span id="tkWhere"></span>
     </div>
     <div class="tk-lines" id="lines">
@@ -160,6 +205,7 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
     <div class="tk-foot">
       <div class="tk-total"><span>Total</span><span id="tkTotal">AED 0</span></div>
       <button class="send" id="send" type="button" disabled>Send to the kitchen</button>
+      <button class="bill" id="closeTab" type="button" disabled>Close the bill</button>
       <p class="tk-note" id="tkNote"></p>
     </div>
   </aside>
@@ -206,6 +252,9 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
   var canOrder = true;     /* does this plan take orders? the server decides */
   var sending = false;
   var submitKey = "";
+  var tabs = [];           /* the open bills: [{table, orders, total, opened, last}] */
+  var closeReady = true;   /* does the database know about tabs yet (0025)? */
+  var armed = "";          /* the table whose bill is one press from closing */
 
   function key() {
     try { return crypto.randomUUID(); } catch (e) { return String(Date.now()) + "-" + Math.random().toString(16).slice(2); }
@@ -291,6 +340,7 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
       $("body").hidden = false;
       paintMenu(cats[0] && cats[0].id);
       paintTicket();
+      loadTabs();
       if (!canOrder) {
         note("This menu is on the plan without ordering, so the tablet cannot send orders. Upgrade to Pro to take orders at the table.", "bad");
       }
@@ -318,6 +368,63 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
 
   function syncWhere() {
     $("tkWhere").textContent = "Table " + (($("tableNo").value || "").trim() || "—");
+    paintTabBar();
+  }
+
+  function table() {
+    return ($("tableNo").value || "").trim();
+  }
+
+  function tabFor(t) {
+    for (var i = 0; i < tabs.length; i++) if (tabs[i].table === t) return tabs[i];
+    return null;
+  }
+
+  /* The rail: every open table, its money, and the one you are on. It is rebuilt
+     on every change, so it can never disagree with the server's count. */
+  function paintTabBar() {
+    var bar = $("tabBar");
+    var here = table();
+    var html = tabs.map(function (t) {
+      return '<button type="button" class="tabbtn" data-tab="' + esc(t.table) + '" aria-pressed="' + (t.table === here) + '">' +
+        "<b>Table " + esc(t.table) + "</b><span>" + money(t.total) + (t.orders > 1 ? " · " + t.orders + " orders" : "") + "</span></button>";
+    }).join("");
+    html += '<button type="button" class="tabbtn newtab" id="newTab">+ New table</button>';
+    bar.innerHTML = html;
+
+    var t = tabFor(here);
+    var el = $("tkTab");
+    el.className = "tk-tab" + (t ? " has" : "");
+    el.textContent = t
+      ? "Open bill · " + money(t.total) + (t.orders > 1 ? " · " + t.orders + " orders" : " · 1 order")
+      : (here ? "New table — nothing sent yet" : "Pick a table");
+    paintBill(t);
+  }
+
+  /* Closing a bill is the one irreversible thing on this screen, so it asks
+     twice and says the amount it is about to take. */
+  function paintBill(t) {
+    var b = $("closeTab");
+    if (!t) { b.disabled = true; b.className = "bill"; b.textContent = "Close the bill"; armed = ""; return; }
+    if (!closeReady) { b.disabled = true; b.className = "bill"; b.textContent = "Closing bills · run db/0025 first"; return; }
+    var isArmed = armed === t.table;
+    b.disabled = false;
+    b.className = "bill" + (isArmed ? " armed" : "");
+    b.textContent = isArmed ? "Press again to close table " + t.table + " — " + money(t.total) : "Close the bill · " + money(t.total);
+  }
+
+  /* Which tables are still owed money. A waiter may see this: it is their own
+     floor, and it carries no guest details — see api/_lib/tabs.js. */
+  function loadTabs() {
+    return window.Auth.api("/api/order?tabs=1&handle=" + encodeURIComponent(handle), { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) return null;
+        tabs = (r.data && r.data.tabs) || [];
+        closeReady = (r.data && r.data.closeReady) !== false;
+        paintTabBar();
+        return r.data;
+      })
+      .catch(function () { return null; });
   }
 
   function total() {
@@ -391,7 +498,67 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
     $("items").scrollTop = 0;
   });
 
-  $("tableNo").addEventListener("input", syncWhere);
+  $("tableNo").addEventListener("input", function () {
+    armed = "";              /* a different table is not armed */
+    syncWhere();
+  });
+
+  $("tabBar").addEventListener("click", function (e) {
+    if (e.target.closest("#newTab")) {
+      $("tableNo").value = "";
+      armed = "";
+      syncWhere();
+      paintTicket();
+      $("tableNo").focus();
+      return;
+    }
+    var b = e.target.closest("[data-tab]");
+    if (!b) return;
+    $("tableNo").value = b.getAttribute("data-tab");
+    armed = "";
+    syncWhere();
+    paintTicket();
+    note("");
+  });
+
+  /* The bill is paid. Two presses: the first says the amount, the second does it. */
+  $("closeTab").addEventListener("click", function () {
+    var t = table();
+    var tab = tabFor(t);
+    if (!t || !tab) return;
+    if (armed !== t) {
+      armed = t;
+      paintBill(tab);
+      note("Press again to close table " + t + " — " + money(tab.total) + ". This cannot be undone.", "bad");
+      return;
+    }
+    armed = "";
+    var btn = $("closeTab");
+    btn.disabled = true;
+    btn.textContent = "Closing…";
+    window.Auth.api("/api/order", {
+      method: "POST",
+      body: JSON.stringify({ handle: handle, source: "tablet", closeTab: t })
+    }).then(function (r) {
+      if (!r.ok) {
+        note((r.data && r.data.message) || "That bill was not closed.", "bad");
+        return loadTabs().then(function () { paintBill(tabFor(t)); });
+      }
+      var d = r.data || {};
+      cart.clear();
+      submitKey = "";
+      $("tableNo").value = "";
+      paintMenu(currentCat());
+      paintTicket();
+      return loadTabs().then(function () {
+        note("Table " + t + " closed · " + money(d.total || 0) +
+          " taken" + (d.closed > 1 ? " over " + d.closed + " orders" : "") + ".", "good");
+      });
+    }).catch(function () {
+      note("No connection. The bill was not closed — try again.", "bad");
+      paintBill(tabFor(t));
+    });
+  });
 
   $("send").addEventListener("click", function () {
     if (sending || !cart.size) return;
@@ -436,9 +603,13 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
       submitKey = "";
       paintMenu(currentCat());
       paintTicket();
-      note("Sent · " + money((r.data && r.data.total) || 0) + (ref ? " · ref " + ref : ""), "good");
-      $("tableNo").value = "";
-      syncWhere();
+      /* The table stays selected on purpose: a tab is being run, and the next
+         round goes to the same one. Only closing the bill clears it. */
+      loadTabs().then(function () {
+        var t = tabFor(table());
+        note("Sent · " + money((r.data && r.data.total) || 0) + (ref ? " · ref " + ref : "") +
+          (t ? " · table " + t.table + " bill now " + money(t.total) : ""), "good");
+      });
     }).catch(function () {
       sending = false;
       paintTicket();
