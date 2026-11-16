@@ -202,7 +202,8 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
   var currency = "AED";
   var cats = [];
   var cart = new Map();     /* item index -> { item, qty } */
-  var mode = "Dine In";
+  var mode = "Dine In";    /* the only mode this page has */
+  var canOrder = true;     /* does this plan take orders? the server decides */
   var sending = false;
   var submitKey = "";
 
@@ -240,8 +241,20 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
   }
 
   /* ------------------------------------------------------------------- data */
-  fetch("/api/menu?handle=" + encodeURIComponent(handle), { headers: { accept: "application/json" } })
-    .then(function (r) { return r.json().catch(function () { return null; }); })
+  /* The staff's own read first: /api/menu?mine=1 works for a menu that is still a
+     draft — a restaurant in its free week has to be able to take an order at the
+     table — and it answers whether this plan takes orders at all. The public read
+     is the fallback, for a session that is not a member of this restaurant. */
+  var own = (window.Auth && window.Auth.api)
+    ? window.Auth.api("/api/menu?mine=1").then(function (r) { return r.ok ? r.data : null; }).catch(function () { return null; })
+    : Promise.resolve(null);
+
+  own.then(function (mine) {
+    if (mine && mine.ok && mine.restaurant) return mine;
+    return fetch("/api/menu?handle=" + encodeURIComponent(handle), { headers: { accept: "application/json" } })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .catch(function () { return null; });
+  })
     .then(function (data) {
       if (!data || !data.ok) {
         splash("This menu is not open", (data && data.message) || "The menu could not be loaded. Check that it is published, then reload.");
@@ -249,6 +262,9 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
       }
       var r = data.restaurant || {};
       currency = r.currency || "AED";
+      /* Pro, Ultra and the free week take orders; the menu-only plan does not.
+         Saying so here is kinder than a refusal after the food is on the tablet. */
+      canOrder = data.ordering !== false;
       $("tbName").textContent = r.name || handle;
       document.title = (r.name || "Tablet") + " — take an order";
 
@@ -275,6 +291,9 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
       $("body").hidden = false;
       paintMenu(cats[0] && cats[0].id);
       paintTicket();
+      if (!canOrder) {
+        note("This menu is on the plan without ordering, so the tablet cannot send orders. Upgrade to Pro to take orders at the table.", "bad");
+      }
     })
     .catch(function () {
       splash("The tablet could not load", "Check the connection and reload this page.");
@@ -318,7 +337,7 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
     });
     $("lines").innerHTML = lines.join("") || '<p class="tk-empty">Tap a dish to add it.</p>';
     $("tkTotal").textContent = money(total());
-    $("send").disabled = !cart.size || sending;
+    $("send").disabled = !cart.size || sending || !canOrder;
     $("send").textContent = sending ? "Sending…" : "Send to the kitchen";
   }
 
@@ -376,6 +395,10 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
 
   $("send").addEventListener("click", function () {
     if (sending || !cart.size) return;
+    if (!canOrder) {
+      note("This menu is on the plan without ordering. Upgrade to Pro to take orders at the table.", "bad");
+      return;
+    }
     var table = ($("tableNo").value || "").trim();
     if (!table) {
       note("Add the table number first.", "bad");

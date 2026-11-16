@@ -3465,7 +3465,12 @@
     const tablet = $("#tabletLink");
     if (tablet) {
       tablet.href = state.handle ? "/" + encodeURIComponent(state.handle) + "/tablet" : "/login.html";
-      tablet.hidden = !state.handle;
+      /* taking an order at the table is what Pro and Ultra sell, and the free
+         week is worth Pro — the menu-only plan has no tablet to open. The server
+         refuses the order either way; this keeps the button from promising it. */
+      const canTake = !state.rights || state.rights.ordering !== false;
+      tablet.hidden = !state.handle || !canTake;
+      tablet.title = canTake ? "Take an order on a tablet" : "Tablet ordering is on Pro and Ultra";
     }
   }
 
@@ -3785,12 +3790,19 @@
       facebook: $("#setFb").value.trim(),
       tiktok: $("#setTt").value.trim(),
       website: $("#setWeb").value.trim(),
-      /* the fence: an empty box clears it, so the guest page stops checking */
-      delivery_radius_km: ($("#setRadius").value || "").trim(),
       /* the restaurant's own paperwork, published at /<handle>/terms|privacy */
       terms_md: $("#setTerms").value,
       privacy_md: $("#setPrivacy").value
     };
+
+    /* The fence travels only when the restaurant offers delivery. The field is
+       hidden otherwise, and a hidden empty box would clear a radius the owner
+       set months ago — the same trap as the WhatsApp number below. An empty box
+       while delivery IS offered is a real instruction: stop checking. */
+    const radiusField = $("#radiusField");
+    if (radiusField && !radiusField.hidden) {
+      payload.delivery_radius_km = ($("#setRadius").value || "").trim();
+    }
 
     /* only send the number when one was typed: an empty box must not wipe the
        line the orders already go to */

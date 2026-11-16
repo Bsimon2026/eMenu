@@ -256,11 +256,16 @@ module.exports = async function handler(req, res) {
      keeps a deployment ahead of the migration working: no radius means every
      delivery is confirmed on the phone, as before. */
   const REST_COLS = "id,name,whatsapp_e164,order_email,sender_mode,wa_phone_number_id,wa_order_e164,currency";
+  /* A tablet order may be taken while the restaurant is still in its free week:
+     the row is `trial` and the guest page is deliberately dark, but the kitchen
+     is standing in the restaurant taking an order. A guest's order still needs a
+     published menu, because that is the page they ordered from. */
+  const WHERE = wantsTablet ? "status=in.(published,trial)" : "status=eq.published";
   let found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
-    "&status=eq.published&select=" + REST_COLS + ",delivery_radius_km,lat,lng");
+    "&" + WHERE + "&select=" + REST_COLS + ",delivery_radius_km,lat,lng");
   if (!found.ok) {
     found = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
-      "&status=eq.published&select=" + REST_COLS);
+      "&" + WHERE + "&select=" + REST_COLS);
   }
   if (!found.ok) return res.status(502).json({ ok: false, code: "DB_ERROR" });
   const restaurant = (found.data || [])[0];
@@ -268,20 +273,25 @@ module.exports = async function handler(req, res) {
     return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "No published menu at that address." });
   }
 
-  /* The paywall, enforced where the order is actually written. The rule lives in
-     api/_lib/ordering.js and api/menu.js calls the same function — two copies of
-     this decision is how a restaurant in its free week was shown an order form
-     and then refused every order.
-     The tablet is the exception, on purpose: taking an order at the counter is
-     part of every plan, including the menu-only one. It is the staff's own
-     record of a sale that is happening in front of them. */
-  if (!wantsTablet) {
+  /* The paywall, enforced where the order is actually written — for the tablet
+     as well as for the guest. Taking an order is what Pro and Ultra sell, and
+     the free week is worth Pro; the menu-only plan does not take orders at the
+     counter either. The rule lives in api/_lib/ordering.js and api/menu.js calls
+     the same function, because two copies of this decision is how a restaurant
+     in its free week was shown an order form and then refused every order. */
+  {
     const gate = await rest("restaurants?handle=eq." + encodeURIComponent(handle) +
       "&select=plan,paid_through,trial_ends");
     if (gate.ok && (gate.data || [])[0]) {
       const verdict = canTakeOrders(gate.data[0]);
       if (!verdict.ok) {
-        return res.status(403).json({ ok: false, code: verdict.code, message: verdict.message });
+        return res.status(403).json({
+          ok: false,
+          code: verdict.code,
+          message: wantsTablet
+            ? "This menu is on the plan without ordering, so the tablet cannot take orders. Upgrade to Pro to take orders at the table."
+            : verdict.message
+        });
       }
     }
   }

@@ -117,7 +117,9 @@ async function menuHandler(req, res) {
       return res.status(401).json({ ok: false, code: "NO_SESSION", message: "Sign in again — that session has expired." });
     }
 
-    const actor = await actorRestaurant(user, "id,name,handle,status");
+    /* the tablet reads this: a draft menu still has to be orderable by staff, and
+       the page needs the plan's answer before it offers a button */
+    const actor = await actorRestaurant(user, "id,name,handle,status,currency,purposes,plan,paid_through,trial_ends");
     const mineRest = actor && actor.restaurant;
     if (!mineRest) {
       return res.status(200).json({ ok: true, restaurant: null, categories: [], itemCount: 0 });
@@ -143,6 +145,8 @@ async function menuHandler(req, res) {
       ok: true,
       restaurant: mineRest,
       role: actor.role,
+      /* does this plan take orders? the same single gate the order handler uses */
+      ordering: canTakeOrders(mineRest).ok,
       categories: withArabic(builtOwn.categories, ownAr),
       itemCount: builtOwn.itemCount
     });

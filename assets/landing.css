@@ -1387,3 +1387,51 @@ table.compare tfoot .btn { width: 100%; }
     font-size: 13px;
   }
 }
+
+
+/* ---------- a plan line that is NOT included ----------
+   A dash in a muted circle beside "Tablet ordering", with the reason in the note
+   under it. A comparison a customer reads once should not need a second look. */
+.pp-list li.off { color: var(--ink-4); }
+.pp-list li.off::before {
+  background-color: var(--rule);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7 12h10' stroke='%239B9285' stroke-width='2.2' stroke-linecap='round'/></svg>");
+  background-position: center;
+  background-size: 12px 12px;
+  background-repeat: no-repeat;
+}
+
+/* ---------- the two ways to reach a person ----------
+   Bottom-right, above everything, on every screen size. The number is the
+   support line (+971 56 891 1233) — the same one the dashboard prints above
+   Sign out and the same one every guest menu's WhatsApp button opens. */
+.float-contact {
+  position: fixed;
+  right: clamp(14px, 3vw, 26px);
+  bottom: clamp(14px, 3vw, 26px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fc {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+  transition: transform .16s var(--ease), box-shadow .16s var(--ease);
+}
+.fc svg { width: 26px; height: 26px; display: block; }
+.fc:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34); }
+.fc:active { transform: scale(0.96); }
+.fc-wa { background: #25d366; }
+.fc-call { background: var(--brand); color: var(--brand-ink); }
+
+@media (max-width: 520px) {
+  .fc { width: 46px; height: 46px; }
+  .fc svg { width: 22px; height: 22px; }
+}
