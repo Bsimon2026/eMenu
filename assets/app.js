@@ -3563,7 +3563,9 @@
     const rf = $("#radiusField");
     const offersDelivery = (rows.purposes || []).indexOf("Delivery") !== -1;
     if (rf) rf.hidden = !offersDelivery;
-    const handle = rows.handle || "";
+    /* the handle lives on state, not on the cached row: printing the placeholder
+       beside a published policy page reads as "this is not set up" */
+    const handle = rows.handle || state.handle || "";
     const tUrl = $("#polUrlTerms"), pUrl = $("#polUrlPrivacy");
     if (tUrl) tUrl.textContent = handle ? "/" + handle + "/terms" : "your menu address + /terms";
     if (pUrl) pUrl.textContent = handle ? "/" + handle + "/privacy" : "your menu address + /privacy";
