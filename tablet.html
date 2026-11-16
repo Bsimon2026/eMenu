@@ -46,12 +46,6 @@ header.tb {
   background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 9px;
   font-variant-numeric: tabular-nums; font-size: 15px;
 }
-.modes { display: flex; gap: 6px; }
-.modes button {
-  height: 38px; padding: 0 14px; border-radius: 9px;
-  background: transparent; border: 1px solid var(--line); color: var(--ink-2);
-}
-.modes button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #14120E; font-weight: 600; }
 .tb-exit { font-size: 12.5px; color: var(--ink-4); text-decoration: none; }
 .tb-exit:hover { color: var(--ink); }
 
@@ -137,11 +131,7 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
   <span class="tb-name" id="tbName">Tablet</span>
   <span class="tb-tag">Staff orders</span>
   <div class="tb-spacer"></div>
-  <div class="modes" id="modes" hidden>
-    <button type="button" data-mode="Dine In" aria-pressed="true">Dine In</button>
-    <button type="button" data-mode="Take Away" aria-pressed="false">Take Away</button>
-  </div>
-  <div class="tb-field" id="tableField" hidden>
+  <div class="tb-field" id="tableField">
     <label for="tableNo">Table</label>
     <input id="tableNo" inputmode="numeric" placeholder="—" autocomplete="off">
   </div>
@@ -180,13 +170,17 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
 <script src="/assets/auth.js?v=20261220a"></script>
 <script>
 /**
- * /<handle>/tablet — the order a staff member takes at the table.
+ * /<handle>/tablet — the dine-in order a waiter takes at the table.
+ *
+ * One mode on purpose: the guest is sitting in the restaurant, so there is always
+ * a table and never an address or a pickup time. Take away and delivery stay on
+ * the guest's own page, where the guest is the one typing.
  *
  * It is the same order ledger as the guest page, with three differences, all of
  * them enforced in the handler rather than here: it needs a signed-in member
- * with the orders right, it needs no guest contact details, and it sends and
- * expects nothing on WhatsApp or by mail. The dish list is the public menu, so
- * prices here are the prices the guest page shows.
+ * with the orders or tablet right, it needs no guest contact details, and it
+ * sends and expects nothing on WhatsApp or by mail. The dish list is the public
+ * menu, so prices here are the prices the guest page shows.
  *
  * This page is deliberately its own file: the dashboard is a desktop tool with
  * a dozen panes, and the tablet is one job done with a thumb.
@@ -268,17 +262,10 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
         };
       });
 
-      /* A tablet order is taken at the table or over the counter. Delivery is
-         deliberately absent: the address and the fence belong to the guest's own
-         page, where the location can be checked. */
-      var modes = (r.purposes || []).filter(function (p) { return p === "Dine In" || p === "Take Away"; });
-      if (!modes.length) modes = ["Dine In", "Take Away"];
-      mode = modes[0];
-      $("modes").innerHTML = modes.map(function (p) {
-        return '<button type="button" data-mode="' + esc(p) + '" aria-pressed="' + (p === mode) + '">' + esc(p) + "</button>";
-      }).join("");
-      $("modes").hidden = false;
-      syncMode();
+      /* Dine in, always — a waiter is standing at a table. Nothing here chooses
+         a mode, so nothing here can disagree with the guest page about one. */
+      mode = "Dine In";
+      syncWhere();
 
       $("cats").innerHTML = cats.map(function (c, i) {
         return '<button type="button" data-cat="' + c.id + '" aria-pressed="' + (i === 0) + '">' + esc(c.name) + "</button>";
@@ -310,13 +297,8 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
     }).join("") || '<p class="tk-empty">This menu has no dishes yet.</p>';
   }
 
-  function syncMode() {
-    var dine = mode === "Dine In";
-    $("tableField").hidden = !dine;
-    $("tkWhere").textContent = dine ? ("Table " + (($("tableNo").value || "").trim() || "—")) : "Take away";
-    Array.prototype.forEach.call($("modes").children, function (b) {
-      b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === mode));
-    });
+  function syncWhere() {
+    $("tkWhere").textContent = "Table " + (($("tableNo").value || "").trim() || "—");
   }
 
   function total() {
@@ -390,22 +372,12 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
     $("items").scrollTop = 0;
   });
 
-  $("modes").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-mode]");
-    if (!b) return;
-    if (mode === "Take Away" && b.getAttribute("data-mode") === "Dine In" && cart.size) {
-      /* switching mid-order is fine; nothing is lost, the table is just asked for */
-      note("");
-    }
-    mode = b.getAttribute("data-mode");
-    syncMode();
-  });
-
-  $("tableNo").addEventListener("input", syncMode);
+  $("tableNo").addEventListener("input", syncWhere);
 
   $("send").addEventListener("click", function () {
     if (sending || !cart.size) return;
-    if (mode === "Dine In" && !($("tableNo").value || "").trim()) {
+    var table = ($("tableNo").value || "").trim();
+    if (!table) {
       note("Add the table number first.", "bad");
       $("tableNo").focus();
       return;
@@ -423,8 +395,8 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
       body: JSON.stringify({
         handle: handle,
         source: "tablet",
-        mode: mode,
-        table: mode === "Dine In" ? ($("tableNo").value || "").trim() : "",
+        mode: "Dine In",
+        table: table,
         items: items,
         submitKey: submitKey,
         total: total()
@@ -443,7 +415,7 @@ main.tb-body { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
       paintTicket();
       note("Sent · " + money((r.data && r.data.total) || 0) + (ref ? " · ref " + ref : ""), "good");
       $("tableNo").value = "";
-      syncMode();
+      syncWhere();
     }).catch(function () {
       sending = false;
       paintTicket();

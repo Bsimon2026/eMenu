@@ -272,6 +272,14 @@ const server = http.createServer(async (req, res) => {
   const tabletPath = pathname.match(/^\/([a-z0-9][a-z0-9-]{2,31})\/tablet\/?$/i);
   if (tabletPath) return sendFile(req, res, path.join(ROOT, "tablet.html"));
 
+  /* the two staff doors under a handle — also vercel.json rewrites, and also
+     missing here, so a waiter sent to /kings-kebab/login was answered with the
+     404 page instead of the sign-in */
+  const staffDoor = pathname.match(/^\/([a-z0-9][a-z0-9-]{2,31})\/(login|dashboard)\/?$/i);
+  if (staffDoor) {
+    return sendFile(req, res, path.join(ROOT, staffDoor[2].toLowerCase() === "login" ? "login.html" : "app.html"));
+  }
+
   const seg = pathname.split("/").filter(Boolean);
   const handleSegment = seg.length === 2 && seg[0] === "digimenu" ? seg[1]
     : (seg.length === 1 && !pathname.includes(".") ? seg[0] : null);

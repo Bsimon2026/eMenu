@@ -310,7 +310,10 @@
         $("#stPassErr").classList.add("show");
         return;
       }
-      location.href = "/" + staffHandle + "/dashboard";
+      /* a waiter's login goes to the tablet: the dashboard is not theirs */
+      location.href = r.role === "tablet"
+        ? "/" + staffHandle + "/tablet"
+        : "/" + staffHandle + "/dashboard";
     });
     return;
   }

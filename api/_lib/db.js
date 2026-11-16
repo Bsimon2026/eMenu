@@ -105,9 +105,12 @@ function memberEmail(handle, username) {
 
 /** What a role is allowed to do. Owner is everything. */
 const ROLES = {
-  owner: ["menu", "orders", "publish", "team", "profile"],
+  owner: ["menu", "orders", "tablet", "publish", "team", "profile"],
   menu: ["menu", "profile"],
-  orders: ["orders"]
+  orders: ["orders", "tablet"],
+  /* a waiter: takes the order at the table on the tablet, and nothing else.
+     No dashboard, no editing, no orders list to read at home. */
+  tablet: ["tablet"]
 };
 
 function can(role, what) {

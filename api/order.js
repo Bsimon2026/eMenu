@@ -196,7 +196,9 @@ module.exports = async function handler(req, res) {
     if (String(actor.restaurant.handle || "").toLowerCase() !== handle) {
       return res.status(403).json({ ok: false, code: "NOT_YOURS", message: "That order belongs to another restaurant." });
     }
-    if (!can(actor.role, "orders")) {
+    /* `orders` is the dashboard's right; `tablet` is the waiter's. Both may
+       take an order at the table — a menu-only login may not. */
+    if (!can(actor.role, "orders") && !can(actor.role, "tablet")) {
       return res.status(403).json({ ok: false, code: "ROLE", message: "This login can edit the menu but not take orders." });
     }
   }

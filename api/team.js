@@ -29,7 +29,7 @@ const resetPassword = require("./_lib/reset-password");
 
 const SAFE_HANDLE = /^[a-z0-9][a-z0-9-]{2,31}$/;
 const SAFE_USER = /^[a-z0-9][a-z0-9._-]{1,23}$/i;
-const TEAM_ROLES = ["menu", "orders"];
+const TEAM_ROLES = ["menu", "orders", "tablet"];
 
 const WINDOW_MS = 60 * 60 * 1000;
 const hits = new Map();
@@ -127,10 +127,11 @@ async function staffLogin(req, res) {
     return res.status(401).json({ ok: false, code: "NO_LOGIN", message: "That name and password do not match a login here." });
   }
 
+  /* the real role: a waiter must be sent to the tablet, not the dashboard */
   return res.status(200).json({
     ok: true,
     session: data,
-    role: mem.data[0].role === "menu" ? "menu" : "orders",
+    role: TEAM_ROLES.indexOf(mem.data[0].role) !== -1 ? mem.data[0].role : "orders",
     restaurant: { handle: restaurant.handle, name: restaurant.name }
   });
 }
@@ -267,11 +268,19 @@ async function team(req, res) {
       await adminAuthJson("/users/" + userId, "DELETE");
       const detail = String(typeof row.data === "object" ? JSON.stringify(row.data) : row.data).slice(0, 160);
       const notReady = /relation .*restaurant_members.* does not exist/i.test(detail);
-      return res.status(notReady ? 503 : 502).json({
-        ok: false, code: notReady ? "NO_TEAM" : "SAVE_FAILED",
+      /* 0024 has not been pasted in yet, so the database still only knows
+         menu | orders and refused the 'tablet' membership. Point at the door
+         that already works — an "Orders only" login can take tablet orders —
+         instead of "try again", which cannot succeed. */
+      const noTabletRole = !notReady && /23514|role_check|check constraint/i.test(detail) && role === "tablet";
+      return res.status(notReady ? 503 : noTabletRole ? 409 : 502).json({
+        ok: false,
+        code: notReady ? "NO_TEAM" : noTabletRole ? "NO_TABLET_ROLE" : "SAVE_FAILED",
         message: notReady
-          ? "Team logins are not switched on yet — run db/0008_members.sql in Supabase."
-          : "The login was created but not attached to your restaurant. Try again."
+          ? "Team logins are switched on by your DigiMenu admin."
+          : noTabletRole
+            ? "Tablet-only logins are not switched on yet. Create this person as \"Orders only\" — that login can already take tablet orders."
+            : "The login was created but not attached to your restaurant. Try again."
       });
     }
 

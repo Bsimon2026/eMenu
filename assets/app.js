@@ -266,7 +266,7 @@
       (list.length
         ? list.map((m) =>
             '<div class="team-row"><span><span class="who">' + esc(m.username) + "</span> " +
-            '<span class="meta">' + (m.role === "menu" ? "Menu and orders" : "Orders only") +
+            '<span class="meta">' + (m.role === "menu" ? "Menu and orders" : m.role === "tablet" ? "Tablet orders (waiter)" : "Orders only") +
             (m.last_sign_in_at ? " · last signed in " + esc(new Date(m.last_sign_in_at).toLocaleDateString()) : " · never signed in") +
             "</span></span>" +
             '<button class="btn btn-outline btn-sm" type="button" data-np="' + esc(m.username) + '">New password</button>' +
@@ -4192,6 +4192,13 @@
     }
 
     document.body.dataset.role = state.role || "owner";
+
+    /* A waiter's login has one job, and this is not it: send them to the tablet
+       instead of a dashboard whose every button would refuse them. */
+    if (state.role === "tablet" && state.handle) {
+      location.replace("/" + encodeURIComponent(state.handle) + "/tablet");
+      return;
+    }
 
     if (saved) {
       applyRestaurant(saved);
