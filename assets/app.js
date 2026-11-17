@@ -896,8 +896,24 @@
 
   /* ---------------- file uploads ---------------- */
 
-  async function uploadTo(kind, file) {
-    if (!file) return null;
+  /* An upload must never be able to hold a screen. The wizard awaited this with
+     the button reading "Uploading the licence…", so a slow line or a rejected
+     request left the owner on step 4 forever with no message and no way on.
+     30 seconds, then it answers null and the caller carries on — the document can
+     be added later from Settings → Documents, and publishing says so. */
+  function uploadTo(kind, file) {
+    if (!file) return Promise.resolve(null);
+    const slow = new Promise((resolve) => setTimeout(() => resolve("slow"), 15000));
+    return Promise.race([
+      uploadNow(kind, file).catch((e) => {
+        console.error("[upload]", kind, e && e.message);
+        return null;
+      }),
+      slow
+    ]).then((r) => (r === "slow" ? null : r));
+  }
+
+  async function uploadNow(kind, file) {
     if (file.size > 2_500_000) {
       toast("That file is " + (file.size / 1048576).toFixed(1) + " MB. Keep it under 2.5 MB.");
       return null;
@@ -1088,22 +1104,36 @@
     applyRestaurant(r.data.restaurant);
 
     /* The row exists, so the two documents chosen in step 2 can finally be
-       stored. Publishing is gated on them server-side; until this ran, a logo
-       and a licence picked in the wizard existed only in this browser. */
+       stored. Publishing is gated on them server-side; until this ran, a logo and
+       a licence picked in the wizard existed only in this browser.
+        Neither upload may block the way out of the wizard: uploadTo answers null
+       after 15s, and whatever is missing is named, with a link, on the dashboard
+       and again by the publish gate. */
+    const stuck = [];
     if (pendingDocs.logo) {
       btn.disabled = true;
       btn.textContent = "Uploading the logo…";
-      await uploadTo("logo", pendingDocs.logo);
+      if (!(await uploadTo("logo", pendingDocs.logo))) stuck.push("logo");
       pendingDocs.logo = null;
     }
     if (pendingDocs.license) {
       btn.disabled = true;
       btn.textContent = "Uploading the licence…";
-      await uploadTo("licence", pendingDocs.license);
+      if (!(await uploadTo("licence", pendingDocs.license))) stuck.push("licence");
       pendingDocs.license = null;
     }
+    if (stuck.length) {
+      toast("Your restaurant is saved. The " + stuck.join(" and the ") +
+        " did not upload — add " + (stuck.length > 1 ? "them" : "it") +
+        " in Settings → Documents.");
+    }
 
-    location.href = "/app.html#overview";
+    /* Leave for a different document. "/app.html#overview" while already on
+       /app.html is only a hash change: the wizard stayed on screen behind it with
+       the button still reading "Uploading the licence…", which is precisely the
+       "it hung" an owner reported. The dashboard path is a real load. */
+    if (state.handle) location.replace("/" + encodeURIComponent(state.handle) + "/dashboard");
+    else location.replace("/app.html");
   });
 
   /* ---------------- overview ---------------- */
@@ -1114,20 +1144,50 @@
   function publishItems() {
     const { logo, license } = state.docs;
     const hasMenu = !!(state.menu || state.menuImported);
+    /* `fix` names the exact place, and go/sub/field are the same place as a
+       destination: the owner should never have to read "Settings" and then hunt
+       through four screens for the one field the error meant. */
     return [
-      { key: "logo", label: "Restaurant logo", ok: !!logo, go: "docs",
+      { key: "logo", label: "Restaurant logo", ok: !!logo, go: "docs", subnav: "settings", sub: "documents", field: "rowLogo",
         note: logo ? "Added" : "Used on the menu header",
-        fix: "upload it in Settings → Documents" },
-      { key: "lic", label: "Trade licence copy", ok: !!license, go: "docs",
+        fix: "Settings → Documents → Restaurant logo" },
+      { key: "lic", label: "Trade licence copy", ok: !!license, go: "docs", subnav: "settings", sub: "documents", field: "rowLic",
         note: license ? "Added" : "Needed before publishing",
-        fix: "upload it in Settings → Documents" },
-      { key: "menu", label: "Menu content", ok: hasMenu, go: "import",
+        fix: "Settings → Documents → Trade licence copy" },
+      { key: "menu", label: "Menu content", ok: hasMenu, go: "import", sub: "", field: "dropZone",
         note: hasMenu ? "Imported · review any time" : "Import a photo or a link",
-        fix: "import your dishes, or add one by hand" },
-      { key: "maps", label: "Google Maps link", ok: !!(state.restaurant && state.restaurant.mapsUrl), go: "docs",
+        fix: "Menu → Import, or add a dish by hand" },
+      { key: "maps", label: "Google Maps link", ok: !!(state.restaurant && state.restaurant.mapsUrl), go: "docs", subnav: "settings", sub: "documents", field: "mapsUrl",
         note: state.restaurant && state.restaurant.mapsUrl ? "Added" : "Needed before publishing",
-        fix: "paste the link in Settings → Documents" }
+        fix: "Settings → Documents → Google Maps link" }
     ];
+  }
+
+  /* Take the owner to the field, not the room it is in. Settings opens on the
+     guest page, so "go to Settings" used to leave three hidden screens between
+     the error and the box it meant. */
+  function goFix(it) {
+    if (!it) return;
+    if (it.go) showView(it.go);
+    /* The sub-tab has to be chosen AFTER the pane has painted: showView repaints
+       Settings and puts its first tab back, which undid a click made before it. */
+    setTimeout(() => {
+      if (it.sub) {
+        const tab = document.querySelector('[data-subnav="' + it.subnav + '"] [data-sub="' + it.sub + '"]');
+        if (tab) tab.click();
+      }
+      if (!it.field) return;
+      setTimeout(() => {
+        const el = document.getElementById(it.field);
+        if (!el) return;
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.classList.remove("flash");
+        void el.offsetWidth;         /* restart the animation if it is already lit */
+        el.classList.add("flash");
+        const input = el.matches("input, textarea, select") ? el : el.querySelector("input[type=file], input, textarea");
+        if (input) { try { input.focus({ preventScroll: true }); } catch (e) { /* focus is a courtesy */ } }
+      }, 60);
+    }, 90);
   }
 
   /* The server names its reasons in its own words ("logo", "licence",
@@ -1145,20 +1205,30 @@
      lost its licence). The pane must not wipe that answer on the next repaint. */
   let publishErrorSticky = false;
 
+  /* What the publish attempt was refused for, kept so the buttons below can
+     point at the field each row is about. */
+  let lastProblems = [];
+
   function showPublishProblems(items) {
     const box = $("#publishError");
     if (!box) return;
+    lastProblems = items || [];
     if (!items.length) { box.hidden = true; box.innerHTML = ""; publishErrorSticky = false; return; }
     box.innerHTML = "<b>This menu cannot go live yet</b><ul>" +
-      items.map((it) =>
-        "<li>" + it.label + " — " + (it.fix || "needed before publishing") +
-        (it.go ? ' <button class="lnk" type="button" data-fix="' + it.go + '">Fix this</button>' : "") +
-        "</li>"
-      ).join("") + "</ul>" +
+      items.map((it, i) => {
+        const where = it.fix || "needed before publishing";
+        const action = it.ok === false || it.go
+          ? ' <button class="lnk" type="button" data-fix="' + i + '">Take me there</button>'
+          : "";
+        return "<li><b>" + it.label + "</b> — " + where + action + "</li>";
+      }).join("") + "</ul>" +
       '<button class="err-ok" type="button" data-dismiss>Got it</button>';
     box.hidden = false;
     $$("#publishError [data-fix]").forEach((b) =>
-      b.addEventListener("click", () => showView(b.dataset.fix))
+      b.addEventListener("click", () => {
+        goFix(lastProblems[Number(b.dataset.fix)]);
+        showPublishProblems([]);   /* the answer is now on screen, not in the box */
+      })
     );
     const dismiss = $("#publishError [data-dismiss]");
     if (dismiss) dismiss.addEventListener("click", () => showPublishProblems([]));
@@ -1238,15 +1308,16 @@
   function renderOverview() {
     const items = publishItems();
 
-    $("#checkList").innerHTML = items.map((it) => `
+    $("#checkList").innerHTML = items.map((it, i) => `
       <div class="check-row ${it.ok ? "ok" : "todo"}">
         <span class="ic">${it.ok ? "✓" : "!"}</span>
         <span class="lbl"><b>${it.label}</b><span>${it.note}</span></span>
         ${it.ok ? '<span class="pill pill-ok">Done</span>'
-                : `<button class="btn btn-outline btn-sm" type="button" data-go="${it.go}">Add</button>`}
+                : `<button class="btn btn-outline btn-sm" type="button" data-go="${i}">Add</button>`}
       </div>`).join("");
 
-    $$("[data-go]").forEach((b) => b.addEventListener("click", () => showView(b.dataset.go)));
+    $$("#checkList [data-go]").forEach((b) =>
+      b.addEventListener("click", () => goFix(items[Number(b.dataset.go)])));
 
     const ready = items.every((it) => it.ok);
     /* the server's verdict, not the row's: a published row whose free week ended

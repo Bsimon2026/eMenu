@@ -2257,3 +2257,18 @@ select.input {
 /* a tablet order is a bill until someone closes it: open is money still owed */
 .osrc-open { color: var(--brand); border-color: rgba(247,148,29,.45); }
 .osrc-paid { color: var(--good); border-color: rgba(63,185,80,.4); }
+
+/* the field a publish error pointed at: "Take me there" must land somewhere the
+   eye can find without reading the whole screen */
+.flash {
+  animation: flash-field 1.6s ease-out 1;
+  border-radius: 10px;
+}
+@keyframes flash-field {
+  0%   { box-shadow: 0 0 0 3px rgba(247,148,29,.0), 0 0 0 0 rgba(247,148,29,.35); background: rgba(247,148,29,.16); }
+  25%  { box-shadow: 0 0 0 3px rgba(247,148,29,.55), 0 0 30px -6px rgba(247,148,29,.45); background: rgba(247,148,29,.12); }
+  100% { box-shadow: 0 0 0 3px rgba(247,148,29,0), 0 0 0 0 rgba(247,148,29,0); background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash { animation: none; box-shadow: 0 0 0 2px rgba(247,148,29,.6); }
+}
